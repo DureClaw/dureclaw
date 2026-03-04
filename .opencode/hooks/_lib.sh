@@ -22,12 +22,15 @@ detect_stack() {
     echo "bun"
   elif [[ -f "$PROJECT_ROOT/package.json" ]]; then
     echo "node"
-  elif [[ -f "$PROJECT_ROOT/pyproject.toml" ]] || [[ -f "$PROJECT_ROOT/setup.py" ]]; then
+  elif [[ -f "$PROJECT_ROOT/pyproject.toml" ]] || [[ -f "$PROJECT_ROOT/setup.py" ]] || [[ -f "$PROJECT_ROOT/setup.cfg" ]] || [[ -f "$PROJECT_ROOT/requirements.txt" ]]; then
     echo "python"
   elif [[ -f "$PROJECT_ROOT/go.mod" ]]; then
     echo "go"
   elif [[ -f "$PROJECT_ROOT/Cargo.toml" ]]; then
     echo "rust"
+  elif find "$PROJECT_ROOT" -maxdepth 2 -name "*.py" -not -path "*/.opencode/*" | grep -q .; then
+    # Fallback: .py files exist but no config file yet → still python
+    echo "python"
   else
     echo "unknown"
   fi
