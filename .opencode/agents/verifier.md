@@ -1,19 +1,24 @@
 ---
-name: verifier
-mode: subagent
 description: Test and lint execution agent with bash access (no file editing)
-permissions:
-  read: ["**/*"]
-  write: [".opencode/reports/**"]
-  bash:
-    - "bun test"
-    - "bun run test"
-    - "npm test"
-    - "bun run lint"
-    - "bun run typecheck"
-    - "bash .opencode/hooks/*.sh"
-    - "cat .opencode/reports/*"
+mode: subagent
+tools:
+  bash: true
+  write: false
+  edit: false
   task: false
+permission:
+  bash:
+    "bun test*": allow
+    "bun run test*": allow
+    "bun run lint*": allow
+    "bun run typecheck*": allow
+    "npm test*": allow
+    "bash .opencode/hooks/*": allow
+    "cat .opencode/reports/*": allow
+    "python3 .opencode/hooks/*": allow
+    "*": deny
+  write: deny
+  edit: deny
 ---
 
 # Verifier Agent

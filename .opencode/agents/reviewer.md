@@ -1,12 +1,17 @@
 ---
-name: reviewer
-mode: subagent
 description: Code review agent — read-only, provides fix instructions
-permissions:
-  read: ["**/*"]
-  write: [".opencode/state/mailbox/**"]
+mode: subagent
+tools:
   bash: false
+  write: true
+  edit: false
   task: false
+permission:
+  bash: deny
+  edit: deny
+  write:
+    ".opencode/state/mailbox/*": allow
+    "*": deny
 ---
 
 # Reviewer Agent

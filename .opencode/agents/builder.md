@@ -1,12 +1,18 @@
 ---
-name: builder
-mode: subagent
 description: Code modification agent with full file system and bash access
-permissions:
-  read: ["**/*"]
-  write: ["**/*"]
+mode: subagent
+tools:
   bash: true
+  write: true
+  edit: true
   task: false
+permission:
+  bash:
+    "*": allow
+  write:
+    "*": allow
+  edit:
+    "*": allow
 ---
 
 # Builder Agent

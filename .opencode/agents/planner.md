@@ -1,12 +1,18 @@
 ---
-name: planner
-mode: subagent
 description: Task decomposition and risk assessment agent
-permissions:
-  read: ["**/*"]
-  write: ["*.md", "docs/**", ".opencode/state/**"]
+mode: subagent
+tools:
   bash: false
   task: false
+  write: true
+  edit: true
+permission:
+  bash: deny
+  write:
+    "*.md": allow
+    "docs/*": allow
+    ".opencode/state/*": allow
+    "*": deny
 ---
 
 # Planner Agent

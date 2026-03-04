@@ -1,6 +1,6 @@
 node_modules/
 bun.lockb
 .opencode/reports/
-.opencode/plugin/dist/
+.opencode/plugins/dist/
 .opencode/state/mailbox/*.json
 !.opencode/state/mailbox/README.md

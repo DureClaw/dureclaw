@@ -1,13 +1,26 @@
 ---
-name: orchestrator
-mode: primary
 description: Loop controller and goal manager for the agent harness
-max_steps: 20
-permissions:
-  read: ["**/*"]
-  write: [".opencode/state/**", ".opencode/reports/**"]
-  bash: ["ls", "cat", "find", "grep", "echo", "date", "wc", "bash .opencode/hooks/*.sh"]
+mode: primary
+tools:
+  bash: true
   task: true
+  write: true
+  edit: false
+permission:
+  bash:
+    "ls*": allow
+    "cat*": allow
+    "find*": allow
+    "grep*": allow
+    "echo*": allow
+    "date*": allow
+    "wc*": allow
+    "bash .opencode/hooks/*": allow
+    "*": deny
+  write:
+    ".opencode/state/*": allow
+    ".opencode/reports/*": allow
+    "*": deny
 ---
 
 # Orchestrator Agent
