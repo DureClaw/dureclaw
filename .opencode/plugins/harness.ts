@@ -2,10 +2,13 @@
  * open-agent-harness plugin (harness.ts)
  *
  * OpenCode plugin providing:
- * - Hook lifecycle handlers (tool.execute.before/after, session.idle, session.stop)
+ * - Hook lifecycle handlers (tool.execute.after)
  * - Custom tools: run_hook, read_state, write_state, post_message, read_mailbox
+ *
+ * Plugin format: named export conforming to Plugin type from @opencode-ai/plugin
  */
 
+import { type Plugin, tool } from "@opencode-ai/plugin";
 import { spawnSync } from "node:child_process";
 import {
   existsSync,
@@ -14,19 +17,10 @@ import {
   readFileSync,
   writeFileSync,
 } from "node:fs";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// ─── Allowed hook scripts ──────────────────────────────────────────────────────
 
-const ROOT = resolve(process.cwd());
-const OPENCODE_DIR = join(ROOT, ".opencode");
-const HOOKS_DIR = join(OPENCODE_DIR, "hooks");
-const REPORTS_DIR = join(OPENCODE_DIR, "reports");
-const STATE_DIR = join(OPENCODE_DIR, "state");
-const MAILBOX_DIR = join(STATE_DIR, "mailbox");
-const STATE_FILE = join(STATE_DIR, "state.json");
-
-// Allowed hook scripts
 const ALLOWED_HOOKS = new Set([
   "00_preflight.sh",
   "01_diff_summary.sh",
@@ -40,414 +34,257 @@ const ALLOWED_HOOKS = new Set([
   "09_completion_gate.sh",
 ]);
 
-// Builder is the only agent allowed to edit source files
-const BUILDER_EDITABLE_PATTERNS = [
-  /^src\//,
-  /^lib\//,
-  /^app\//,
-  /^pages\//,
-  /^components\//,
-  /\.ts$/,
-  /\.tsx$/,
-  /\.js$/,
-  /\.jsx$/,
-  /\.py$/,
-  /\.go$/,
-  /package\.json$/,
-];
+// ─── Plugin ────────────────────────────────────────────────────────────────────
 
-// ─── Utilities ────────────────────────────────────────────────────────────────
+export const HarnessPlugin: Plugin = async (ctx) => {
+  const ROOT = ctx.directory;
+  const OPENCODE_DIR = join(ROOT, ".opencode");
+  const HOOKS_DIR = join(OPENCODE_DIR, "hooks");
+  const REPORTS_DIR = join(OPENCODE_DIR, "reports");
+  const STATE_DIR = join(OPENCODE_DIR, "state");
+  const MAILBOX_DIR = join(STATE_DIR, "mailbox");
+  const STATE_FILE = join(STATE_DIR, "state.json");
 
-function ensureDir(dir: string): void {
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-}
+  // ── Utilities ────────────────────────────────────────────────────────────
 
-function readJson<T>(path: string, fallback: T): T {
-  try {
-    return JSON.parse(readFileSync(path, "utf8")) as T;
-  } catch {
-    return fallback;
-  }
-}
-
-function writeJson(path: string, data: unknown): void {
-  ensureDir(resolve(path, ".."));
-  writeFileSync(path, JSON.stringify(data, null, 2) + "\n", "utf8");
-}
-
-function timestamp(): string {
-  return new Date().toISOString();
-}
-
-function runScript(scriptPath: string, env?: Record<string, string>): {
-  exitCode: number;
-  stdout: string;
-  stderr: string;
-} {
-  const result = spawnSync("bash", [scriptPath], {
-    cwd: ROOT,
-    env: { ...process.env, ...env },
-    encoding: "utf8",
-    timeout: 120_000, // 2 min timeout
-  });
-  return {
-    exitCode: result.status ?? 1,
-    stdout: result.stdout ?? "",
-    stderr: result.stderr ?? "",
-  };
-}
-
-// ─── Hook: tool.execute.before ─────────────────────────────────────────────
-
-/**
- * Gate: only Builder agent may edit source files.
- * Returns { allow: false, reason } to block the tool call.
- */
-export function onToolBefore(ctx: {
-  agentName: string;
-  toolName: string;
-  toolInput: Record<string, unknown>;
-}): { allow: boolean; reason?: string } {
-  const { agentName, toolName, toolInput } = ctx;
-
-  // Only gate write/edit operations
-  if (!["edit", "write", "multiEdit"].includes(toolName)) {
-    return { allow: true };
+  function ensureDir(dir: string): void {
+    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
   }
 
-  const targetPath =
-    (toolInput["path"] as string) ??
-    (toolInput["file_path"] as string) ??
-    "";
-
-  // .opencode/ writes are always allowed
-  if (targetPath.startsWith(".opencode/")) {
-    return { allow: true };
-  }
-
-  // Only builder may write source files
-  if (agentName !== "builder") {
-    const isSourceFile = BUILDER_EDITABLE_PATTERNS.some((p) =>
-      p.test(targetPath)
-    );
-    if (isSourceFile) {
-      return {
-        allow: false,
-        reason: `[harness] Agent "${agentName}" is not permitted to edit source file "${targetPath}". Only the Builder agent may edit source files.`,
-      };
+  function readJson<T>(filePath: string, fallback: T): T {
+    try {
+      return JSON.parse(readFileSync(filePath, "utf8")) as T;
+    } catch {
+      return fallback;
     }
   }
 
-  return { allow: true };
-}
-
-// ─── Hook: tool.execute.after ──────────────────────────────────────────────
-
-/**
- * Auto-save bash execution results to reports/.
- */
-export function onToolAfter(ctx: {
-  agentName: string;
-  toolName: string;
-  toolInput: Record<string, unknown>;
-  toolOutput: unknown;
-}): void {
-  const { agentName, toolName, toolInput, toolOutput } = ctx;
-
-  if (toolName !== "bash") return;
-
-  const cmd = (toolInput["command"] as string) ?? "";
-  const output =
-    typeof toolOutput === "string"
-      ? toolOutput
-      : JSON.stringify(toolOutput, null, 2);
-
-  // Save to reports/
-  ensureDir(REPORTS_DIR);
-  const safeCmd = cmd.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 40);
-  const reportFile = join(
-    REPORTS_DIR,
-    `bash_${agentName}_${safeCmd}_${Date.now()}.md`
-  );
-
-  const content = `# Bash Report
-- **Agent**: ${agentName}
-- **Time**: ${timestamp()}
-- **Command**: \`${cmd}\`
-
-## Output
-
-\`\`\`
-${output}
-\`\`\`
-`;
-  writeFileSync(reportFile, content, "utf8");
-}
-
-// ─── Hook: session.idle ─────────────────────────────────────────────────────
-
-/**
- * When the session goes idle, run the completion gate.
- * Returns the gate result for the session to act on.
- */
-export function onSessionIdle(): {
-  gatePassed: boolean;
-  reportPath: string;
-} {
-  const gatePath = join(HOOKS_DIR, "09_completion_gate.sh");
-  if (!existsSync(gatePath)) {
-    return { gatePassed: false, reportPath: "" };
+  function writeJson(filePath: string, data: unknown): void {
+    ensureDir(join(filePath, ".."));
+    writeFileSync(filePath, JSON.stringify(data, null, 2) + "\n", "utf8");
   }
 
-  const result = runScript(gatePath);
-  const reportPath = join(REPORTS_DIR, "completion_gate.md");
+  function ts(): string {
+    return new Date().toISOString();
+  }
 
-  ensureDir(REPORTS_DIR);
-  writeFileSync(
-    reportPath,
-    `# Completion Gate Report
-- **Time**: ${timestamp()}
-- **Exit Code**: ${result.exitCode}
+  function saveReport(name: string, content: string): string {
+    ensureDir(REPORTS_DIR);
+    const reportPath = join(REPORTS_DIR, name);
+    writeFileSync(reportPath, content, "utf8");
+    return reportPath;
+  }
 
-## Output
-
-\`\`\`
-${result.stdout}
-${result.stderr}
-\`\`\`
-`,
-    "utf8"
-  );
-
-  return {
-    gatePassed: result.exitCode === 0,
-    reportPath,
-  };
-}
-
-// ─── Hook: experimental.session.stop ───────────────────────────────────────
-
-/**
- * Before stopping the session, check the gate.
- * If gate fails, signal the orchestrator to continue.
- */
-export function onSessionStop(): {
-  shouldContinue: boolean;
-  signal?: string;
-} {
-  const gateResult = onSessionIdle();
-
-  if (!gateResult.gatePassed) {
-    // Write a restart signal to the mailbox
-    ensureDir(MAILBOX_DIR);
-    const signalFile = join(MAILBOX_DIR, `restart_signal_${Date.now()}.json`);
-    writeJson(signalFile, {
-      from: "harness",
-      to: "orchestrator",
-      type: "gate_failed",
-      payload: {
-        report_path: gateResult.reportPath,
-        message: "Completion gate failed. Continue the loop.",
-        timestamp: timestamp(),
-      },
+  function execHook(
+    hook: string,
+    env?: Record<string, string>
+  ): { exitCode: number; stdout: string; stderr: string } {
+    const hookPath = join(HOOKS_DIR, hook);
+    const isPython = hook.endsWith(".py");
+    const result = spawnSync(isPython ? "python3" : "bash", [hookPath], {
+      cwd: ROOT,
+      env: { ...process.env, ...env },
+      encoding: "utf8",
+      timeout: 120_000,
     });
-
     return {
-      shouldContinue: true,
-      signal: `Gate failed. Report: ${gateResult.reportPath}`,
+      exitCode: result.status ?? 1,
+      stdout: result.stdout ?? "",
+      stderr: result.stderr ?? "",
     };
   }
 
-  return { shouldContinue: false };
-}
+  // ── Return Hooks object ──────────────────────────────────────────────────
 
-// ─── Custom Tool: run_hook ──────────────────────────────────────────────────
+  return {
+    // Auto-save bash command results to .opencode/reports/
+    "tool.execute.after": async (input, output) => {
+      if (input.tool !== "bash") return;
 
-/**
- * Agents call this tool to run a specific hook script.
- *
- * Input: { hook: "03_lint.sh", env?: {...} }
- * Output: { exit_code, report_path, summary }
- */
-export function toolRunHook(input: {
-  hook: string;
-  env?: Record<string, string>;
-}): {
-  exit_code: number;
-  report_path: string;
-  summary: string;
-  stdout: string;
-  stderr: string;
-} {
-  const { hook, env } = input;
+      const cmd = (input.args?.command as string) ?? "";
+      const safeCmd = cmd.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 40);
+      const content = [
+        `# Bash Report`,
+        `- **Time**: ${ts()}`,
+        `- **Command**: \`${cmd}\``,
+        ``,
+        `## Output`,
+        ``,
+        "```",
+        output.output,
+        "```",
+        "",
+      ].join("\n");
+      saveReport(`bash_${safeCmd}_${Date.now()}.md`, content);
+    },
 
-  if (!ALLOWED_HOOKS.has(hook)) {
-    throw new Error(
-      `Hook "${hook}" is not in the allowed list. Allowed: ${[...ALLOWED_HOOKS].join(", ")}`
-    );
-  }
+    // ── Custom tools ────────────────────────────────────────────────────────
 
-  const hookPath = join(HOOKS_DIR, hook);
-  if (!existsSync(hookPath)) {
-    throw new Error(`Hook script not found: ${hookPath}`);
-  }
+    tool: {
+      run_hook: tool({
+        description:
+          "Run a harness hook script (e.g. 03_lint.sh) and return the result.",
+        args: {
+          hook: tool.schema
+            .string()
+            .describe(
+              "Hook filename to run. One of: " + [...ALLOWED_HOOKS].join(", ")
+            ),
+        },
+        async execute(args) {
+          if (!ALLOWED_HOOKS.has(args.hook)) {
+            return `Error: Hook "${args.hook}" is not allowed. Allowed hooks: ${[...ALLOWED_HOOKS].join(", ")}`;
+          }
+          const hookPath = join(HOOKS_DIR, args.hook);
+          if (!existsSync(hookPath)) {
+            return `Error: Hook script not found at ${hookPath}`;
+          }
 
-  // Python scripts use python3
-  const isPython = hook.endsWith(".py");
-  const result = isPython
-    ? spawnSync("python3", [hookPath], {
-        cwd: ROOT,
-        env: { ...process.env, ...env },
-        encoding: "utf8",
-        timeout: 120_000,
-      })
-    : spawnSync("bash", [hookPath], {
-        cwd: ROOT,
-        env: { ...process.env, ...env },
-        encoding: "utf8",
-        timeout: 120_000,
-      });
+          const result = execHook(args.hook);
+          const hookName = args.hook.replace(/\.[^.]+$/, "");
+          const reportPath = saveReport(
+            `${hookName}.md`,
+            [
+              `# Hook: ${args.hook}`,
+              `- **Time**: ${ts()}`,
+              `- **Exit Code**: ${result.exitCode}`,
+              `- **Status**: ${result.exitCode === 0 ? "✅ PASS" : "❌ FAIL"}`,
+              ``,
+              `## stdout`,
+              ``,
+              "```",
+              result.stdout,
+              "```",
+              ``,
+              `## stderr`,
+              ``,
+              "```",
+              result.stderr,
+              "```",
+              "",
+            ].join("\n")
+          );
 
-  const exitCode = result.status ?? 1;
-  const stdout = result.stdout ?? "";
-  const stderr = result.stderr ?? "";
+          const status = result.exitCode === 0 ? "PASS" : "FAIL";
+          return [
+            `${status} (exit ${result.exitCode})`,
+            `Report saved: ${reportPath}`,
+            ``,
+            result.stdout,
+            result.stderr,
+          ]
+            .join("\n")
+            .trim();
+        },
+      }),
 
-  // Save report
-  ensureDir(REPORTS_DIR);
-  const hookName = hook.replace(/\.[^.]+$/, "");
-  const reportPath = join(REPORTS_DIR, `${hookName}.md`);
-  writeFileSync(
-    reportPath,
-    `# Hook Report: ${hook}
-- **Time**: ${timestamp()}
-- **Exit Code**: ${exitCode}
-- **Status**: ${exitCode === 0 ? "✅ PASS" : "❌ FAIL"}
+      read_state: tool({
+        description: "Read the current harness state.json file.",
+        args: {},
+        async execute() {
+          const state = readJson(STATE_FILE, {
+            run_id: null,
+            goal: null,
+            status: "idle",
+            loop_count: 0,
+            tasks: [],
+            current_task: null,
+            last_failure: null,
+            updated_at: null,
+          });
+          return JSON.stringify(state, null, 2);
+        },
+      }),
 
-## stdout
+      write_state: tool({
+        description:
+          "Merge updates into harness state.json (shallow merge). Pass JSON string of fields to update.",
+        args: {
+          updates: tool.schema
+            .string()
+            .describe('JSON object string of state fields to update, e.g. {"status":"running","loop_count":1}'),
+        },
+        async execute(args) {
+          let updates: Record<string, unknown>;
+          try {
+            updates = JSON.parse(args.updates) as Record<string, unknown>;
+          } catch {
+            return `Error: updates must be valid JSON. Got: ${args.updates}`;
+          }
+          const current = readJson<Record<string, unknown>>(STATE_FILE, {});
+          const next = { ...current, ...updates, updated_at: ts() };
+          ensureDir(STATE_DIR);
+          writeJson(STATE_FILE, next);
+          return `State updated at ${STATE_FILE}`;
+        },
+      }),
 
-\`\`\`
-${stdout}
-\`\`\`
+      post_message: tool({
+        description: "Post a message to an agent's mailbox.",
+        args: {
+          to: tool.schema.string().describe("Target agent name (e.g. builder)"),
+          from: tool.schema.string().describe("Sender agent name (e.g. orchestrator)"),
+          type: tool.schema.string().describe("Message type (e.g. build_task)"),
+          payload: tool.schema
+            .string()
+            .describe("JSON string payload for the message"),
+        },
+        async execute(args) {
+          ensureDir(MAILBOX_DIR);
+          let payload: unknown;
+          try {
+            payload = JSON.parse(args.payload);
+          } catch {
+            payload = args.payload;
+          }
+          const filename = `${args.to}_${args.type}_${Date.now()}.json`;
+          const msgPath = join(MAILBOX_DIR, filename);
+          writeJson(msgPath, {
+            from: args.from,
+            to: args.to,
+            type: args.type,
+            payload,
+            timestamp: ts(),
+            read: false,
+          });
+          return `Message posted to ${args.to}: ${msgPath}`;
+        },
+      }),
 
-## stderr
+      read_mailbox: tool({
+        description:
+          "Read unread messages for an agent from the mailbox. Messages are marked as read after retrieval.",
+        args: {
+          agent: tool.schema.string().describe("Agent name to read messages for"),
+        },
+        async execute(args) {
+          ensureDir(MAILBOX_DIR);
+          let files: string[] = [];
+          try {
+            files = readdirSync(MAILBOX_DIR);
+          } catch {
+            return JSON.stringify({ count: 0, messages: [] }, null, 2);
+          }
 
-\`\`\`
-${stderr}
-\`\`\`
-`,
-    "utf8"
-  );
+          const messages: unknown[] = [];
+          for (const file of files.filter((f) =>
+            f.startsWith(`${args.agent}_`)
+          )) {
+            const msgPath = join(MAILBOX_DIR, file);
+            try {
+              const msg = readJson<Record<string, unknown>>(msgPath, {});
+              if (!msg.read) {
+                messages.push(msg);
+                writeJson(msgPath, { ...msg, read: true, read_at: ts() });
+              }
+            } catch {
+              // skip malformed
+            }
+          }
 
-  const statusLabel = exitCode === 0 ? "PASS" : "FAIL";
-  const summary = `${statusLabel} (exit ${exitCode}) — report: ${reportPath}`;
-
-  return { exit_code: exitCode, report_path: reportPath, summary, stdout, stderr };
-}
-
-// ─── Custom Tool: read_state ────────────────────────────────────────────────
-
-/**
- * Read the current state.json.
- */
-export function toolReadState(_input: Record<string, never>): unknown {
-  return readJson(STATE_FILE, {
-    run_id: null,
-    goal: null,
-    status: "idle",
-    loop_count: 0,
-    tasks: [],
-    current_task: null,
-    last_failure: null,
-    updated_at: null,
-  });
-}
-
-// ─── Custom Tool: write_state ────────────────────────────────────────────────
-
-/**
- * Merge updates into state.json (shallow merge).
- */
-export function toolWriteState(input: Record<string, unknown>): {
-  ok: boolean;
-  state_path: string;
-} {
-  const current = readJson<Record<string, unknown>>(STATE_FILE, {});
-  const next = { ...current, ...input, updated_at: timestamp() };
-  ensureDir(STATE_DIR);
-  writeJson(STATE_FILE, next);
-  return { ok: true, state_path: STATE_FILE };
-}
-
-// ─── Custom Tool: post_message ──────────────────────────────────────────────
-
-/**
- * Post a message to an agent's mailbox.
- *
- * Input: { to: "builder", from: "orchestrator", type: "build_task", payload: {...} }
- */
-export function toolPostMessage(input: {
-  to: string;
-  from: string;
-  type: string;
-  payload: unknown;
-}): { ok: boolean; message_path: string } {
-  const { to, from, type, payload } = input;
-
-  ensureDir(MAILBOX_DIR);
-  const filename = `${to}_${type}_${Date.now()}.json`;
-  const messagePath = join(MAILBOX_DIR, filename);
-
-  writeJson(messagePath, {
-    from,
-    to,
-    type,
-    payload,
-    timestamp: timestamp(),
-    read: false,
-  });
-
-  return { ok: true, message_path: messagePath };
-}
-
-// ─── Custom Tool: read_mailbox ───────────────────────────────────────────────
-
-/**
- * Read unread messages for an agent from the mailbox.
- * Marks messages as read after retrieval.
- *
- * Input: { agent: "orchestrator", mark_read?: true }
- */
-export function toolReadMailbox(input: {
-  agent: string;
-  mark_read?: boolean;
-}): { messages: unknown[]; count: number } {
-  const { agent, mark_read = true } = input;
-
-  ensureDir(MAILBOX_DIR);
-
-  let files: string[] = [];
-  try {
-    files = readdirSync(MAILBOX_DIR);
-  } catch {
-    return { messages: [], count: 0 };
-  }
-
-  const messages: unknown[] = [];
-
-  for (const file of files.filter((f) => f.startsWith(`${agent}_`))) {
-    const msgPath = join(MAILBOX_DIR, file);
-    try {
-      const msg = readJson<Record<string, unknown>>(msgPath, {});
-      if (!msg.read || !mark_read) {
-        messages.push(msg);
-        if (mark_read) {
-          writeJson(msgPath, { ...msg, read: true, read_at: timestamp() });
-        }
-      }
-    } catch {
-      // Skip malformed message files
-    }
-  }
-
-  return { messages, count: messages.length };
-}
+          return JSON.stringify({ count: messages.length, messages }, null, 2);
+        },
+      }),
+    },
+  };
+};
