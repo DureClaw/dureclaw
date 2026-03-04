@@ -145,65 +145,12 @@ export const HarnessPlugin: Plugin = async (ctx) => {
     }
   }
 
-  /**
-   * Extract plain text from message parts.
-   * Truncates to maxLen to keep Discord embeds readable.
-   */
-  function extractText(parts: unknown[], maxLen = 800): string {
-    if (!Array.isArray(parts)) return "";
-
-    const chunks: string[] = [];
-    for (const part of parts) {
-      if (
-        part &&
-        typeof part === "object" &&
-        "type" in part &&
-        (part as { type: string }).type === "text" &&
-        "text" in part
-      ) {
-        chunks.push(String((part as { text: unknown }).text));
-      }
-    }
-    const full = chunks.join("\n").trim();
-    if (full.length <= maxLen) return full;
-    return full.slice(0, maxLen - 3) + "...";
-  }
-
   // ── Return Hooks object ──────────────────────────────────────────────────
 
   return {
-    // Mirror agent chat messages to Discord
-    "chat.message": async (input, output) => {
-      const agent = input.agent ?? "unknown";
-      const text = extractText(output.parts);
-      if (!text) return;
-
-      const colorKey = agent.toLowerCase() as keyof typeof DISCORD_COLORS;
-      const color = DISCORD_COLORS[colorKey] ?? DISCORD_COLORS.default;
-
-      // Agent icon map
-      const icons: Record<string, string> = {
-        orchestrator: "🎯",
-        planner: "📋",
-        builder: "🔨",
-        verifier: "🧪",
-        reviewer: "👀",
-      };
-      const icon = icons[agent.toLowerCase()] ?? "🤖";
-
-      await discordPost({
-        title: `${icon} ${agent}`,
-        description: text,
-        color,
-        footer: `open-agent-harness • session ${input.sessionID.slice(0, 8)}`,
-      });
-    },
-
-    // Auto-save bash command results to .opencode/reports/
-    // Also notify Discord when a hook script is run
+    // Auto-save bash results to .opencode/reports/ (no Discord — too noisy)
     "tool.execute.after": async (input, output) => {
       if (input.tool !== "bash") return;
-
       const cmd = (input.args?.command as string) ?? "";
       const safeCmd = cmd.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 40);
       const content = [
@@ -219,22 +166,6 @@ export const HarnessPlugin: Plugin = async (ctx) => {
         "",
       ].join("\n");
       saveReport(`bash_${safeCmd}_${Date.now()}.md`, content);
-
-      // Notify Discord when a hook script runs
-      const hookMatch = cmd.match(/\.opencode\/hooks\/([\w.]+)/);
-      if (hookMatch) {
-        const hookName = hookMatch[1];
-        const outputText = (output.output ?? "").slice(0, 600);
-        const passed =
-          !outputText.includes("FAIL") && !outputText.includes("Error");
-
-        await discordPost({
-          title: `${passed ? "✅" : "❌"} Hook: ${hookName}`,
-          description: outputText ? `\`\`\`\n${outputText}\n\`\`\`` : undefined,
-          color: passed ? DISCORD_COLORS.hook_pass : DISCORD_COLORS.hook_fail,
-          footer: "open-agent-harness",
-        });
-      }
     },
 
     // ── Custom tools ────────────────────────────────────────────────────────
@@ -286,21 +217,29 @@ export const HarnessPlugin: Plugin = async (ctx) => {
             ].join("\n")
           );
 
-          // Discord notification
-          await discordPost({
-            title: `${result.exitCode === 0 ? "✅" : "❌"} Hook: ${args.hook}`,
-            description:
-              result.stdout.slice(0, 600) || result.stderr.slice(0, 600) || undefined,
-            color:
-              result.exitCode === 0
-                ? DISCORD_COLORS.hook_pass
-                : DISCORD_COLORS.hook_fail,
-            fields: [
-              { name: "Exit Code", value: String(result.exitCode), inline: true },
-              { name: "Status", value: status, inline: true },
-            ],
-            footer: `Report: ${reportPath}`,
-          });
+          // Discord: only for gate + verification hooks that matter
+          const DISCORD_HOOKS = new Set([
+            "09_completion_gate.sh",
+            "05_unit_test.sh",
+            "03_lint.sh",
+            "04_typecheck.sh",
+          ]);
+          if (DISCORD_HOOKS.has(args.hook)) {
+            // Extract only the summary line (last non-empty line before exit info)
+            const summary = result.stdout
+              .split("\n")
+              .filter((l) => l.trim() && !l.startsWith("━") && !l.startsWith(" open-agent"))
+              .slice(-4)
+              .join("\n")
+              .slice(0, 400);
+            await discordPost({
+              title: `${result.exitCode === 0 ? "✅" : "❌"} ${args.hook.replace(".sh", "")}`,
+              description: summary || undefined,
+              color: result.exitCode === 0 ? DISCORD_COLORS.hook_pass : DISCORD_COLORS.hook_fail,
+              fields: [{ name: "Status", value: status, inline: true }],
+              footer: "open-agent-harness",
+            });
+          }
 
           return [
             `${status} (exit ${result.exitCode})`,
@@ -354,19 +293,22 @@ export const HarnessPlugin: Plugin = async (ctx) => {
           ensureDir(STATE_DIR);
           writeJson(STATE_FILE, next);
 
-          // Notify Discord on status changes
-          if (updates.status || updates.goal || updates.loop_count !== undefined) {
-            const goal = (next.goal as string) ?? "";
-            const status = (next.status as string) ?? "";
-            const loop = next.loop_count ?? 0;
+          // Discord: only on goal start or completion (not every loop/status tick)
+          const isGoalStart = updates.goal && updates.status === "running" && !current.goal;
+          const isGoalDone = updates.status === "done" || updates.status === "completed";
+          if (isGoalStart) {
             await discordPost({
-              title: `📊 State Updated`,
+              title: `🚀 Workloop started`,
+              description: String(updates.goal),
               color: DISCORD_COLORS.orchestrator,
-              fields: [
-                ...(goal ? [{ name: "Goal", value: goal, inline: false }] : []),
-                { name: "Status", value: status, inline: true },
-                { name: "Loop", value: String(loop), inline: true },
-              ],
+              footer: "open-agent-harness",
+            });
+          } else if (isGoalDone) {
+            await discordPost({
+              title: `✅ Workloop complete`,
+              description: (next.goal as string) ?? "",
+              color: DISCORD_COLORS.hook_pass,
+              fields: [{ name: "Loops", value: String(next.loop_count ?? 0), inline: true }],
               footer: "open-agent-harness",
             });
           }
