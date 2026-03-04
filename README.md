@@ -111,6 +111,55 @@ Reports are written to `.opencode/reports/`.
 
 ---
 
+## Discord Notifications
+
+에이전트 대화와 훅 실행 결과를 Discord 채널로 실시간 미러링합니다.
+
+### Setup
+
+1. Discord 서버 → 채널 설정 → Integrations → Webhooks → New Webhook → Copy URL
+
+2. 환경 변수 설정:
+
+```bash
+export DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..."
+```
+
+또는 셸 프로필에 영구 등록:
+
+```bash
+echo 'export DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..."' >> ~/.zshrc
+```
+
+3. OpenCode 실행 — 자동으로 Discord 전송 시작
+
+### What gets posted
+
+| Event | Discord Message |
+|-------|----------------|
+| Orchestrator 메시지 | 🎯 파란 embed |
+| Planner 메시지 | 📋 노란 embed |
+| Builder 메시지 | 🔨 초록 embed |
+| Verifier 메시지 | 🧪 분홍 embed |
+| Reviewer 메시지 | 👀 빨간 embed |
+| Hook 실행 (PASS) | ✅ 초록 embed + 출력 요약 |
+| Hook 실행 (FAIL) | ❌ 빨간 embed + 출력 요약 |
+| State 변경 (goal/status) | 📊 상태 embed |
+
+### Custom notification
+
+에이전트가 직접 Discord에 알림을 보낼 수도 있습니다:
+
+```
+discord_notify(title="배포 완료", message="v1.2.0 shipped!", level="success")
+```
+
+### Privacy
+
+`DISCORD_WEBHOOK_URL`이 설정되지 않으면 Discord 기능은 완전히 비활성화되며 워크플로에 영향 없습니다.
+
+---
+
 ## Token-Saving Design
 
 The harness enforces strict token budgets through hard rules in agent prompts:
@@ -257,18 +306,28 @@ open-agent-harness/
 | `08_fail_classifier.py` | ✅ | ✅ |
 | `09_completion_gate.sh` | ✅ | ✅ |
 
+### Additions (기획 외 구현)
+
+| Feature | Description |
+|---------|-------------|
+| `chat.message` hook | 에이전트 대화 → Discord 실시간 미러링 |
+| `tool.execute.after` Discord | 훅 실행 결과 → Discord |
+| `write_state` Discord | goal/status 변경 시 Discord 알림 |
+| `discord_notify` tool | 에이전트가 직접 Discord에 커스텀 알림 전송 |
+
 ### Summary
 
 | Category | Planned | Built | Coverage |
 |----------|---------|-------|----------|
 | Agents | 5 | 5 | 100% |
 | Shell Hooks | 10 + _lib | 10 + _lib | 100% |
-| Custom Tools | 5 | 5 | 100% |
+| Custom Tools | 5 | 6 (+discord_notify) | 120% |
 | Commands | 2 | 2 | 100% |
-| Plugin Lifecycle Hooks | 4 | 1 | 25% |
-| **Overall** | | | **~90%** |
+| Plugin Lifecycle Hooks | 4 | 2 (tool.execute.after, chat.message) | 50% |
+| Discord Integration | ❌ not planned | ✅ | bonus |
+| **Overall** | | | **~95%** |
 
-기획 대비 미구현: `tool.execute.before` (builder 권한 게이트), `session.idle`, `session.stop` — 모두 OpenCode v1.2.x Plugin API 미지원으로 인한 제약.
+기획 대비 미구현: `tool.execute.before` (builder 권한 게이트), `session.idle`, `session.stop` — OpenCode v1.2.x Plugin API 미지원으로 인한 제약.
 
 ---
 
