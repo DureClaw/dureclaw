@@ -4,3 +4,4 @@ bun.lockb
 .opencode/plugins/dist/
 .opencode/state/mailbox/*.json
 !.opencode/state/mailbox/README.md
+.env
