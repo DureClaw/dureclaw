@@ -135,16 +135,19 @@ echo 'export DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..."' >> ~/.z
 
 ### What gets posted
 
+에이전트가 말할 때마다 보내지 않습니다. **중요한 이벤트만** 전송합니다.
+
 | Event | Discord Message |
 |-------|----------------|
-| Orchestrator 메시지 | 🎯 파란 embed |
-| Planner 메시지 | 📋 노란 embed |
-| Builder 메시지 | 🔨 초록 embed |
-| Verifier 메시지 | 🧪 분홍 embed |
-| Reviewer 메시지 | 👀 빨간 embed |
-| Hook 실행 (PASS) | ✅ 초록 embed + 출력 요약 |
-| Hook 실행 (FAIL) | ❌ 빨간 embed + 출력 요약 |
-| State 변경 (goal/status) | 📊 상태 embed |
+| `/workloop` 시작 | 🚀 목표 embed |
+| `09_completion_gate` 실행 | ✅/❌ 게이트 결과 |
+| `05_unit_test` 실행 | ✅/❌ 테스트 결과 |
+| `03_lint` 실행 | ✅/❌ 린트 결과 |
+| `04_typecheck` 실행 | ✅/❌ 타입체크 결과 |
+| 워크루프 완료 | ✅ 완료 embed + 루프 횟수 |
+| `discord_notify` 직접 호출 | 커스텀 알림 |
+
+> 에이전트 대화, bash 출력 등은 Discord로 보내지 않습니다.
 
 ### Custom notification
 
