@@ -1,0 +1,19 @@
+{
+  "name": "open-agent-harness",
+  "version": "0.1.0",
+  "description": "5-agent AI development workflow harness for OpenCode",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "build": "bun build .opencode/plugin/harness.ts --outdir .opencode/plugin/dist --target node",
+    "typecheck": "tsc --noEmit",
+    "init": "bash scripts/init.sh"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  }
+}

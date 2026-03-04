@@ -1,0 +1,11 @@
+{
+  "run_id": null,
+  "goal": null,
+  "status": "idle",
+  "loop_count": 0,
+  "tasks": [],
+  "current_task": null,
+  "last_failure": null,
+  "started_at": null,
+  "updated_at": null
+}
