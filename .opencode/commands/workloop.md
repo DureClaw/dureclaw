@@ -1,70 +1,50 @@
 ---
-name: workloop
 description: Start the 5-agent development loop for a given goal
+agent: orchestrator
 ---
 
-# /workloop — Agent Development Loop
+You are the Orchestrator. A new workloop has been requested.
 
-Start the open-agent-harness 5-agent loop for a development goal.
+**Goal**: $ARGUMENTS
 
-## Usage
+## Your Steps
 
-```
-/workloop <goal description>
-```
+1. Initialize state by writing to `.opencode/state/state.json`:
+   ```json
+   {
+     "run_id": "<generate a short uuid>",
+     "goal": "$ARGUMENTS",
+     "status": "running",
+     "loop_count": 0,
+     "tasks": [],
+     "current_task": null,
+     "last_failure": null,
+     "started_at": "<current ISO timestamp>",
+     "updated_at": "<current ISO timestamp>"
+   }
+   ```
 
-## What This Does
+2. Run `bash .opencode/hooks/00_preflight.sh` to verify the environment.
+   - If exit code ≠ 0, report the error and STOP.
 
-1. **Initializes state** — Creates a fresh `state.json` with your goal and a new run ID
-2. **Starts the Orchestrator** — The primary agent takes control
-3. **Runs the loop** — Planner → Builder → Verifier → Reviewer → Gate → repeat
-4. **Exits when** — The completion gate (`09_completion_gate.sh`) exits 0, or max 5 loops reached
+3. Delegate to the **planner** subagent with this task:
+   > Read `.opencode/state/state.json`, decompose the goal "$ARGUMENTS" into ordered tasks, and write the updated tasks array back to state.json.
 
-## Example
+4. After planner responds, read state.json to get the first pending task.
 
-```
-/workloop Add user authentication with JWT tokens to the Express API
-```
+5. For each task:
+   a. Delegate to **builder**: implement the task
+   b. Delegate to **verifier**: run `bash .opencode/hooks/03_lint.sh`, `bash .opencode/hooks/04_typecheck.sh`, `bash .opencode/hooks/05_unit_test.sh`
+   c. Delegate to **reviewer**: review changes in `.opencode/reports/diff_summary.md`
+   d. If reviewer requests fixes, send back to builder
 
-## State Initialization
+6. After all tasks complete, run `bash .opencode/hooks/09_completion_gate.sh`:
+   - Exit 0 → Report "✅ All gates passed. Run `/ship` to commit."
+   - Exit 2 → Ask builder to add unit tests, then re-run gate
+   - Exit 1 → Read `.opencode/reports/fail_classifier.md`, send top failures to builder, loop again
+   - After 5 loops without success → Report blockers and stop
 
-When you run `/workloop <goal>`, the following state is initialized:
-
-```json
-{
-  "run_id": "<uuid>",
-  "goal": "<your goal>",
-  "status": "running",
-  "loop_count": 0,
-  "tasks": [],
-  "current_task": null,
-  "last_failure": null,
-  "started_at": "<timestamp>",
-  "updated_at": "<timestamp>"
-}
-```
-
-## Orchestrator Instructions
-
-You are the Orchestrator. A new workloop has started.
-
-**Goal**: `$ARGUMENTS`
-
-**Your first steps**:
-1. Run `write_state({"run_id": "<generate-uuid>", "goal": "$ARGUMENTS", "status": "running", "loop_count": 0, "started_at": "<now>"})` to initialize
-2. Run `run_hook("00_preflight.sh")` to verify the environment
-3. If preflight passes, send `post_message` to `planner` with type `plan_request` and the goal
-4. Wait for planner's response in mailbox, then begin the build loop
-
-**Token constraint**: All inter-agent messages ≤ 200 tokens. No file contents in messages.
-
-**Loop limit**: Maximum 5 loops. After 5, report status and exit.
-
-## Loop End Conditions
-
-| Condition | Action |
-|-----------|--------|
-| Gate exit 0 | ✅ Report success, suggest `/ship` |
-| Gate exit 2 (no tests) | ❌ Ask Builder to add tests, re-loop |
-| Gate exit 1 (failures) | ❌ Send failures to Builder, re-loop |
-| Loop count ≥ 5 | ❌ Report blockers, request human intervention |
+## Token Rules
+- Never include file contents in subagent task descriptions — use file paths only
+- Subagent responses must be 3-line summaries + evidence file path
+- Write results to `.opencode/reports/` — pass paths, not content

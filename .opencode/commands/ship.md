@@ -1,72 +1,39 @@
 ---
-name: ship
-description: Run final gate checks and prepare a git commit if all pass
+description: Run final gate checks and propose a git commit if all pass
+agent: orchestrator
 ---
 
-# /ship — Ship Command
+Run the ship sequence for the current project.
 
-Run all gate checks and, if they pass, prepare a git commit.
+**Requested commit message hint**: $ARGUMENTS
 
-## Usage
+## Steps
 
-```
-/ship [commit message]
-```
+1. Run `bash .opencode/hooks/00_preflight.sh`
+   - If exit ≠ 0: Report the error from `.opencode/reports/preflight.md` and STOP. Do not commit.
 
-## What This Does
+2. Run `bash .opencode/hooks/07_build.sh`
+   - If exit ≠ 0: Report build failure from `.opencode/reports/build.md` and STOP.
 
-1. Runs `00_preflight.sh` — environment check
-2. Runs `07_build.sh` — production build
-3. Runs `09_completion_gate.sh` — all required checks
-4. If gate passes → stages changed files and proposes a commit message
-5. If gate fails → shows the failure report, does NOT commit
+3. Run `bash .opencode/hooks/09_completion_gate.sh`
+   - If exit ≠ 0: Show the gate report from `.opencode/reports/completion_gate.md` and STOP.
+   - Output: "❌ Gate failed. Not committing. Run /workloop to fix."
 
-## Example
+4. If all 3 passed:
+   - Read `.opencode/state/state.json` for goal and loop_count
+   - Propose this commit message (adjust type based on the goal):
+     ```
+     <type>: $ARGUMENTS
 
-```
-/ship feat: add JWT authentication
-```
+     Co-authored-by: open-agent-harness
+     Goal: <goal from state.json>
+     ```
+   - Ask the user to confirm before running `git add -A && git commit`
 
-## Orchestrator Instructions
-
-Run the ship sequence:
-
-1. `run_hook("00_preflight.sh")` — if exit ≠ 0, STOP and report
-2. `run_hook("07_build.sh")` — if exit ≠ 0, ask Builder to fix, then retry
-3. `run_hook("09_completion_gate.sh")` — if exit ≠ 0, report failures and STOP
-
-If all 3 pass:
-- Read `state.json` for the goal description
-- Propose a conventional commit message:
-  ```
-  <type>(<scope>): <short description>
-
-  Co-authored by open-agent-harness
-  Goal: <goal from state.json>
-  Loop count: <loop_count from state.json>
-  ```
-- Ask user to confirm before running `git add` and `git commit`
-
-## Commit Types
-
-| Prefix | When to use |
-|--------|-------------|
-| `feat:` | New feature |
-| `fix:` | Bug fix |
-| `refactor:` | Code restructure, no behavior change |
-| `test:` | Adding tests |
-| `chore:` | Tooling, dependencies |
-| `docs:` | Documentation only |
-
-## Gate Failure
-
-If the gate fails, output:
-```
-❌ Gate failed. Not committing.
-Report: .opencode/reports/completion_gate.md
-
-Top failures:
-<first 3 lines from fail_classifier.md>
-
-Run /workloop to continue fixing.
-```
+## Commit type guide
+- `feat:` new feature
+- `fix:` bug fix
+- `refactor:` restructure without behavior change
+- `test:` adding tests
+- `chore:` tooling or dependencies
+- `docs:` documentation only
