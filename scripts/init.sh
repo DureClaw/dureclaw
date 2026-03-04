@@ -48,9 +48,9 @@ mkdir -p "$TARGET/.opencode"
 echo "  → agents/"
 cp -r "$HARNESS_DIR/.opencode/agents" "$TARGET/.opencode/"
 
-# Copy plugin
-echo "  → plugin/"
-cp -r "$HARNESS_DIR/.opencode/plugin" "$TARGET/.opencode/"
+# Copy plugins
+echo "  → plugins/"
+cp -r "$HARNESS_DIR/.opencode/plugins" "$TARGET/.opencode/"
 
 # Copy hooks
 echo "  → hooks/"
