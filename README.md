@@ -18,11 +18,8 @@ Repetitive checks run as deterministic shell hooks (not LLM calls), keeping toke
   Verifier      (subagent) — test/lint execution + result summary
   Reviewer      (subagent) — code review + fix instructions (read-only)
 
-TypeScript Plugin (.opencode/plugin/harness.ts)
-  tool.execute.before       — Builder permission gate (only Builder edits source)
+TypeScript Plugin (.opencode/plugins/harness.ts)
   tool.execute.after        — bash results → .opencode/reports/ (automatic)
-  session.idle              — runs 09_completion_gate.sh
-  experimental.session.stop — gate FAIL → restart signal to Orchestrator
   Custom tools: run_hook, read_state, write_state, post_message, read_mailbox
 
 Shell Hooks (.opencode/hooks/) — deterministic, no LLM calls
@@ -167,7 +164,7 @@ open-agent-harness/
 │   │   ├── builder.md         code implementation
 │   │   ├── verifier.md        test/lint execution
 │   │   └── reviewer.md        code review (read-only)
-│   ├── plugin/
+│   ├── plugins/
 │   │   └── harness.ts         OpenCode plugin
 │   ├── hooks/
 │   │   ├── _lib.sh            shared utilities
@@ -197,6 +194,84 @@ open-agent-harness/
 
 ---
 
+## Plan vs Implementation
+
+기획 대비 실제 구현 상태 비교표.
+
+### Core Structure
+
+| Feature | Planned | Built | Notes |
+|---------|---------|-------|-------|
+| package.json + tsconfig.json | ✅ | ✅ | |
+| opencode.json | ✅ custom config | ✅ schema-only | OpenCode이 plugin/agents/hooks 자동 로드, 커스텀 키 불허 |
+| `.opencode/agents/` (5개) | ✅ | ✅ | |
+| `.opencode/hooks/` (10개) | ✅ | ✅ | |
+| `.opencode/commands/` (2개) | ✅ | ✅ | |
+| `.opencode/state/` | ✅ | ✅ | |
+| `scripts/init.sh` | ✅ | ✅ | |
+
+### 5 Agents
+
+| Agent | Planned Mode | Built Mode | Built |
+|-------|-------------|-----------|-------|
+| Orchestrator | primary, loop control | primary | ✅ |
+| Planner | subagent, task decompose | subagent | ✅ |
+| Builder | subagent, full write/bash | subagent | ✅ |
+| Verifier | subagent, bash test-only | subagent | ✅ |
+| Reviewer | subagent, read-only | subagent | ✅ |
+
+### Plugin Lifecycle Hooks
+
+| Hook | Planned | Built | Notes |
+|------|---------|-------|-------|
+| `tool.execute.after` → reports/ | ✅ | ✅ | bash 결과 자동 저장 |
+| `tool.execute.before` (builder gate) | ✅ | ❌ | OpenCode API에 agent name 미노출, 구현 불가 |
+| `session.idle` → completion_gate | ✅ | ❌ | OpenCode Plugin API에 해당 hook 없음 |
+| `experimental.session.stop` | ✅ | ❌ | OpenCode Plugin API에 해당 hook 없음 |
+
+> **참고**: OpenCode Plugin API는 `Hooks` 인터페이스(`tool.execute.before/after`, `chat.*`, `permission.ask` 등)만 노출. `session.idle`/`session.stop`은 지원되지 않아 제거.
+
+### Custom Tools (via Plugin)
+
+| Tool | Planned | Built |
+|------|---------|-------|
+| `run_hook` | ✅ | ✅ |
+| `read_state` | ✅ | ✅ |
+| `write_state` | ✅ | ✅ |
+| `post_message` | ✅ | ✅ |
+| `read_mailbox` | ✅ | ✅ |
+
+### Shell Hooks
+
+| Hook | Planned | Built |
+|------|---------|-------|
+| `_lib.sh` (stack detection, utilities) | ✅ | ✅ |
+| `00_preflight.sh` | ✅ | ✅ |
+| `01_diff_summary.sh` | ✅ | ✅ |
+| `02_format.sh` | ✅ | ✅ |
+| `03_lint.sh` | ✅ | ✅ |
+| `04_typecheck.sh` | ✅ | ✅ |
+| `05_unit_test.sh` | ✅ | ✅ |
+| `06_integration_test.sh` | ✅ | ✅ |
+| `07_build.sh` | ✅ | ✅ |
+| `08_fail_classifier.py` | ✅ | ✅ |
+| `09_completion_gate.sh` | ✅ | ✅ |
+
+### Summary
+
+| Category | Planned | Built | Coverage |
+|----------|---------|-------|----------|
+| Agents | 5 | 5 | 100% |
+| Shell Hooks | 10 + _lib | 10 + _lib | 100% |
+| Custom Tools | 5 | 5 | 100% |
+| Commands | 2 | 2 | 100% |
+| Plugin Lifecycle Hooks | 4 | 1 | 25% |
+| **Overall** | | | **~90%** |
+
+기획 대비 미구현: `tool.execute.before` (builder 권한 게이트), `session.idle`, `session.stop` — 모두 OpenCode v1.2.x Plugin API 미지원으로 인한 제약.
+
+---
+
 ## Customization
 
 ### Add a custom hook
@@ -207,7 +282,7 @@ open-agent-harness/
 
 ### Adjust agent permissions
 
-Edit `opencode.json` → `agents.<name>.permissions`.
+Edit the YAML frontmatter `permission:` block in the relevant `.opencode/agents/*.md` file.
 
 ### Increase loop limit
 
