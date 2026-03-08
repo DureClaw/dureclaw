@@ -194,457 +194,779 @@ defmodule HarnessServer.Router do
 
   # rubric: embedded dashboard HTML served at GET /
   # Uses relative /api/* URLs so it always hits the same server.
+  # Features: task dispatch, WK create/edit/state, task history,
+  #           agent detail + mailbox, event log, real-time WS.
   defp dashboard_html do
     ~S"""
 <!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>OAH Control — 에이전트 하네스</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>OAH Control</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
 <style>
-:root{--bg:#fff;--bg2:#f8fafc;--bg3:#f1f5f9;--border:#e2e8f0;--border2:#cbd5e1;--text:#1e293b;--text2:#475569;--text3:#94a3b8;--cyan:#0284c7;--green:#059669;--orange:#ea580c;--purple:#7c3aed;--red:#dc2626;--amber:#d97706}
+:root{--bg:#0f172a;--bg2:#1e293b;--bg3:#263045;--border:#2d3f5a;--border2:#3d5270;--text:#e2e8f0;--text2:#94a3b8;--text3:#64748b;--cyan:#38bdf8;--green:#34d399;--orange:#fb923c;--purple:#a78bfa;--red:#f87171;--amber:#fbbf24;--yellow:#facc15}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.5}
-.c{max-width:1400px;margin:0 auto;padding:0 24px}
-nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.95);border-bottom:1px solid var(--border);backdrop-filter:blur(12px)}
-.ni{display:flex;align-items:center;justify-content:space-between;height:52px}
-.logo{font-family:'Syne',sans-serif;font-weight:800;font-size:15px;color:var(--text);text-decoration:none}
-.logo span{color:var(--cyan)}
-.nr{display:flex;align-items:center;gap:12px}
-.ns{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--text3)}
-.sd{width:7px;height:7px;border-radius:50%;background:var(--border2);flex-shrink:0}
-.sd.on{background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse 2s infinite}
-.sd.off{background:var(--red)}
-#cl{color:var(--text2)}
-.nav-btn{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:1px;padding:4px 12px;border-radius:4px;border:1px solid;cursor:pointer;transition:all .15s}
-.nav-btn.cyan{background:rgba(2,132,199,.08);border-color:rgba(2,132,199,.3);color:var(--cyan)}
-.nav-btn.cyan:hover{background:rgba(2,132,199,.15)}
-.nav-btn.green{background:rgba(5,150,105,.08);border-color:rgba(5,150,105,.3);color:var(--green)}
-.nav-btn.green:hover{background:rgba(5,150,105,.15)}
-
-/* modal */
-.modal-bg{position:fixed;inset:0;background:rgba(15,23,42,.35);z-index:500;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px)}
-.modal{background:var(--bg);border:1px solid var(--border2);border-radius:10px;width:520px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.12)}
-.modal-h{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)}
-.modal-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--text)}
-.modal-body{padding:20px;display:flex;flex-direction:column;gap:14px}
-.modal-foot{padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;background:var(--bg2)}
-.form-group{display:flex;flex-direction:column;gap:5px}
-.form-label{font-size:10px;color:var(--text3);letter-spacing:.5px;text-transform:uppercase}
-.form-input{font-family:'JetBrains Mono',monospace;font-size:12px;padding:8px 12px;border:1px solid var(--border2);border-radius:5px;background:var(--bg2);color:var(--text);outline:none;transition:border-color .15s}
-.form-input:focus{border-color:var(--cyan);background:var(--bg)}
-.form-hint{font-size:10px;color:var(--text3)}
-
-/* project info banner */
-.proj-banner{background:rgba(2,132,199,.04);border:1px solid rgba(2,132,199,.2);border-radius:6px;padding:10px 14px;margin-bottom:0}
-.proj-goal{font-size:12px;color:var(--text);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.proj-dir{font-size:10px;color:var(--cyan);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-
+html,body{height:100%}
+body{background:var(--bg);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.5;display:flex;flex-direction:column}
+/* nav */
+nav{flex-shrink:0;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:48px;position:sticky;top:0;z-index:100}
+.logo{font-family:'Syne',sans-serif;font-weight:800;font-size:14px;color:var(--text);text-decoration:none;display:flex;align-items:center;gap:6px}
+.logo .dot{width:8px;height:8px;border-radius:50%;background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
+.nav-r{display:flex;align-items:center;gap:10px}
+.badge-conn{display:flex;align-items:center;gap:5px;font-size:10px;padding:3px 10px;border-radius:20px;border:1px solid var(--border2);color:var(--text2)}
+.badge-conn .dot{width:6px;height:6px;border-radius:50%;background:var(--border2)}
+.badge-conn.on .dot{background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse 2s infinite}
+.badge-conn.off .dot{background:var(--red)}
 /* layout */
-.dg{display:grid;grid-template-columns:260px 1fr;gap:16px;padding:20px 0 40px;align-items:start}
-.sb{display:flex;flex-direction:column;gap:12px;position:sticky;top:68px}
-.ma{display:flex;flex-direction:column;gap:12px}
-
-/* panel */
-.panel{background:var(--bg);border:1px solid var(--border);border-radius:8px;overflow:hidden}
-.ph{display:flex;align-items:center;justify-content:space-between;padding:11px 16px;border-bottom:1px solid var(--border);background:var(--bg2)}
-.ph-left{display:flex;align-items:center;gap:10px}
-.pt{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;color:var(--text3);text-transform:uppercase}
-.pb{background:var(--bg3);border:1px solid var(--border2);color:var(--text2);font-size:10px;padding:1px 7px;border-radius:10px}
-.ph-close{background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:0 2px;line-height:1}
-.ph-close:hover{color:var(--red)}
-.pbd{padding:12px}
-
-/* stats row */
-.sr{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-.sc{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px 16px}
-.sn{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:var(--text);line-height:1}
-.sn.g{color:var(--green)}.sn.c{color:var(--cyan)}.sn.o{color:var(--orange)}
-.sl{font-size:10px;color:var(--text3);margin-top:4px;letter-spacing:1px;text-transform:uppercase}
-
-/* agent card */
-.ac{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);margin-bottom:6px;cursor:pointer;transition:border-color .15s,background .15s}
-.ac:last-child{margin-bottom:0}
-.ac.on{border-left:3px solid var(--green)}
-.ac:hover{background:var(--bg3);border-color:var(--border2)}
-.ac.sel{background:rgba(2,132,199,.04);border-color:var(--cyan);border-left-width:3px}
-.ac.busy{border-left-color:var(--orange)}
-.ac.sel.busy{border-left-color:var(--orange)}
-.ad{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-.ad.g{background:var(--green);box-shadow:0 0 5px var(--green);animation:pulse 2s infinite}
-.ad.c{background:var(--cyan);box-shadow:0 0 5px var(--cyan);animation:pulse 2s infinite}
-.ad.o{background:var(--orange);box-shadow:0 0 5px var(--orange);animation:pulse 2s infinite}
-.ad.p{background:var(--purple);box-shadow:0 0 5px var(--purple);animation:pulse 2s infinite}
-.ad.gr{background:var(--border2)}
-.ai{flex:1;min-width:0}
-.an{font-size:12px;color:var(--text);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.am{font-size:10px;color:var(--text3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.a-task{font-size:9px;color:var(--orange);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rc{font-size:9px;font-weight:700;letter-spacing:.5px;padding:2px 6px;border-radius:2px;white-space:nowrap;flex-shrink:0}
-.rc.orchestrator{background:rgba(2,132,199,.1);color:var(--cyan)}
-.rc.builder{background:rgba(5,150,105,.1);color:var(--green)}
-.rc.verifier{background:rgba(124,58,237,.1);color:var(--purple)}
-.rc.reviewer{background:rgba(234,88,12,.1);color:var(--orange)}
-.rc.integrator{background:rgba(217,119,6,.1);color:var(--amber)}
-
-/* agent detail */
-.adet{padding:0}
-.adet-hero{display:flex;align-items:center;gap:16px;padding:16px 20px;border-bottom:1px solid var(--border);background:var(--bg2)}
-.adet-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
-.adet-name{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--text)}
-.adet-role{margin-top:3px}
-.adet-body{padding:0}
-.adet-row{display:grid;grid-template-columns:120px 1fr;gap:6px 16px;padding:10px 20px;border-bottom:1px solid var(--border);font-size:11px;align-items:baseline}
-.adet-row:last-child{border-bottom:none}
-.adet-k{color:var(--text3);letter-spacing:.5px}
-.adet-v{color:var(--text);word-break:break-word}
-.adet-v.g{color:var(--green)}.adet-v.o{color:var(--orange)}.adet-v.c{color:var(--cyan)}
-.task-box{background:var(--bg3);border:1px solid var(--border2);border-radius:4px;padding:8px 10px;font-size:11px;color:var(--text2);line-height:1.5;margin-top:4px;white-space:pre-wrap;word-break:break-word;max-height:120px;overflow-y:auto}
-.task-box.active{border-color:rgba(234,88,12,.3);background:rgba(234,88,12,.03)}
-.task-box.done{border-color:rgba(5,150,105,.3);background:rgba(5,150,105,.03)}
-
-/* dispatch panel */
-.dp-body{padding:16px;display:flex;flex-direction:column;gap:12px}
-.dp-row{display:flex;gap:8px;align-items:flex-start}
-.dp-label{font-size:10px;color:var(--text3);letter-spacing:.5px;margin-bottom:4px;text-transform:uppercase}
-.dp-agents{display:flex;flex-wrap:wrap;gap:6px}
-.agent-chip{display:flex;align-items:center;gap:5px;padding:4px 10px;border:1px solid var(--border2);border-radius:4px;cursor:pointer;font-size:11px;color:var(--text2);background:var(--bg2);transition:all .15s;user-select:none}
-.agent-chip:hover{border-color:var(--border2);background:var(--bg3)}
-.agent-chip.sel{border-color:var(--cyan);background:rgba(2,132,199,.06);color:var(--cyan)}
-.agent-chip .chip-dot{width:6px;height:6px;border-radius:50%;background:var(--border2)}
-.agent-chip.sel .chip-dot{background:var(--cyan)}
-.dp-ta{width:100%;min-height:80px;padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text);background:var(--bg2);border:1px solid var(--border2);border-radius:6px;resize:vertical;outline:none;transition:border-color .15s}
-.dp-ta:focus{border-color:var(--cyan);background:var(--bg)}
-.dp-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.btn{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.5px;padding:7px 16px;border-radius:5px;border:1px solid;cursor:pointer;transition:all .15s}
-.btn-send{background:var(--cyan);border-color:var(--cyan);color:#fff}
-.btn-send:hover{background:#0369a1}
-.btn-send:disabled{opacity:.4;cursor:not-allowed}
-.btn-all{background:rgba(5,150,105,.08);border-color:rgba(5,150,105,.3);color:var(--green)}
-.btn-all:hover{background:rgba(5,150,105,.15)}
-.btn-wk{background:rgba(124,58,237,.08);border-color:rgba(124,58,237,.3);color:var(--purple)}
-.btn-wk:hover{background:rgba(124,58,237,.15)}
-.btn-clear{background:none;border-color:var(--border2);color:var(--text3)}
-.btn-clear:hover{color:var(--red);border-color:var(--red)}
-.dp-status{font-size:11px;color:var(--text3);margin-left:4px}
-.dp-status.ok{color:var(--green)}
-.dp-status.err{color:var(--red)}
-
-/* wk items */
-.wki{padding:10px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);margin-bottom:6px;cursor:pointer;transition:border-color .15s,background .15s}
-.wki:last-child{margin-bottom:0}
-.wki:hover{border-color:var(--border2);background:var(--bg3)}
-.wki.sel{border-color:var(--cyan);background:rgba(2,132,199,.03)}
-.wkk{font-size:12px;color:var(--cyan)}
-.wkm{font-size:10px;color:var(--text3);margin-top:3px}
-
-/* wk state panel */
-.stb{padding:16px}
-.skv{display:grid;grid-template-columns:130px 1fr;gap:6px 16px}
-.sk{font-size:11px;color:var(--text3)}
-.sv{font-size:11px;color:var(--text);word-break:break-all}
-.sv.g{color:var(--green)}.sv.c{color:var(--cyan)}
-
-/* event log */
-.lb{padding:0;max-height:300px;overflow-y:auto}
-.log-filter{padding:8px 16px;border-bottom:1px solid var(--border);font-size:10px;color:var(--text3);background:var(--bg2)}
-.log-filter span{color:var(--cyan)}
-.le{display:grid;grid-template-columns:60px 120px 1fr;gap:10px;align-items:baseline;padding:7px 16px;border-bottom:1px solid var(--border);font-size:11px}
-.le:last-child{border-bottom:none}
-.le:hover{background:var(--bg2)}
-.lt{color:var(--text3);font-size:10px}
-.lv{font-weight:500}
-.lv.task-assign{color:var(--orange)}.lv.task-result{color:var(--green)}.lv.task-progress{color:var(--cyan)}.lv.task-blocked{color:var(--red)}.lv.agent-hello{color:var(--green)}.lv.agent-bye{color:var(--text3)}.lv.state-update{color:var(--purple)}.lv.system{color:var(--text3)}
-.lm{color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-
-.empty{padding:28px 16px;text-align:center;color:var(--text3);font-size:12px}
-.ei{font-size:24px;margin-bottom:6px;opacity:.4}
-.rb{position:fixed;bottom:0;left:0;right:0;height:2px;background:var(--border);z-index:200}
-.rp{height:100%;background:var(--cyan)}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-@keyframes fi{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
-.fi{animation:fi .2s ease both}
-@media(max-width:960px){.dg{grid-template-columns:1fr}.sb{position:static}.sr{grid-template-columns:repeat(2,1fr)}}
+.app{display:flex;flex:1;overflow:hidden}
+.sb{width:260px;flex-shrink:0;border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.sb-section{display:flex;flex-direction:column;overflow:hidden}
+.sb-section.wk-section{flex:0 0 auto;max-height:50%}
+.sb-section.ag-section{flex:1;min-height:0;border-top:1px solid var(--border)}
+.sb-h{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg2);flex-shrink:0;border-bottom:1px solid var(--border)}
+.sb-ht{font-size:9px;font-weight:700;letter-spacing:2px;color:var(--text3);text-transform:uppercase}
+.sb-list{overflow-y:auto;flex:1}
+/* WK item */
+.wki{padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s;display:flex;flex-direction:column;gap:2px}
+.wki:hover{background:var(--bg3)}
+.wki.sel{background:rgba(56,189,248,.06);border-left:2px solid var(--cyan)}
+.wki-key{font-size:11px;color:var(--cyan);font-weight:500}
+.wki-goal{font-size:10px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wki-dir{font-size:9px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.wki-meta{display:flex;align-items:center;gap:6px;margin-top:3px}
+.wki-status{font-size:9px;padding:1px 5px;border-radius:2px;font-weight:700;letter-spacing:.5px}
+.wki-status.created{background:rgba(100,116,139,.15);color:var(--text3)}
+.wki-status.running{background:rgba(251,146,60,.15);color:var(--orange)}
+.wki-status.done{background:rgba(52,211,153,.15);color:var(--green)}
+.wki-edit{background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;padding:1px 3px;opacity:0;transition:opacity .15s;margin-left:auto}
+.wki:hover .wki-edit{opacity:1}
+.wki-edit:hover{color:var(--cyan)}
+/* agent item */
+.agi{padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s;display:flex;align-items:center;gap:8px}
+.agi:hover{background:var(--bg3)}
+.agi.sel{background:rgba(56,189,248,.06);border-left:2px solid var(--cyan)}
+.agi-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.agi-dot.g{background:var(--green);box-shadow:0 0 5px var(--green);animation:pulse 2s infinite}
+.agi-dot.c{background:var(--cyan);box-shadow:0 0 5px var(--cyan);animation:pulse 2s infinite}
+.agi-dot.o{background:var(--orange);box-shadow:0 0 5px var(--orange);animation:pulse 2s infinite}
+.agi-dot.p{background:var(--purple);box-shadow:0 0 5px var(--purple);animation:pulse 2s infinite}
+.agi-info{flex:1;min-width:0}
+.agi-name{font-size:11px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.agi-sub{font-size:9px;color:var(--text3);margin-top:1px}
+.agi-task{font-size:9px;color:var(--orange);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.role-tag{font-size:8px;font-weight:700;letter-spacing:.5px;padding:1px 5px;border-radius:2px;flex-shrink:0;text-transform:uppercase}
+.role-tag.orchestrator{background:rgba(56,189,248,.15);color:var(--cyan)}
+.role-tag.builder{background:rgba(52,211,153,.15);color:var(--green)}
+.role-tag.verifier{background:rgba(167,139,250,.15);color:var(--purple)}
+.role-tag.reviewer,.role-tag.integrator{background:rgba(251,146,60,.15);color:var(--orange)}
+/* main */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+/* stats bar */
+.stats-bar{display:flex;gap:1px;flex-shrink:0;background:var(--border);border-bottom:1px solid var(--border)}
+.stat{flex:1;background:var(--bg2);padding:10px 16px;display:flex;align-items:baseline;gap:8px}
+.stat-n{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;line-height:1}
+.stat-n.g{color:var(--green)}.stat-n.c{color:var(--cyan)}.stat-n.o{color:var(--orange)}.stat-n.p{color:var(--purple)}
+.stat-l{font-size:9px;color:var(--text3);letter-spacing:1px;text-transform:uppercase}
+/* content area - horizontal split */
+.content{flex:1;display:flex;overflow:hidden}
+.panels{flex:1;display:flex;flex-direction:column;overflow:hidden}
+/* tabs */
+.tabs{flex-shrink:0;display:flex;background:var(--bg2);border-bottom:1px solid var(--border);padding:0 16px;gap:2px}
+.tab{padding:9px 14px;font-size:10px;font-weight:700;letter-spacing:.5px;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;text-transform:uppercase}
+.tab:hover{color:var(--text2)}
+.tab.active{color:var(--cyan);border-bottom-color:var(--cyan)}
+.tab-content{display:none;flex:1;overflow-y:auto;padding:16px}
+.tab-content.active{display:flex;flex-direction:column;gap:12px}
+/* right panel: event log */
+.log-panel{width:340px;flex-shrink:0;border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.lp-h{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0}
+.lp-ht{font-size:9px;font-weight:700;letter-spacing:2px;color:var(--text3);text-transform:uppercase}
+.lp-acts{display:flex;gap:6px;align-items:center}
+.lp-filter{font-size:9px;color:var(--orange);background:none;border:none;cursor:pointer;padding:1px 4px}
+.log-list{flex:1;overflow-y:auto;padding:0}
+.log-item{padding:6px 12px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:44px 1fr;gap:6px;align-items:start;font-size:10px}
+.log-item:hover{background:var(--bg3)}
+.log-t{color:var(--text3);font-size:9px;padding-top:1px}
+.log-body{display:flex;flex-direction:column;gap:1px}
+.log-ev{font-weight:700;font-size:9px;letter-spacing:.5px}
+.log-ev.task-assign{color:var(--orange)}.log-ev.task-result{color:var(--green)}.log-ev.task-progress{color:var(--cyan)}.log-ev.task-blocked{color:var(--red)}.log-ev.agent-hello{color:var(--green)}.log-ev.agent-bye{color:var(--text3)}.log-ev.state-update{color:var(--purple)}.log-ev.system{color:var(--text3)}
+.log-msg{color:var(--text2);font-size:10px;line-height:1.4;word-break:break-all}
+/* panel card */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.card-h{display:flex;align-items:center;justify-content:space-between;padding:9px 14px;border-bottom:1px solid var(--border);background:var(--bg3)}
+.card-ht{font-size:9px;font-weight:700;letter-spacing:2px;color:var(--text3);text-transform:uppercase}
+.card-body{padding:14px}
+/* dispatch */
+.dp-wk-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.dp-wk-label{font-size:9px;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;white-space:nowrap}
+.dp-wk-sel{flex:1;font-family:'JetBrains Mono',monospace;font-size:11px;padding:5px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;color:var(--text);outline:none}
+.dp-wk-sel:focus{border-color:var(--cyan)}
+.dp-agents{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px}
+.chip{display:flex;align-items:center;gap:4px;padding:3px 9px;border:1px solid var(--border2);border-radius:3px;cursor:pointer;font-size:10px;color:var(--text2);background:var(--bg3);transition:all .12s;user-select:none}
+.chip:hover{border-color:var(--border2);background:var(--bg)}
+.chip.sel{border-color:var(--cyan);background:rgba(56,189,248,.08);color:var(--cyan)}
+.chip .cd{width:5px;height:5px;border-radius:50%;background:var(--border2)}
+.chip.sel .cd{background:var(--cyan)}
+.dp-ta{width:100%;min-height:90px;padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text);background:var(--bg3);border:1px solid var(--border2);border-radius:5px;resize:vertical;outline:none;transition:border-color .15s;line-height:1.6}
+.dp-ta:focus{border-color:var(--cyan);background:var(--bg2)}
+.dp-actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.btn{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.5px;padding:6px 14px;border-radius:4px;border:1px solid;cursor:pointer;transition:all .12s}
+.btn-primary{background:var(--cyan);border-color:var(--cyan);color:var(--bg)}
+.btn-primary:hover{opacity:.85}
+.btn-primary:disabled{opacity:.35;cursor:not-allowed}
+.btn-secondary{background:rgba(52,211,153,.08);border-color:rgba(52,211,153,.3);color:var(--green)}
+.btn-secondary:hover{background:rgba(52,211,153,.15)}
+.btn-ghost{background:none;border-color:var(--border2);color:var(--text3)}
+.btn-ghost:hover{color:var(--red);border-color:var(--red)}
+.btn-purple{background:rgba(167,139,250,.08);border-color:rgba(167,139,250,.3);color:var(--purple)}
+.btn-purple:hover{background:rgba(167,139,250,.15)}
+.btn-orange{background:rgba(251,146,60,.08);border-color:rgba(251,146,60,.3);color:var(--orange)}
+.btn-orange:hover{background:rgba(251,146,60,.15)}
+.dp-status{font-size:10px;color:var(--text3)}
+.dp-status.ok{color:var(--green)}.dp-status.err{color:var(--red)}
+/* task history */
+.task-table{width:100%;border-collapse:collapse;font-size:11px}
+.task-table th{text-align:left;font-size:9px;letter-spacing:1px;color:var(--text3);padding:6px 10px;border-bottom:1px solid var(--border);background:var(--bg3);text-transform:uppercase;font-weight:700}
+.task-table td{padding:7px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
+.task-table tr:hover td{background:var(--bg3)}
+.task-table tr:last-child td{border-bottom:none}
+.ts-id{color:var(--text3);font-size:9px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ts-to{color:var(--cyan)}
+.ts-instr{color:var(--text2);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ts-st{font-size:9px;font-weight:700;padding:2px 6px;border-radius:2px;letter-spacing:.5px}
+.ts-st.working{background:rgba(251,146,60,.15);color:var(--orange)}
+.ts-st.done{background:rgba(52,211,153,.15);color:var(--green)}
+.ts-st.error{background:rgba(248,113,113,.15);color:var(--red)}
+.ts-st.blocked{background:rgba(248,113,113,.15);color:var(--red)}
+.ts-st.pending{background:rgba(100,116,139,.15);color:var(--text3)}
+.ts-dur{color:var(--text3);font-size:10px;white-space:nowrap}
+.ts-exit{font-size:9px;padding:1px 5px;border-radius:2px}
+.ts-exit.ok{background:rgba(52,211,153,.1);color:var(--green)}
+.ts-exit.err{background:rgba(248,113,113,.1);color:var(--red)}
+/* output viewer */
+.output-box{font-family:'JetBrains Mono',monospace;font-size:10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px 12px;max-height:220px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;line-height:1.6;color:var(--text2)}
+/* WK state editor */
+.state-form{display:flex;flex-direction:column;gap:10px}
+.sf-row{display:flex;flex-direction:column;gap:4px}
+.sf-label{font-size:9px;color:var(--text3);letter-spacing:.5px;text-transform:uppercase}
+.sf-input{font-family:'JetBrains Mono',monospace;font-size:11px;padding:7px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;color:var(--text);outline:none;transition:border-color .15s;width:100%}
+.sf-input:focus{border-color:var(--cyan);background:var(--bg2)}
+.sf-ta{min-height:80px;resize:vertical}
+.sf-hint{font-size:9px;color:var(--text3)}
+.status-row{display:flex;gap:6px;flex-wrap:wrap}
+.status-btn{font-size:10px;padding:4px 10px;border:1px solid var(--border2);border-radius:3px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-weight:700;background:var(--bg3);color:var(--text2);transition:all .12s}
+.status-btn:hover{border-color:var(--border2)}
+.status-btn.created:hover,.status-btn.created.active{border-color:var(--text3);color:var(--text)}
+.status-btn.running:hover,.status-btn.running.active{border-color:var(--orange);color:var(--orange);background:rgba(251,146,60,.08)}
+.status-btn.done:hover,.status-btn.done.active{border-color:var(--green);color:var(--green);background:rgba(52,211,153,.08)}
+.status-btn.failed:hover,.status-btn.failed.active{border-color:var(--red);color:var(--red);background:rgba(248,113,113,.08)}
+/* mailbox */
+.mb-item{background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:10px 12px;margin-bottom:6px;font-size:11px}
+.mb-item:last-child{margin-bottom:0}
+.mb-from{font-size:9px;color:var(--text3);margin-bottom:4px}
+.mb-body{color:var(--text2);word-break:break-word;line-height:1.5}
+/* agent detail card */
+.adet-grid{display:grid;grid-template-columns:100px 1fr;gap:6px 14px;font-size:11px}
+.adk{color:var(--text3);font-size:10px}
+.adv{color:var(--text);word-break:break-word}
+.adv.c{color:var(--cyan)}.adv.g{color:var(--green)}.adv.o{color:var(--orange)}
+/* agent detail tabs */
+.adt{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:12px}
+.adt-tab{padding:6px 12px;font-size:9px;font-weight:700;letter-spacing:.5px;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;transition:all .12px;text-transform:uppercase}
+.adt-tab.active{color:var(--cyan);border-bottom-color:var(--cyan)}
+/* modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:500;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(3px)}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:8px;width:520px;max-width:95vw;box-shadow:0 24px 80px rgba(0,0,0,.4)}
+.modal-h{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border)}
+.modal-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:800;color:var(--text)}
+.modal-body{padding:18px;display:flex;flex-direction:column;gap:12px}
+.modal-foot{padding:12px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:7px;background:var(--bg3)}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-label{font-size:9px;color:var(--text3);letter-spacing:.5px;text-transform:uppercase}
+.form-input{font-family:'JetBrains Mono',monospace;font-size:11px;padding:7px 11px;border:1px solid var(--border2);border-radius:4px;background:var(--bg3);color:var(--text);outline:none;transition:border-color .15s;width:100%}
+.form-input:focus{border-color:var(--cyan);background:var(--bg2)}
+.form-hint{font-size:9px;color:var(--text3)}
+/* misc */
+.empty{padding:24px;text-align:center;color:var(--text3);font-size:11px}
+.empty-icon{font-size:20px;margin-bottom:6px;opacity:.4}
+.badge{font-size:9px;padding:1px 6px;border-radius:8px;background:var(--bg3);border:1px solid var(--border);color:var(--text2)}
+.x-btn{background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;padding:1px 3px;line-height:1}
+.x-btn:hover{color:var(--red)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+@keyframes slide-in{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.slide-in{animation:slide-in .18s ease both}
+@media(max-width:900px){.log-panel{display:none}.sb{width:200px}}
 </style>
 </head>
 <body>
-<nav><div class="c"><div class="ni">
-  <a href="/" class="logo">oah<span>://</span><span style="font-size:11px;font-weight:400;color:var(--text3);"> control</span></a>
-  <div class="nr">
-    <button class="nav-btn green" onclick="openWkModal()">+ New Work Key</button>
-    <div class="ns"><div class="sd" id="sd"></div><span id="cl">연결 중...</span></div>
-  </div>
-</div></div></nav>
 
-<!-- WORK KEY MODAL -->
+<!-- NAV -->
+<nav>
+  <a href="/" class="logo"><div class="dot"></div>OAH <span style="font-weight:400;color:var(--text3)">control</span></a>
+  <div class="nav-r">
+    <span id="wk-info" style="font-size:10px;color:var(--text3)">—</span>
+    <button class="btn btn-secondary" style="padding:4px 12px;font-size:9px" onclick="openWkModal()">+ New Work Key</button>
+    <div class="badge-conn" id="conn-badge"><div class="dot"></div><span id="conn-label">연결 중...</span></div>
+  </div>
+</nav>
+
+<!-- WK MODAL (create) -->
 <div class="modal-bg" id="wk-modal" style="display:none" onclick="if(event.target===this)closeWkModal()">
   <div class="modal">
     <div class="modal-h">
-      <span class="modal-title">새 프로젝트 Work Key</span>
-      <button class="ph-close" onclick="closeWkModal()">✕</button>
+      <span class="modal-title" id="wk-modal-title">새 Work Key 생성</span>
+      <button class="x-btn" onclick="closeWkModal()">✕</button>
     </div>
     <div class="modal-body">
       <div class="form-group">
         <label class="form-label">프로젝트 목표 (Goal)</label>
-        <input class="form-input" id="wk-goal" placeholder="예) FastAPI 쇼핑몰 서버 구현" autocomplete="off"/>
-        <span class="form-hint">에이전트들이 공유하는 이번 세션의 목표</span>
+        <input class="form-input" id="wk-goal" placeholder="예) FastAPI 쇼핑몰 서버 — auth, cart, orders" autocomplete="off"/>
       </div>
       <div class="form-group">
-        <label class="form-label">NAS / 프로젝트 디렉토리</label>
-        <input class="form-input" id="wk-dir" placeholder="/Volumes/homes/kilosnetwork/nas-dev/nas_workspace/project4" autocomplete="off"/>
-        <span class="form-hint">에이전트들이 작업할 PROJECT_DIR (서버가 join 시 자동 전달)</span>
+        <label class="form-label">프로젝트 디렉토리 (PROJECT_DIR)</label>
+        <input class="form-input" id="wk-dir" placeholder="/Volumes/nas/project4" autocomplete="off"/>
+        <span class="form-hint">에이전트 join 시 자동으로 전달됨</span>
       </div>
       <div class="form-group">
         <label class="form-label">공유 컨텍스트 (JSON, 선택)</label>
         <input class="form-input" id="wk-ctx" placeholder='{"stack":"fastapi","python":"3.12"}' autocomplete="off"/>
-        <span class="form-hint">에이전트들이 읽을 수 있는 공유 메타데이터</span>
       </div>
     </div>
     <div class="modal-foot">
-      <button class="btn btn-clear" onclick="closeWkModal()">취소</button>
-      <button class="btn btn-send" onclick="createWorkKey()">Work Key 생성</button>
+      <button class="btn btn-ghost" onclick="closeWkModal()">취소</button>
+      <button class="btn btn-primary" onclick="createWorkKey()">생성</button>
     </div>
   </div>
 </div>
 
-<div class="c"><div class="dg">
+<!-- TASK OUTPUT MODAL -->
+<div class="modal-bg" id="out-modal" style="display:none" onclick="if(event.target===this)id('out-modal').style.display='none'">
+  <div class="modal" style="width:680px">
+    <div class="modal-h">
+      <span class="modal-title" id="out-modal-title">태스크 출력</span>
+      <button class="x-btn" onclick="id('out-modal').style.display='none'">✕</button>
+    </div>
+    <div style="padding:16px">
+      <div class="output-box" id="out-modal-body" style="max-height:400px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app">
 
   <!-- SIDEBAR -->
   <div class="sb">
-    <div class="panel">
-      <div class="ph"><span class="pt">에이전트</span><span class="pb" id="ac">0</span></div>
-      <div class="pbd" id="al"><div class="empty"><div class="ei">🤖</div>연결 중...</div></div>
+    <!-- Work Keys -->
+    <div class="sb-section wk-section">
+      <div class="sb-h">
+        <span class="sb-ht">Work Keys</span>
+        <span class="badge" id="wk-count">0</span>
+      </div>
+      <div class="sb-list" id="wk-list"><div class="empty"><div class="empty-icon">🔑</div>없음</div></div>
     </div>
-    <div class="panel">
-      <div class="ph"><span class="pt">Work Keys</span><span class="pb" id="wc">0</span></div>
-      <div class="pbd" id="wl"><div class="empty"><div class="ei">🔑</div>없음</div></div>
+    <!-- Agents -->
+    <div class="sb-section ag-section">
+      <div class="sb-h">
+        <span class="sb-ht">에이전트</span>
+        <span class="badge" id="ag-count">0</span>
+      </div>
+      <div class="sb-list" id="ag-list"><div class="empty"><div class="empty-icon">🤖</div>없음</div></div>
     </div>
   </div>
 
   <!-- MAIN -->
-  <div class="ma">
-    <!-- STATS -->
-    <div class="sr">
-      <div class="sc"><div class="sn g" id="s1">0</div><div class="sl">온라인 에이전트</div></div>
-      <div class="sc"><div class="sn c" id="s2">0</div><div class="sl">Work Keys</div></div>
-      <div class="sc"><div class="sn o" id="s3">0</div><div class="sl">완료 태스크</div></div>
-      <div class="sc"><div class="sn" id="s4">—</div><div class="sl">마지막 업데이트</div></div>
+  <div class="main">
+    <!-- STATS BAR -->
+    <div class="stats-bar">
+      <div class="stat"><span class="stat-n g" id="s-agents">0</span><span class="stat-l">온라인</span></div>
+      <div class="stat"><span class="stat-n c" id="s-wks">0</span><span class="stat-l">Work Keys</span></div>
+      <div class="stat"><span class="stat-n o" id="s-tasks">0</span><span class="stat-l">완료 태스크</span></div>
+      <div class="stat"><span class="stat-n p" id="s-active">0</span><span class="stat-l">진행 중</span></div>
     </div>
 
-    <!-- DISPATCH PANEL -->
-    <div class="panel">
-      <div class="ph">
-        <div class="ph-left"><span class="pt">태스크 디스패치</span><span class="pb" id="dp-wk-badge">—</span></div>
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-all" onclick="selectAllBuilders()">모든 builder</button>
-          <button class="btn btn-wk" onclick="openWkModal()">+ Work Key</button>
+    <!-- CONTENT -->
+    <div class="content">
+      <div class="panels">
+        <!-- TABS -->
+        <div class="tabs">
+          <div class="tab active" onclick="switchTab('dispatch')">Dispatch</div>
+          <div class="tab" onclick="switchTab('tasks')">태스크 히스토리</div>
+          <div class="tab" onclick="switchTab('state')">WK State 편집</div>
+          <div class="tab" onclick="switchTab('agent')">에이전트 상세</div>
         </div>
-      </div>
-      <div id="proj-banner" style="display:none;padding:10px 16px;border-bottom:1px solid var(--border)">
-        <div class="proj-banner">
-          <div class="proj-goal" id="proj-goal-text"></div>
-          <div class="proj-dir" id="proj-dir-text"></div>
-        </div>
-      </div>
-      <div class="dp-body">
-        <div>
-          <div class="dp-label">수신 에이전트 (복수 선택 가능)</div>
-          <div class="dp-agents" id="dp-agents"><span style="font-size:11px;color:var(--text3)">에이전트 없음</span></div>
-        </div>
-        <div>
-          <div class="dp-label">Instructions</div>
-          <textarea class="dp-ta" id="dp-instr" placeholder="에이전트에게 내릴 작업 지시를 입력하세요...&#10;예) src/cart.py를 작성하라. FastAPI APIRouter, JWT 인증 필요, GET /cart, POST /cart/items..."></textarea>
-        </div>
-        <div class="dp-actions">
-          <button class="btn btn-send" id="dp-send" onclick="dispatch()">▶ 전송</button>
-          <button class="btn btn-clear" onclick="clearDispatch()">지우기</button>
-          <span class="dp-status" id="dp-status"></span>
-        </div>
-      </div>
-    </div>
 
-    <!-- AGENT DETAIL (click to show) -->
-    <div class="panel" id="adp" style="display:none">
-      <div class="ph">
-        <div class="ph-left"><span class="pt">에이전트 상세</span><span class="pb" id="adp-name">—</span></div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <button class="btn btn-send" style="padding:3px 10px;font-size:10px" onclick="dispatchToSelected()">▶ 이 에이전트에게 전송</button>
-          <button class="ph-close" onclick="closeAgentDetail()" title="닫기">✕</button>
+        <!-- TAB: DISPATCH -->
+        <div class="tab-content active" id="tab-dispatch">
+          <div class="card">
+            <div class="card-h">
+              <span class="card-ht">태스크 디스패치</span>
+              <div style="display:flex;gap:6px">
+                <button class="btn btn-secondary" style="padding:3px 10px;font-size:9px" onclick="selectAllBuilders()">전체 builder</button>
+                <button class="btn btn-orange" style="padding:3px 10px;font-size:9px" onclick="broadcastAll()">전체 broadcast</button>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="dp-wk-row">
+                <span class="dp-wk-label">Work Key</span>
+                <select class="dp-wk-sel" id="dp-wk-sel" onchange="onWkSelChange()"></select>
+              </div>
+              <div>
+                <div style="font-size:9px;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:5px">수신 에이전트</div>
+                <div class="dp-agents" id="dp-agents"><span style="color:var(--text3);font-size:10px">에이전트 없음</span></div>
+              </div>
+              <div style="margin-top:10px">
+                <div style="font-size:9px;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:5px">Instructions</div>
+                <textarea class="dp-ta" id="dp-instr" placeholder="에이전트에게 내릴 작업 지시를 입력...&#10;예) src/cart.py 를 작성하라. FastAPI Router, JWT 인증 필요.&#10;완료 시 ARTIFACT: src/cart.py 출력."></textarea>
+              </div>
+              <div class="dp-actions">
+                <button class="btn btn-primary" id="dp-send" onclick="dispatch()">▶ 전송</button>
+                <button class="btn btn-ghost" onclick="clearDispatch()">지우기</button>
+                <span class="dp-status" id="dp-status"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Active project banner -->
+          <div class="card" id="proj-card" style="display:none">
+            <div class="card-h"><span class="card-ht">현재 프로젝트</span></div>
+            <div class="card-body" style="display:grid;grid-template-columns:80px 1fr;gap:6px 12px;font-size:11px">
+              <span style="color:var(--text3)">Goal</span><span id="proj-goal" style="color:var(--text)"></span>
+              <span style="color:var(--text3)">Dir</span><span id="proj-dir" style="color:var(--cyan);word-break:break-all"></span>
+              <span style="color:var(--text3)">Stack</span><span id="proj-ctx" style="color:var(--text2)"></span>
+            </div>
+          </div>
         </div>
+
+        <!-- TAB: TASK HISTORY -->
+        <div class="tab-content" id="tab-tasks">
+          <div class="card">
+            <div class="card-h">
+              <span class="card-ht">태스크 히스토리</span>
+              <button class="btn btn-ghost" style="padding:2px 8px;font-size:9px" onclick="clearTaskHistory()">초기화</button>
+            </div>
+            <div style="overflow-x:auto">
+              <table class="task-table" id="task-table">
+                <thead><tr>
+                  <th>Task ID</th><th>대상 에이전트</th><th>Instructions</th>
+                  <th>상태</th><th>소요 시간</th><th>Exit</th><th>출력</th>
+                </tr></thead>
+                <tbody id="task-tbody"><tr><td colspan="7" class="empty">태스크 없음</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: WK STATE EDITOR -->
+        <div class="tab-content" id="tab-state">
+          <div class="card">
+            <div class="card-h">
+              <span class="card-ht">Work Key State 편집</span>
+              <span id="state-wk-label" style="font-size:10px;color:var(--cyan)">—</span>
+            </div>
+            <div class="card-body">
+              <div style="font-size:10px;color:var(--text3);margin-bottom:12px">사이드바에서 Work Key를 선택하면 편집할 수 있습니다.</div>
+              <div class="state-form">
+                <div class="sf-row">
+                  <span class="sf-label">Goal</span>
+                  <input class="sf-input" id="sf-goal" placeholder="프로젝트 목표"/>
+                </div>
+                <div class="sf-row">
+                  <span class="sf-label">Project Dir</span>
+                  <input class="sf-input" id="sf-dir" placeholder="/path/to/project"/>
+                </div>
+                <div class="sf-row">
+                  <span class="sf-label">Status</span>
+                  <div class="status-row">
+                    <button class="status-btn created" onclick="setWkStatus('created')">created</button>
+                    <button class="status-btn running" onclick="setWkStatus('running')">running</button>
+                    <button class="status-btn done" onclick="setWkStatus('done')">done</button>
+                    <button class="status-btn failed" onclick="setWkStatus('failed')">failed</button>
+                  </div>
+                </div>
+                <div class="sf-row">
+                  <span class="sf-label">Shared Context (JSON)</span>
+                  <textarea class="sf-input sf-ta" id="sf-ctx" placeholder='{"stack":"fastapi","python":"3.12"}'></textarea>
+                </div>
+                <div class="sf-row">
+                  <span class="sf-label">Raw State (읽기 전용)</span>
+                  <div class="output-box" id="sf-raw" style="max-height:140px;font-size:9px"></div>
+                </div>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:14px;align-items:center">
+                <button class="btn btn-primary" onclick="saveWkState()">💾 저장 (PATCH)</button>
+                <button class="btn btn-ghost" onclick="loadWkState(selWk)">↺ 새로고침</button>
+                <span id="state-status" style="font-size:10px;color:var(--text3)"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: AGENT DETAIL -->
+        <div class="tab-content" id="tab-agent">
+          <div id="agent-detail-empty" class="card">
+            <div class="card-body empty">
+              <div class="empty-icon">🤖</div>사이드바에서 에이전트를 선택하세요
+            </div>
+          </div>
+          <div id="agent-detail-card" class="card" style="display:none">
+            <div class="card-h">
+              <div style="display:flex;align-items:center;gap:8px">
+                <div id="adet-dot" style="width:9px;height:9px;border-radius:50%"></div>
+                <span class="card-ht" id="adet-name">—</span>
+                <span id="adet-role-tag" class="role-tag">—</span>
+              </div>
+              <button class="btn btn-primary" style="padding:3px 10px;font-size:9px" onclick="dispatchToAgent()">▶ 이 에이전트에게 전송</button>
+            </div>
+            <div class="card-body">
+              <!-- sub-tabs -->
+              <div class="adt">
+                <div class="adt-tab active" onclick="switchAgentTab('info')">정보</div>
+                <div class="adt-tab" onclick="switchAgentTab('output')">실시간 출력</div>
+                <div class="adt-tab" onclick="switchAgentTab('mailbox')">Mailbox</div>
+              </div>
+              <!-- info -->
+              <div id="agt-info">
+                <div class="adet-grid" id="adet-grid"></div>
+              </div>
+              <!-- live output -->
+              <div id="agt-output" style="display:none">
+                <div class="output-box" id="adet-live-out" style="max-height:240px">출력 없음</div>
+              </div>
+              <!-- mailbox -->
+              <div id="agt-mailbox" style="display:none">
+                <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+                  <button class="btn btn-secondary" style="padding:4px 12px;font-size:9px" onclick="loadMailbox()">📬 Mailbox 읽기</button>
+                  <span id="mb-count" style="font-size:10px;color:var(--text3)"></span>
+                </div>
+                <div id="mb-list"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /panels -->
+
+      <!-- RIGHT: EVENT LOG -->
+      <div class="log-panel">
+        <div class="lp-h">
+          <span class="lp-ht">이벤트 로그</span>
+          <div class="lp-acts">
+            <button class="lp-filter" id="log-filter-btn" style="display:none" onclick="clearLogFilter()">필터 해제</button>
+            <span class="badge" id="log-count">0</span>
+          </div>
+        </div>
+        <div style="padding:6px 12px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;gap:4px;flex-wrap:wrap" id="log-filter-bar" style="display:none">
+        </div>
+        <div class="log-list" id="log-list"><div class="empty"><div class="empty-icon">📋</div>대기 중...</div></div>
       </div>
-      <div class="adet" id="adp-body"></div>
-    </div>
-
-    <!-- WK STATE -->
-    <div class="panel" id="sp" style="display:none">
-      <div class="ph"><span class="pt">Work Key 상태</span><span class="pb" id="swk">—</span></div>
-      <div class="stb" id="sb2"></div>
-    </div>
-
-    <!-- EVENT LOG -->
-    <div class="panel">
-      <div class="ph">
-        <div class="ph-left"><span class="pt">이벤트 로그</span><span class="pb" id="lc">0</span></div>
-        <button class="ph-close" id="log-clear-filter" onclick="clearLogFilter()" title="필터 해제" style="display:none;font-size:10px;letter-spacing:.5px;color:var(--orange)">필터 해제</button>
-      </div>
-      <div id="log-filter-bar" style="display:none" class="log-filter">필터: <span id="log-filter-label"></span></div>
-      <div class="lb" id="lb"><div class="empty" id="le"><div class="ei">📋</div>대기 중...</div></div>
-    </div>
-  </div>
-
-</div></div>
-<div class="rb"><div class="rp" id="rp" style="width:0%"></div></div>
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /app -->
 
 <script>
-const POLL=3000;
-let selWk=null, selAgent=null, logFilter=null;
-let log=[], tasks=0, connected=false, ref=1, ws=null;
-let agentState={};
-let allAgents=[];
-let dispatchTargets=new Set(); // selected agent names for dispatch
+// ── State ───────────────────────────────────────────────────────────────────
+let selWk=null, selAgent=null, activeWkStatus='created';
+let allAgents=[], wkList=[], taskMap=new Map(), log=[];
+let agentState={}, taskOutput={};
+let connected=false, wsRef=1, ws=null, wsHbTimer=null, wsJoinedTopics=new Set(), wsReconnectDelay=1000;
+let dispatchTargets=new Set(), logFilter=null;
+const POLL=5000;
+let completedTasks=0, activeTasks=0;
 
-const rc={orchestrator:'c',builder:'g',verifier:'p',reviewer:'o',integrator:'o'};
+const rc={orchestrator:'c',builder:'g',verifier:'p',reviewer:'p',integrator:'o'};
+const dotCls={orchestrator:'c',builder:'g',verifier:'p',reviewer:'o',integrator:'o'};
 const e=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const id=s=>document.getElementById(s);
+const fmt=iso=>iso?new Date(iso).toLocaleTimeString('ko',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'—';
+const elapsed=iso=>{if(!iso)return'—';const s=Math.floor((Date.now()-new Date(iso))/1000);return s<60?s+'초':s<3600?Math.floor(s/60)+'분':Math.floor(s/3600)+'h '+Math.floor((s%3600)/60)+'m';};
 
-function setConn(state,label){
-  id('sd').className='sd '+(state==='on'?'on':state==='off'?'off':'');
-  id('cl').textContent=label;
+// ── UI helpers ──────────────────────────────────────────────────────────────
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach((t,i)=>{
+    const names=['dispatch','tasks','state','agent'];
+    t.classList.toggle('active',names[i]===name);
+  });
+  document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+  id('tab-'+name)?.classList.add('active');
 }
 
-function elapsed(iso){
-  if(!iso)return'—';
-  const s=Math.floor((Date.now()-new Date(iso))/1000);
-  if(s<60)return s+'초';
-  if(s<3600)return Math.floor(s/60)+'분 '+s%60+'초';
-  return Math.floor(s/3600)+'시간 '+Math.floor((s%3600)/60)+'분';
+function switchAgentTab(name){
+  document.querySelectorAll('.adt-tab').forEach((t,i)=>{
+    t.classList.toggle('active',['info','output','mailbox'][i]===name);
+  });
+  id('agt-info').style.display=name==='info'?'':'none';
+  id('agt-output').style.display=name==='output'?'':'none';
+  id('agt-mailbox').style.display=name==='mailbox'?'':'none';
 }
 
-async function poll(){
-  try{
-    const [pr,wr]=await Promise.all([
-      fetch('/api/presence',{signal:AbortSignal.timeout(4000)}),
-      fetch('/api/work-keys',{signal:AbortSignal.timeout(4000)})
-    ]);
-    if(!pr.ok||!wr.ok)throw new Error();
-    const p=await pr.json(), w=await wr.json();
-    if(!connected){connected=true;setConn('on','연결됨');addLog('system','서버 연결 성공');}
-    allAgents=(p.agents||[]).filter(a=>(a.role||'').toLowerCase()!=='observer');
-    renderAgents(allAgents);
-    renderDispatchAgents(allAgents);
-    renderWks(w.work_keys||[]);
-    id('s4').textContent=new Date().toLocaleTimeString('ko',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-    if(selWk)loadState(selWk);
-    if(selAgent)refreshAgentDetail(selAgent);
-  }catch(err){
-    if(connected){connected=false;addLog('system','연결 끊김');}
-    setConn('off','연결 실패');
-    allAgents=[];
-    renderAgents([]);
-    renderDispatchAgents([]);
-  }
+function setConn(on,label){
+  const b=id('conn-badge');
+  b.className='badge-conn '+(on?'on':'off');
+  id('conn-label').textContent=label;
 }
 
-// ── Dispatch panel ────────────────────────────────────────────────────────────
+// ── Sidebar: Work Keys ──────────────────────────────────────────────────────
+function renderWks(wks){
+  id('wk-count').textContent=wks.length;
+  id('s-wks').textContent=wks.length;
+  const el=id('wk-list');
+  if(!wks.length){el.innerHTML='<div class="empty"><div class="empty-icon">🔑</div>없음</div>';return;}
+  if(!selWk&&wks.length)selWk=wks[wks.length-1];
+  el.innerHTML=wks.slice().reverse().map(wk=>{
+    const m=wkMeta[wk]||{};
+    const goal=m.goal||'';
+    const dir=m.project_dir||'';
+    const status=m.status||'created';
+    return`<div class="wki${wk===selWk?' sel':''}" onclick="pickWk('${e(wk)}')" data-wk="${e(wk)}">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:4px">
+        <span class="wki-key">${e(wk)}</span>
+        <span class="wki-status ${status}">${status}</span>
+        <button class="wki-edit" onclick="event.stopPropagation();editWk('${e(wk)}')" title="편집">✏️</button>
+      </div>
+      ${goal?`<div class="wki-goal">${e(goal)}</div>`:''}
+      ${dir?`<div class="wki-dir">📁 ${e(dir)}</div>`:''}
+    </div>`;
+  }).join('');
+  updateDpWkSelect(wks);
+}
 
-function renderDispatchAgents(agents){
-  const el=id('dp-agents');
-  if(!agents.length){el.innerHTML='<span style="font-size:11px;color:var(--text3)">에이전트 없음</span>';return;}
+function pickWk(wk){
+  selWk=wk;
+  document.querySelectorAll('.wki').forEach(el=>el.classList.toggle('sel',el.dataset.wk===wk));
+  id('dp-wk-sel').value=wk;
+  loadWkState(wk);
+  updateProjBanner(wk);
+  id('wk-info').textContent=wk;
+}
+
+function updateDpWkSelect(wks){
+  const sel=id('dp-wk-sel');
+  const cur=sel.value||selWk;
+  sel.innerHTML=wks.slice().reverse().map(wk=>`<option value="${e(wk)}"${wk===cur?' selected':''}>${e(wk)}</option>`).join('');
+  if(!sel.value&&wks.length){sel.value=wks[wks.length-1];selWk=sel.value;}
+}
+
+function onWkSelChange(){
+  selWk=id('dp-wk-sel').value;
+  document.querySelectorAll('.wki').forEach(el=>el.classList.toggle('sel',el.dataset.wk===selWk));
+  loadWkState(selWk);
+  updateProjBanner(selWk);
+  renderDispatchAgents(allAgents);
+}
+
+// ── Sidebar: Agents ─────────────────────────────────────────────────────────
+function renderAgents(agents){
+  id('ag-count').textContent=agents.length;
+  id('s-agents').textContent=agents.length;
+  const active=agents.filter(a=>agentState[a.name]?.status==='working').length;
+  id('s-active').textContent=active;
+  const el=id('ag-list');
+  if(!agents.length){el.innerHTML='<div class="empty"><div class="empty-icon">🤖</div>없음</div>';return;}
   el.innerHTML=agents.map(a=>{
     const name=a.name||'?';
     const role=(a.role||'builder').toLowerCase();
-    const isSel=dispatchTargets.has(name);
-    return`<div class="agent-chip${isSel?' sel':''}" onclick="toggleTarget('${e(name)}')" data-dname="${e(name)}">
-      <div class="chip-dot"></div>${e(name)} <span class="rc ${role}" style="margin-left:2px">${role}</span>
+    const dc=dotCls[role]||'g';
+    const st=agentState[name]||{};
+    const isBusy=st.status==='working';
+    const isDone=st.status==='done';
+    const taskLine=isBusy?`<div class="agi-task">⚡ ${e((st.instructions||'').slice(0,38)+'…')}</div>`
+                  :isDone?`<div class="agi-task" style="color:var(--green)">✓ ${e((st.instructions||'').slice(0,35)+'…')}</div>`:'';
+    return`<div class="agi slide-in${selAgent===name?' sel':''}" onclick="pickAgent('${e(name)}')" data-name="${e(name)}">
+      <div class="agi-dot ${dc}"></div>
+      <div class="agi-info">
+        <div class="agi-name">${e(name)}</div>
+        <div class="agi-sub">${e(a.machine||'')}</div>
+        ${taskLine}
+      </div>
+      <span class="role-tag ${role}">${role}</span>
     </div>`;
   }).join('');
-  id('dp-wk-badge').textContent=selWk||'—';
 }
 
-function toggleTarget(name){
-  if(dispatchTargets.has(name))dispatchTargets.delete(name);
-  else dispatchTargets.add(name);
-  document.querySelectorAll('[data-dname]').forEach(el=>{
-    const sel=dispatchTargets.has(el.dataset.dname);
-    el.classList.toggle('sel',sel);
-    el.querySelector('.chip-dot').style.background=sel?'var(--cyan)':'var(--border2)';
-  });
+function pickAgent(name){
+  selAgent=name;
+  document.querySelectorAll('.agi').forEach(el=>el.classList.toggle('sel',el.dataset.name===name));
+  refreshAgentDetail(name);
+  switchTab('agent');
 }
 
-function selectAllBuilders(){
-  dispatchTargets.clear();
-  allAgents.filter(a=>(a.role||'').toLowerCase()==='builder').forEach(a=>dispatchTargets.add(a.name));
-  renderDispatchAgents(allAgents);
+// ── Agent Detail ────────────────────────────────────────────────────────────
+function refreshAgentDetail(name){
+  const agent=allAgents.find(a=>a.name===name);
+  if(!agent){id('agent-detail-card').style.display='none';id('agent-detail-empty').style.display='';return;}
+  id('agent-detail-empty').style.display='none';
+  id('agent-detail-card').style.display='';
+
+  const role=(agent.role||'builder').toLowerCase();
+  const dc=dotCls[role]||'g';
+  const colorMap={g:'var(--green)',c:'var(--cyan)',o:'var(--orange)',p:'var(--purple)'};
+  const color=colorMap[dc]||'var(--green)';
+  const dotEl=id('adet-dot');
+  dotEl.style.background=color;dotEl.style.boxShadow=`0 0 6px ${color}`;
+  id('adet-name').textContent=name;
+  id('adet-role-tag').textContent=role;
+  id('adet-role-tag').className='role-tag '+role;
+
+  const st=agentState[name]||{};
+  const statusColor=st.status==='working'?'var(--orange)':st.status==='done'?'var(--green)':st.status==='blocked'?'var(--red)':'var(--text3)';
+  const statusText=st.status==='working'?'⚡ 작업 중':st.status==='done'?'✓ 완료':st.status==='blocked'?'✗ 차단':'대기 중';
+
+  id('adet-grid').innerHTML=`
+    <span class="adk">머신</span><span class="adv">${e(agent.machine||'—')}</span>
+    <span class="adk">Work Key</span><span class="adv c">${e(agent.work_key||'—')}</span>
+    <span class="adk">온라인</span><span class="adv">${elapsed(agent.online_since)}</span>
+    <span class="adk">상태</span><span class="adv" style="color:${statusColor}">${statusText}</span>
+    ${st.task_id?`<span class="adk">Task ID</span><span class="adv" style="font-size:10px">${e(st.task_id)}</span>`:''}
+    ${st.started?`<span class="adk">시작</span><span class="adv">${fmt(st.started)}</span>`:''}
+    ${st.completed?`<span class="adk">완료</span><span class="adv g">${fmt(st.completed)}</span>`:''}
+    ${st.exit_code!=null?`<span class="adk">Exit</span><span class="adv ${st.exit_code===0?'g':'o'}">exit ${st.exit_code}</span>`:''}
+    ${st.instructions?`<span class="adk">태스크</span><div class="adv" style="background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:7px 10px;font-size:10px;line-height:1.5;margin-top:2px;word-break:break-word;max-height:100px;overflow-y:auto">${e(st.instructions)}</div>`:''}
+  `;
+
+  // live output
+  const out=taskOutput[name]||'';
+  const outEl=id('adet-live-out');
+  if(outEl)outEl.textContent=out||'(출력 없음)';
 }
 
-async function dispatch(){
-  const instr=id('dp-instr').value.trim();
-  if(!instr){id('dp-status').textContent='Instructions를 입력하세요';id('dp-status').className='dp-status err';return;}
-  if(!dispatchTargets.size){id('dp-status').textContent='에이전트를 선택하세요';id('dp-status').className='dp-status err';return;}
-
-  const btn=id('dp-send');
-  btn.disabled=true;
-  id('dp-status').textContent='전송 중...';id('dp-status').className='dp-status';
-
-  const wk=selWk||(await fetch('/api/work-keys/latest').then(r=>r.json()).then(d=>d.work_key).catch(()=>null));
-  const targets=[...dispatchTargets];
-  let ok=0,fail=0;
-
-  await Promise.all(targets.map(async to=>{
-    const agent=allAgents.find(a=>a.name===to);
-    const role=(agent?.role||'builder').toLowerCase();
-    try{
-      const res=await fetch('/api/task',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({work_key:wk,to,role,instructions:instr})});
-      if(res.ok){ok++;addLog('task.assign',`→ ${to}: ${instr.slice(0,50)}`,null);}
-      else fail++;
-    }catch{fail++;}
-  }));
-
-  btn.disabled=false;
-  if(fail===0){
-    id('dp-status').textContent=`✓ ${ok}개 에이전트에 전송 완료`;
-    id('dp-status').className='dp-status ok';
-    setTimeout(()=>{id('dp-status').textContent='';},4000);
-  }else{
-    id('dp-status').textContent=`${ok}개 성공, ${fail}개 실패`;
-    id('dp-status').className='dp-status err';
+function dispatchToAgent(){
+  if(selAgent){
+    dispatchTargets.clear();
+    dispatchTargets.add(selAgent);
+    renderDispatchAgents(allAgents);
+    switchTab('dispatch');
+    id('dp-instr')?.focus();
   }
 }
 
-function dispatchToSelected(){
-  if(selAgent){dispatchTargets.clear();dispatchTargets.add(selAgent);renderDispatchAgents(allAgents);}
-  document.querySelector('.dp-ta')?.focus();
+// ── Mailbox ─────────────────────────────────────────────────────────────────
+async function loadMailbox(){
+  if(!selAgent)return;
+  const res=await fetch(`/api/mailbox/${encodeURIComponent(selAgent)}`).catch(()=>null);
+  if(!res||!res.ok){id('mb-count').textContent='읽기 실패';return;}
+  const d=await res.json();
+  const msgs=d.messages||[];
+  id('mb-count').textContent=`${msgs.length}개 메시지`;
+  const el=id('mb-list');
+  if(!msgs.length){el.innerHTML='<div class="empty">메시지 없음</div>';return;}
+  el.innerHTML=msgs.map(m=>{
+    const from=m.from||m.agent||'?';
+    const body=typeof m==='string'?m:JSON.stringify(m,null,2);
+    return`<div class="mb-item"><div class="mb-from">${e(from)} · ${fmt(m.ts)}</div><div class="mb-body">${e(body.slice(0,400))}</div></div>`;
+  }).join('');
 }
 
-function clearDispatch(){
-  id('dp-instr').value='';
-  dispatchTargets.clear();
-  renderDispatchAgents(allAgents);
-  id('dp-status').textContent='';
+// ── WK State ────────────────────────────────────────────────────────────────
+let wkMeta={};
+
+async function loadWkState(wk){
+  if(!wk)return;
+  try{
+    const res=await fetch(`/api/state/${encodeURIComponent(wk)}`,{signal:AbortSignal.timeout(3000)});
+    if(!res.ok)return;
+    const s=await res.json();
+    wkMeta[wk]={goal:s.goal||null,project_dir:s.project_dir||null,status:s.status||'created'};
+
+    // State editor
+    id('state-wk-label').textContent=wk;
+    id('sf-goal').value=s.goal||'';
+    id('sf-dir').value=s.project_dir||'';
+    id('sf-ctx').value=s.shared_context?JSON.stringify(s.shared_context,null,2):'';
+    activeWkStatus=s.status||'created';
+    document.querySelectorAll('.status-btn').forEach(b=>{
+      b.classList.toggle('active',b.classList.contains(activeWkStatus));
+    });
+    const raw=id('sf-raw');
+    if(raw)raw.textContent=JSON.stringify(s,null,2);
+
+    // Project banner
+    updateProjBanner(wk);
+    // Refresh WK list meta display
+    renderWks(wkList);
+  }catch{}
 }
 
-// ── Work Key modal ────────────────────────────────────────────────────────────
-function openWkModal(){
+function setWkStatus(status){
+  activeWkStatus=status;
+  document.querySelectorAll('.status-btn').forEach(b=>{
+    b.classList.toggle('active',b.classList.contains(status));
+  });
+}
+
+async function saveWkState(){
+  if(!selWk){id('state-status').textContent='WK를 선택하세요';return;}
+  const goal=id('sf-goal').value.trim()||null;
+  const project_dir=id('sf-dir').value.trim()||null;
+  const ctxRaw=id('sf-ctx').value.trim();
+  let shared_context={};
+  if(ctxRaw){try{shared_context=JSON.parse(ctxRaw);}catch{id('state-status').textContent='JSON 형식 오류';id('state-status').style.color='var(--red)';return;}}
+  try{
+    const res=await fetch(`/api/state/${encodeURIComponent(selWk)}`,{
+      method:'PATCH',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({goal,project_dir,status:activeWkStatus,shared_context})
+    });
+    if(res.ok){
+      id('state-status').textContent='✓ 저장됨';id('state-status').style.color='var(--green)';
+      setTimeout(()=>{id('state-status').textContent='';},3000);
+      wkMeta[selWk]={goal,project_dir,status:activeWkStatus};
+      updateProjBanner(selWk);
+      loadWkState(selWk);
+    }
+  }catch{id('state-status').textContent='저장 실패';id('state-status').style.color='var(--red)';}
+}
+
+function updateProjBanner(wk){
+  const m=wkMeta[wk]||{};
+  const c=id('proj-card');
+  if(!c)return;
+  if(m.goal||m.project_dir){
+    c.style.display='';
+    id('proj-goal').textContent=m.goal||'—';
+    id('proj-dir').textContent=m.project_dir||'—';
+  } else {
+    c.style.display='none';
+  }
+}
+
+// ── Work Key modal ──────────────────────────────────────────────────────────
+let editingWk=null;
+function openWkModal(mode){editingWk=null;id('wk-modal-title').textContent='새 Work Key 생성';id('wk-goal').value='';id('wk-dir').value='';id('wk-ctx').value='';id('wk-modal').style.display='flex';id('wk-goal').focus();}
+function closeWkModal(){id('wk-modal').style.display='none';}
+function editWk(wk){
+  const m=wkMeta[wk]||{};
+  editingWk=wk;
+  id('wk-modal-title').textContent='Work Key 편집: '+wk;
+  id('wk-goal').value=m.goal||'';
+  id('wk-dir').value=m.project_dir||'';
+  id('wk-ctx').value='';
   id('wk-modal').style.display='flex';
   id('wk-goal').focus();
 }
-function closeWkModal(){
-  id('wk-modal').style.display='none';
-  id('wk-goal').value='';id('wk-dir').value='';id('wk-ctx').value='';
-}
 async function createWorkKey(){
-  const goal=id('wk-goal').value.trim();
-  const project_dir=id('wk-dir').value.trim();
+  const goal=id('wk-goal').value.trim()||null;
+  const project_dir=id('wk-dir').value.trim()||null;
   const ctxRaw=id('wk-ctx').value.trim();
   let context={};
   if(ctxRaw){try{context=JSON.parse(ctxRaw);}catch{alert('컨텍스트 JSON 형식 오류');return;}}
+
+  if(editingWk){
+    // Edit mode: PATCH existing WK
+    await fetch(`/api/state/${encodeURIComponent(editingWk)}`,{
+      method:'PATCH',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({goal,project_dir,shared_context:context})
+    });
+    wkMeta[editingWk]={goal,project_dir};
+    addLog('system',`WK 편집: ${editingWk}`,null);
+    closeWkModal();loadWkState(editingWk);poll();return;
+  }
+
   try{
     const res=await fetch('/api/work-keys',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({goal:goal||null,project_dir:project_dir||null,context})});
+      body:JSON.stringify({goal,project_dir,context})});
     const d=await res.json();
     selWk=d.work_key;
     closeWkModal();
@@ -654,226 +976,167 @@ async function createWorkKey(){
   }catch{addLog('system','Work Key 생성 실패');}
 }
 
-// ── Agent list ────────────────────────────────────────────────────────────────
-
-function agentDotCls(role){return rc[role]||'gr';}
-
-function renderAgents(agents){
-  id('ac').textContent=agents.length;id('s1').textContent=agents.length;
-  const el=id('al');
-  if(!agents.length){el.innerHTML='<div class="empty"><div class="ei">🤖</div>온라인 없음</div>';return;}
-  el.innerHTML=agents.map(a=>{
+// ── Dispatch ────────────────────────────────────────────────────────────────
+function renderDispatchAgents(agents){
+  const wk=id('dp-wk-sel')?.value||selWk;
+  // Show all agents or filter by selected WK
+  const visible=agents;
+  const el=id('dp-agents');
+  if(!visible.length){el.innerHTML='<span style="color:var(--text3);font-size:10px">에이전트 없음</span>';return;}
+  el.innerHTML=visible.map(a=>{
     const name=a.name||'?';
     const role=(a.role||'builder').toLowerCase();
-    const dc=agentDotCls(role);
-    const st=agentState[name]||{};
-    const isBusy=st.status==='working';
-    const isDone=st.status==='done';
-    const isSelected=selAgent===name;
-    const taskLine=isBusy?`<div class="a-task">⚡ ${e((st.instructions||'').slice(0,40)+'…')}</div>`
-                  :isDone?`<div class="a-task" style="color:var(--green)">✓ ${e((st.instructions||'').slice(0,35)+'…')}</div>`:'';
-    return`<div class="ac on fi${isSelected?' sel':''}${isBusy?' busy':''}" onclick="selectAgent('${e(name)}')" data-name="${e(name)}">
-      <div class="ad ${dc}"></div>
-      <div class="ai">
-        <div class="an">${e(name)}</div>
-        <div class="am">${e(a.machine||a.hostname||'')}</div>
-        ${taskLine}
-      </div>
-      <span class="rc ${role}">${role}</span>
+    const isSel=dispatchTargets.has(name);
+    return`<div class="chip${isSel?' sel':''}" onclick="toggleTarget('${e(name)}')" data-dn="${e(name)}">
+      <div class="cd"></div>${e(name)} <span class="role-tag ${role}" style="margin-left:2px">${role}</span>
     </div>`;
   }).join('');
 }
 
-function selectAgent(name){
-  selAgent=name;
-  document.querySelectorAll('.ac').forEach(el=>el.classList.toggle('sel',el.dataset.name===name));
-  refreshAgentDetail(name);
+function toggleTarget(name){
+  if(dispatchTargets.has(name))dispatchTargets.delete(name);
+  else dispatchTargets.add(name);
+  document.querySelectorAll('[data-dn]').forEach(el=>{
+    const sel=dispatchTargets.has(el.dataset.dn);
+    el.classList.toggle('sel',sel);
+    el.querySelector('.cd').style.background=sel?'var(--cyan)':'var(--border2)';
+  });
 }
 
-function closeAgentDetail(){
-  selAgent=null;
-  document.querySelectorAll('.ac').forEach(el=>el.classList.remove('sel'));
-  id('adp').style.display='none';
-  clearLogFilter();
+function selectAllBuilders(){
+  dispatchTargets.clear();
+  allAgents.filter(a=>(a.role||'').toLowerCase()==='builder').forEach(a=>dispatchTargets.add(a.name));
+  renderDispatchAgents(allAgents);
 }
 
-function refreshAgentDetail(name){
-  const agent=allAgents.find(a=>(a.name||'?')===name);
-  if(!agent){id('adp').style.display='none';return;}
-  const st=agentState[name]||{};
-  const role=(agent.role||'builder').toLowerCase();
-  const dc=agentDotCls(role);
-  const colorMap={g:'var(--green)',c:'var(--cyan)',o:'var(--orange)',p:'var(--purple)',gr:'var(--border2)'};
-  const dotColor=colorMap[dc]||'var(--border2)';
-
-  id('adp').style.display='';
-  id('adp-name').textContent=name;
-
-  const statusHtml=st.status==='working'
-    ?`<span style="color:var(--orange);font-size:10px;font-weight:700">⚡ 작업 중</span>`
-    :st.status==='done'
-    ?`<span style="color:var(--green);font-size:10px;font-weight:700">✓ 완료</span>`
-    :`<span style="color:var(--text3);font-size:10px">대기 중</span>`;
-
-  const onlineSince=agent.online_since||agent.joined_at||null;
-  const taskInstr=st.instructions||'—';
-  const taskBoxCls=st.status==='working'?'task-box active':st.status==='done'?'task-box done':'task-box';
-  const agentLogs=log.filter(l=>l.agent===name||l.msg.includes(name)).slice(0,8);
-
-  id('adp-body').innerHTML=`
-    <div class="adet-hero">
-      <div class="adet-dot" style="background:${dotColor};box-shadow:0 0 8px ${dotColor}"></div>
-      <div>
-        <div class="adet-name">${e(name)}</div>
-        <div class="adet-role"><span class="rc ${role}">${role}</span> &nbsp; ${statusHtml}</div>
-      </div>
-    </div>
-    <div class="adet-body">
-      <div class="adet-row"><div class="adet-k">머신</div><div class="adet-v">${e(agent.machine||agent.hostname||'—')}</div></div>
-      <div class="adet-row"><div class="adet-k">Work Key</div><div class="adet-v c">${e(agent.work_key||selWk||'—')}</div></div>
-      <div class="adet-row"><div class="adet-k">온라인 시간</div><div class="adet-v">${onlineSince?elapsed(onlineSince):'—'}</div></div>
-      ${st.task_id?`<div class="adet-row"><div class="adet-k">Task ID</div><div class="adet-v">${e(st.task_id)}</div></div>`:''}
-      ${st.started?`<div class="adet-row"><div class="adet-k">시작</div><div class="adet-v">${e(new Date(st.started).toLocaleTimeString('ko'))}</div></div>`:''}
-      ${st.completed?`<div class="adet-row"><div class="adet-k">완료</div><div class="adet-v g">${e(new Date(st.completed).toLocaleTimeString('ko'))}</div></div>`:''}
-      ${st.exit_code!=null?`<div class="adet-row"><div class="adet-k">종료 코드</div><div class="adet-v ${st.exit_code===0?'g':''}">exit ${st.exit_code}</div></div>`:''}
-      <div class="adet-row">
-        <div class="adet-k">현재 태스크</div>
-        <div class="adet-v"><div class="${taskBoxCls}">${e(taskInstr)}</div></div>
-      </div>
-      ${(taskOutput[name]||agentLogs.length)?`<div class="adet-row">
-        <div class="adet-k">${taskOutput[name]?'실시간 출력':'최근 이벤트'}</div>
-        <div class="adet-v">${taskOutput[name]
-          ?`<pre id="adp-live-out" style="font-size:10px;color:var(--text2);background:var(--bg3);border:1px solid var(--border2);border-radius:4px;padding:8px 10px;max-height:160px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;line-height:1.5;margin:0">${e(taskOutput[name])}</pre>`
-          :`<div style="font-size:10px;color:var(--text3);line-height:1.8">${agentLogs.map(l=>`<span style="color:var(--text3)">${e(l.t)}</span> <span class="lv ${l.ev.replace(/\./g,'-')}" style="font-size:10px">${e(l.ev)}</span> ${e(l.msg.slice(0,50))}`).join('<br>')}</div>`
-        }</div>
-      </div>`:''}
-      <div class="adet-row">
-        <div class="adet-k">로그 필터</div>
-        <div class="adet-v"><button onclick="setLogFilter('${e(name)}')" style="background:var(--bg3);border:1px solid var(--border2);color:var(--cyan);font-family:inherit;font-size:10px;padding:3px 10px;border-radius:3px;cursor:pointer;letter-spacing:.5px">이 에이전트만 보기</button></div>
-      </div>
-    </div>`;
+function broadcastAll(){
+  dispatchTargets.clear();
+  allAgents.forEach(a=>dispatchTargets.add(a.name));
+  renderDispatchAgents(allAgents);
 }
 
-// ── Log ───────────────────────────────────────────────────────────────────────
+async function dispatch(){
+  const instr=id('dp-instr').value.trim();
+  if(!instr){showDpStatus('Instructions를 입력하세요','err');return;}
+  if(!dispatchTargets.size){showDpStatus('에이전트를 선택하세요','err');return;}
+  const wk=id('dp-wk-sel')?.value||selWk;
+  const btn=id('dp-send');btn.disabled=true;
+  showDpStatus('전송 중...','');
+  const targets=[...dispatchTargets];
+  let ok=0,fail=0;
+  await Promise.all(targets.map(async to=>{
+    const agent=allAgents.find(a=>a.name===to);
+    const role=(agent?.role||'builder').toLowerCase();
+    try{
+      const res=await fetch('/api/task',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({work_key:wk,to,role,instructions:instr})});
+      if(res.ok)ok++;else fail++;
+    }catch{fail++;}
+  }));
+  btn.disabled=false;
+  showDpStatus(fail===0?`✓ ${ok}개 전송 완료`:`${ok}개 성공, ${fail}개 실패`,fail===0?'ok':'err');
+  if(fail===0)setTimeout(()=>showDpStatus('',''),4000);
+}
 
-function setLogFilter(name){
-  logFilter=name;id('log-filter-bar').style.display='';
-  id('log-filter-label').textContent=name;id('log-clear-filter').style.display='';
-  renderFilteredLog();
+function showDpStatus(msg,cls){const el=id('dp-status');el.textContent=msg;el.className='dp-status'+(cls?' '+cls:'');}
+
+function clearDispatch(){
+  id('dp-instr').value='';
+  dispatchTargets.clear();
+  renderDispatchAgents(allAgents);
+  showDpStatus('','');
 }
-function clearLogFilter(){
-  logFilter=null;id('log-filter-bar').style.display='none';id('log-clear-filter').style.display='none';
-  renderFilteredLog();
-}
-function renderFilteredLog(){
-  const lb=id('lb');
-  const filtered=logFilter?log.filter(l=>l.agent===logFilter||l.msg.includes(logFilter)):log;
-  if(!filtered.length){lb.innerHTML='<div class="empty" id="le"><div class="ei">📋</div>이벤트 없음</div>';return;}
-  lb.innerHTML=filtered.map(l=>{
-    const cls=l.ev.replace(/\./g,'-').replace(/_/g,'-');
-    return`<div class="le"><span class="lt">${e(l.t)}</span><span class="lv ${cls}">${e(l.ev)}</span><span class="lm">${e(l.msg)}</span></div>`;
+
+// ── Task History ────────────────────────────────────────────────────────────
+function updateTaskTable(){
+  const tasks=[...taskMap.values()].sort((a,b)=>new Date(b.started||0)-new Date(a.started||0));
+  completedTasks=tasks.filter(t=>t.status==='done'||t.status==='error'||t.status==='blocked').length;
+  activeTasks=tasks.filter(t=>t.status==='working').length;
+  id('s-tasks').textContent=completedTasks;
+  id('s-active').textContent=activeTasks;
+  const tbody=id('task-tbody');
+  if(!tasks.length){tbody.innerHTML='<tr><td colspan="7" class="empty">태스크 없음</td></tr>';return;}
+  tbody.innerHTML=tasks.slice(0,50).map(t=>{
+    const dur=t.started&&t.completed?Math.round((new Date(t.completed)-new Date(t.started))/1000)+'s':'—';
+    const exitHtml=t.exit_code!=null?`<span class="ts-exit ${t.exit_code===0?'ok':'err'}">exit ${t.exit_code}</span>`:'—';
+    const outBtn=t.output?`<button onclick="showOutput('${e(t.task_id)}')" class="btn btn-ghost" style="padding:2px 7px;font-size:9px">보기</button>`:'—';
+    return`<tr>
+      <td class="ts-id" title="${e(t.task_id)}">${e(t.task_id.slice(0,16))}</td>
+      <td class="ts-to">${e(t.to||'?')}</td>
+      <td class="ts-instr" title="${e(t.instructions||'')}">${e((t.instructions||'').slice(0,50))}</td>
+      <td><span class="ts-st ${t.status||'pending'}">${t.status||'—'}</span></td>
+      <td class="ts-dur">${dur}</td>
+      <td>${exitHtml}</td>
+      <td>${outBtn}</td>
+    </tr>`;
   }).join('');
-  id('lc').textContent=filtered.length+(logFilter?` / ${log.length}`:'');
 }
 
-let wkMeta={}; // wk -> {goal, project_dir}
-
-function renderWks(wks){
-  id('wc').textContent=wks.length;id('s2').textContent=wks.length;
-  const el=id('wl');
-  if(!wks.length){el.innerHTML='<div class="empty"><div class="ei">🔑</div>없음</div>';return;}
-  if(!selWk&&wks.length)selWk=wks[wks.length-1];
-  el.innerHTML=wks.slice().reverse().map(wk=>{
-    const m=wkMeta[wk]||{};
-    return`<div class="wki fi${wk===selWk?' sel':''}" onclick="pickWk('${e(wk)}')">
-      <div class="wkk">${e(wk)}</div>
-      <div class="wkm">${m.goal?e(m.goal.slice(0,40)):'클릭해서 상태 확인'}</div>
-      ${m.project_dir?`<div style="font-size:9px;color:var(--cyan);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e(m.project_dir)}</div>`:''}
-    </div>`;
-  }).join('');
-  id('dp-wk-badge').textContent=selWk||'—';
-  if(selWk&&wks.includes(selWk))loadState(selWk);
-  else if(wks.length)loadState(wks[wks.length-1]);
+function showOutput(taskId){
+  const t=taskMap.get(taskId);
+  if(!t||!t.output)return;
+  id('out-modal-title').textContent=`출력: ${taskId}`;
+  id('out-modal-body').textContent=t.output;
+  id('out-modal').style.display='flex';
 }
 
-function pickWk(wk){
-  selWk=wk;
-  document.querySelectorAll('.wki').forEach(el=>el.classList.toggle('sel',el.querySelector('.wkk').textContent===wk));
-  id('dp-wk-badge').textContent=wk;
-  loadState(wk);
-}
+function clearTaskHistory(){taskMap.clear();updateTaskTable();}
 
-async function loadState(wk){
-  try{
-    const res=await fetch(`/api/state/${encodeURIComponent(wk)}`,{signal:AbortSignal.timeout(3000)});
-    if(!res.ok)return;
-    const data=await res.json();
-    const state=data.state||data||{};
-    id('sp').style.display='';id('swk').textContent=wk;
-
-    // cache metadata and update project banner
-    const goal=state.goal||state['goal']||null;
-    const projDir=state.project_dir||state['project_dir']||null;
-    wkMeta[wk]={goal,project_dir:projDir};
-
-    const banner=id('proj-banner');
-    if(goal||projDir){
-      banner.style.display='';
-      id('proj-goal-text').textContent=goal?`🎯 ${goal}`:'—';
-      id('proj-dir-text').textContent=projDir?`📁 ${projDir}`:'';
-    } else {
-      banner.style.display='none';
-    }
-
-    // filter out internal fields for display
-    const hidden=new Set(['work_key','created_at','updated_at','loop_count','tasks','shared_context']);
-    const entries=Object.entries(state).filter(([k])=>!hidden.has(k));
-    id('sb2').innerHTML=entries.length?`<div class="skv">${entries.map(([k,v])=>{
-      const vs=typeof v==='object'?JSON.stringify(v):String(v);
-      const cls=v==='done'||v==='completed'?'g':v==='active'||v==='running'?'c':'';
-      return`<div class="sk">${e(k)}</div><div class="sv ${cls}">${e(vs)}</div>`;
-    }).join('')}</div>`:'<div class="empty">상태 없음</div>';
-  }catch{}
-}
-
-function addLog(ev, msg, agentName){
+// ── Event Log ────────────────────────────────────────────────────────────────
+function addLog(ev,msg,agentName){
   const t=new Date().toLocaleTimeString('ko',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  const entry={t, ev, msg, agent:agentName||null};
-  log.unshift(entry);
-  if(log.length>500)log.pop();
+  const entry={t,ev,msg,agent:agentName||null};
+  log.unshift(entry);if(log.length>500)log.pop();
 
-  const lb=id('lb');
-  const le=id('le');if(le)le.remove();
+  const el=id('log-list');
+  const empty=el.querySelector('.empty');if(empty)empty.remove();
 
   if(!logFilter||entry.agent===logFilter||msg.includes(logFilter)){
     const cls=ev.replace(/\./g,'-').replace(/_/g,'-');
     const d=document.createElement('div');
-    d.className='le fi';
-    d.innerHTML=`<span class="lt">${t}</span><span class="lv ${cls}">${e(ev)}</span><span class="lm">${e(msg)}</span>`;
-    lb.prepend(d);
-    if(lb.children.length>200)lb.lastElementChild?.remove();
+    d.className='log-item slide-in';
+    d.innerHTML=`<span class="log-t">${t}</span><div class="log-body"><span class="log-ev ${cls}">${e(ev)}</span><span class="log-msg">${e(msg)}</span></div>`;
+    el.prepend(d);
+    if(el.children.length>200)el.lastElementChild?.remove();
   }
-
-  id('lc').textContent=logFilter?(log.filter(l=>l.agent===logFilter||l.msg.includes(logFilter)).length+' / '+log.length):log.length;
+  const cnt=logFilter?log.filter(l=>l.agent===logFilter||l.msg.includes(logFilter)).length:log.length;
+  id('log-count').textContent=cnt+(logFilter?'/'+log.length:'');
   if(selAgent&&(agentName===selAgent||msg.includes(selAgent)))refreshAgentDetail(selAgent);
 }
 
-// ── WebSocket (Phoenix Channel observer) ─────────────────────────────────────
-// Connects to the Phoenix Channel as a read-only observer.
-// • Joins all existing work key channels on connect
-// • Auto-joins new channels when created (via createWorkKey)
-// • Exponential backoff reconnect (1s → 30s)
-// • Tracks task.progress output per agent for live tail
+function setLogFilter(name){
+  logFilter=name;
+  id('log-filter-btn').style.display='';
+  id('log-filter-bar').innerHTML=`<span style="font-size:9px;color:var(--orange)">필터: ${e(name)}</span>`;
+}
+function clearLogFilter(){logFilter=null;id('log-filter-btn').style.display='none';id('log-filter-bar').innerHTML='';}
 
-let wsRef=1;
+// ── Poll ────────────────────────────────────────────────────────────────────
+async function poll(){
+  try{
+    const [pr,wr]=await Promise.all([
+      fetch('/api/presence',{signal:AbortSignal.timeout(4000)}),
+      fetch('/api/work-keys',{signal:AbortSignal.timeout(4000)})
+    ]);
+    if(!pr.ok||!wr.ok)throw new Error();
+    const p=await pr.json(),w=await wr.json();
+    if(!connected){connected=true;setConn(true,'연결됨');addLog('system','서버 연결');}
+    allAgents=(p.agents||[]).filter(a=>(a.role||'').toLowerCase()!=='observer');
+    wkList=w.work_keys||[];
+    renderAgents(allAgents);
+    renderDispatchAgents(allAgents);
+    renderWks(wkList);
+    if(selWk)loadWkState(selWk);
+    if(selAgent)refreshAgentDetail(selAgent);
+  }catch{
+    if(connected){connected=false;setConn(false,'연결 끊김');addLog('system','연결 끊김');}
+    allAgents=[];renderAgents([]);renderDispatchAgents([]);
+  }
+}
+
+// ── WebSocket ────────────────────────────────────────────────────────────────
 let wsJoinRef=null;
-let wsJoinedTopics=new Set(); // topics we've joined in this WS session
-let wsReconnectDelay=1000;
-let wsHbTimer=null;
-const taskOutput={}; // agent → latest output tail
-
 function wsSend(arr){try{if(ws?.readyState===1)ws.send(JSON.stringify(arr));}catch{}}
-
 function wsJoinTopic(topic){
   if(wsJoinedTopics.has(topic))return;
   wsJoinedTopics.add(topic);
@@ -881,38 +1144,22 @@ function wsJoinTopic(topic){
   wsJoinRef=jref;
   wsSend([jref,jref,topic,'phx_join',{role:'observer',agent_name:'dashboard@browser'}]);
 }
+function wsJoinNewWorkKey(wk){wsJoinTopic('work:'+wk);}
 
 function connectWs(){
   const proto=location.protocol==='https:'?'wss':'ws';
   ws=new WebSocket(`${proto}://${location.host}/socket/websocket?vsn=2.0.0&agent_name=dashboard@browser&role=observer`);
-
   ws.onopen=()=>{
-    wsReconnectDelay=1000;
-    wsJoinedTopics.clear();
+    wsReconnectDelay=1000;wsJoinedTopics.clear();
     if(wsHbTimer)clearInterval(wsHbTimer);
     wsHbTimer=setInterval(()=>wsSend([null,String(wsRef++),'phoenix','heartbeat',{}]),30000);
-
-    // Join all current work key channels
-    fetch('/api/work-keys').then(r=>r.json()).then(d=>{
-      (d.work_keys||[]).forEach(wk=>wsJoinTopic('work:'+wk));
-    }).catch(()=>{});
+    fetch('/api/work-keys').then(r=>r.json()).then(d=>{(d.work_keys||[]).forEach(wk=>wsJoinTopic('work:'+wk));}).catch(()=>{});
   };
-
   ws.onmessage=evt=>{
     try{
-      const [,, topic, ev, payload]=JSON.parse(evt.data);
-
-      // Ignore protocol internals
-      if(ev==='phx_reply'){
-        // Successful join — if topic is a new WK, update UI
-        if(payload?.status==='ok'&&topic.startsWith('work:')){
-          const wk=topic.replace('work:','');
-          if(!document.querySelector(`.wkk[data-wk="${wk}"]`))poll();
-        }
-        return;
-      }
-      if(ev==='phx_error'||ev==='phx_close'||ev==='presence_state'||ev==='presence_diff'||topic==='phoenix')return;
-
+      const [,,topic,ev,payload]=JSON.parse(evt.data);
+      if(ev==='phx_reply'){if(payload?.status==='ok'&&topic.startsWith('work:')){}return;}
+      if(['phx_error','phx_close','presence_state','presence_diff'].includes(ev)||topic==='phoenix')return;
       const from=payload?.from||payload?.agent||null;
       const taskId=payload?.task_id||'';
       let msg='';
@@ -921,95 +1168,68 @@ function connectWs(){
         const to=payload?.to||'broadcast';
         const instr=(payload?.instructions||'').slice(0,80);
         msg=`→ ${to}: ${instr}`;
-        if(to&&to!=='broadcast'){
+        if(to){
           agentState[to]=agentState[to]||{};
-          Object.assign(agentState[to],{
-            task_id:taskId,
-            instructions:payload?.instructions||'',
-            status:'working',
-            started:new Date().toISOString(),
-            completed:null,
-            exit_code:null
-          });
+          Object.assign(agentState[to],{task_id:taskId,instructions:payload?.instructions||'',status:'working',started:new Date().toISOString(),completed:null,exit_code:null});
           taskOutput[to]='';
-          renderAgents(allAgents);
+          // Add to task history
+          taskMap.set(taskId,{task_id:taskId,to,instructions:payload?.instructions||'',status:'working',started:new Date().toISOString(),output:null,exit_code:null});
+          renderAgents(allAgents);updateTaskTable();
         }
       } else if(ev==='task.result'){
         const agentFrom=payload?.from||'?';
         const exitCode=payload?.exit_code??'?';
         msg=`${agentFrom}: exit=${exitCode} — ${taskId}`;
-        tasks++;id('s3').textContent=tasks;
         if(agentFrom&&agentState[agentFrom]){
-          Object.assign(agentState[agentFrom],{
-            status: exitCode===0||exitCode==='0'?'done':'error',
-            exit_code: exitCode,
-            completed: new Date().toISOString()
-          });
+          Object.assign(agentState[agentFrom],{status:exitCode===0||exitCode==='0'?'done':'error',exit_code:exitCode,completed:new Date().toISOString()});
           taskOutput[agentFrom]='';
           renderAgents(allAgents);
+        }
+        if(taskMap.has(taskId)){
+          const t=taskMap.get(taskId);
+          Object.assign(t,{status:exitCode===0||exitCode==='0'?'done':'error',exit_code:exitCode,completed:new Date().toISOString(),output:payload?.output||null});
+          updateTaskTable();
         }
       } else if(ev==='task.progress'){
         const tail=payload?.output_tail||'';
         if(tail&&from){
           taskOutput[from]=tail;
-          // Append to agent detail if open
-          const outEl=id('adp-live-out');
-          if(outEl&&selAgent===from){
-            outEl.textContent=tail;outEl.scrollTop=outEl.scrollHeight;
-          }
+          const outEl=id('adet-live-out');
+          if(outEl&&selAgent===from){outEl.textContent=tail;outEl.scrollTop=outEl.scrollHeight;}
         }
         msg=`${from||'?'}: ${payload?.message||'working...'}`;
       } else if(ev==='task.blocked'){
         const agentFrom=payload?.from||'?';
         msg=`${agentFrom}: ${payload?.error||payload?.reason||taskId}`;
-        if(agentFrom&&agentState[agentFrom]){
-          agentState[agentFrom].status='blocked';
-          renderAgents(allAgents);
-        }
+        if(agentFrom&&agentState[agentFrom]){agentState[agentFrom].status='blocked';renderAgents(allAgents);}
+        if(taskMap.has(taskId)){const t=taskMap.get(taskId);Object.assign(t,{status:'blocked',completed:new Date().toISOString()});updateTaskTable();}
       } else if(ev==='agent.hello'){
         const a=payload?.agent||'?';
         msg=`${a} (${payload?.role||'?'}) @ ${payload?.machine||'?'}`;
-        // Immediately add to agent list without waiting for next poll
-        const existing=allAgents.find(x=>x.name===a);
-        if(!existing){
-          allAgents=[...allAgents,{
-            name:a,role:payload?.role||'builder',
-            machine:payload?.machine||'',
-            work_key:payload?.work_key||selWk||'',
-            online_since:new Date().toISOString()
-          }];
+        if(!allAgents.find(x=>x.name===a)){
+          allAgents=[...allAgents,{name:a,role:payload?.role||'builder',machine:payload?.machine||'',work_key:payload?.work_key||selWk||'',online_since:new Date().toISOString()}];
           renderAgents(allAgents);renderDispatchAgents(allAgents);
         }
       } else if(ev==='agent.bye'){
         const a=payload?.agent||'?';
         msg=`${a} 퇴장`;
         allAgents=allAgents.filter(x=>x.name!==a);
+        if(selAgent===a){selAgent=null;id('agent-detail-card').style.display='none';id('agent-detail-empty').style.display='';}
         renderAgents(allAgents);renderDispatchAgents(allAgents);
       } else {
         msg=payload?.message||taskId||JSON.stringify(payload).slice(0,80);
       }
-
       addLog(ev,msg,from);
     }catch{}
   };
-
   ws.onclose=()=>{
     if(wsHbTimer){clearInterval(wsHbTimer);wsHbTimer=null;}
     wsJoinedTopics.clear();
-    console.log('[ws] reconnecting in',wsReconnectDelay,'ms');
     setTimeout(connectWs,wsReconnectDelay);
     wsReconnectDelay=Math.min(wsReconnectDelay*2,30000);
-    if(connected){connected=false;addLog('system','WebSocket 재연결 중...');}
   };
-
   ws.onerror=()=>ws?.close();
 }
-
-// Called after creating a new work key so the dashboard joins that channel too
-function wsJoinNewWorkKey(wk){wsJoinTopic('work:'+wk);}
-
-let pct=0;
-setInterval(()=>{pct=pct>=100?0:pct+100/(POLL/50);id('rp').style.width=pct+'%';},50);
 
 poll();
 setInterval(poll,POLL);
@@ -1017,6 +1237,7 @@ connectWs();
 </script>
 </body>
 </html>
+
 """
   end
 end
