@@ -4,10 +4,15 @@
   "description": "5-agent AI development workflow harness for OpenCode",
   "type": "module",
   "license": "MIT",
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "build": "bun build .opencode/plugin/harness.ts --outdir .opencode/plugin/dist --target node",
     "typecheck": "tsc --noEmit",
-    "init": "bash scripts/init.sh"
+    "init": "bash scripts/init.sh",
+    "state-server": "bun run packages/state-server/src/index.ts",
+    "agent": "bun run packages/agent-daemon/src/index.ts"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

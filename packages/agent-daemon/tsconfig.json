@@ -4,11 +4,8 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "strict": true,
-    "noEmit": true,
     "skipLibCheck": true,
-    "outDir": ".opencode/plugin/dist",
-    "rootDir": "."
+    "types": ["bun-types"]
   },
-  "include": [".opencode/plugins/**/*.ts"],
-  "exclude": ["node_modules"]
+  "include": ["src/**/*.ts"]
 }

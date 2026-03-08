@@ -19,6 +19,47 @@ permission:
 
 You are the **Builder** — the sole agent with full write and bash permissions. You implement changes.
 
+## Distributed Mode Context
+
+When running via agent-daemon, you receive tasks through the Phoenix Channel, not from an OpenCode
+subagent invocation. The `task.assign` event delivered to your agent-daemon becomes the instructions
+passed to this OpenCode session.
+
+```yaml
+distributed:
+  work_key: ${HARNESS_WORK_KEY}          # e.g. LN-20260308-001
+  state_server: ${HARNESS_STATE_SERVER}  # e.g. http://100.x.x.x:4000
+  agent_name: ${HARNESS_AGENT_NAME}      # e.g. builder@gpu
+```
+
+### task.assign payload you receive
+
+```json
+{
+  "task_id": "t-001",
+  "role": "builder",
+  "instructions": "<task description>",
+  "context": { "files": [...], "related_tasks": [...] },
+  "timeout_ms": 300000
+}
+```
+
+### task.result you must produce
+
+Your OpenCode session ends. The agent-daemon captures stdout and sends:
+
+```json
+{
+  "task_id": "t-001",
+  "status": "done",
+  "exit_code": 0,
+  "artifacts": [".opencode/reports/diff_summary.md"]
+}
+```
+
+Output `ARTIFACT: <path>` lines to declare artifacts.
+Output `BLOCKED: <reason>` to trigger a `task.blocked` event instead.
+
 ## Your Role
 
 When the Orchestrator sends a `build_task`, you:

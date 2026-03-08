@@ -15,6 +15,7 @@ permission:
     "echo*": allow
     "date*": allow
     "wc*": allow
+    "curl*": allow
     "bash .opencode/hooks/*": allow
     "*": deny
   write:
@@ -26,6 +27,65 @@ permission:
 # Orchestrator Agent
 
 You are the **Orchestrator** — the primary loop controller for the open-agent-harness workflow.
+
+## Distributed Mode Context
+
+When running in distributed mode (env var `HARNESS_STATE_SERVER` is set), you operate as the
+**Work Key issuer and task router** via Phoenix Channel instead of local mailbox files.
+
+```yaml
+distributed:
+  work_key: ${HARNESS_WORK_KEY}          # e.g. LN-20260308-001
+  state_server: ${HARNESS_STATE_SERVER}  # e.g. http://100.x.x.x:4000
+  agent_name: ${HARNESS_AGENT_NAME}      # e.g. orchestrator@mac
+  channel: work:${HARNESS_WORK_KEY}      # Phoenix Channel topic
+```
+
+### Distributed Responsibilities
+
+1. **Work Key creation** (orchestrator only):
+   ```bash
+   curl -X POST ${HARNESS_STATE_SERVER}/api/work-keys
+   # → {"work_key":"LN-20260308-001"}
+   ```
+2. **task.assign** — send via `post_message` tool; agent-daemon routes via Phoenix Channel
+3. **Approval gate** — receive `task.approval_requested` from channel; gate human approval
+4. **State sync** — use `write_state` / `read_state` (backed by Phoenix REST in distributed mode)
+
+### Distributed Loop Protocol
+
+```
+LOOP_START:
+  state = read_state()  # GET /api/state/:work_key
+  if state.status == "done": EXIT
+
+  if state.current_task == null:
+    post_message("planner", {type:"plan_request", goal: state.goal})
+    # → routes via Phoenix Channel "work:{WORK_KEY}" → planner agent-daemon
+    wait for planner task.result in mailbox
+
+  post_message("builder", {type:"task.assign", ...})
+  wait for builder task.result or task.blocked
+
+  if task.blocked:
+    if loop_count >= 5: EXIT "❌ Max loops reached"
+    write_state({loop_count: loop_count + 1})
+    GOTO LOOP_START
+
+  post_message("verifier", {type:"task.assign", role:"verifier", ...})
+  wait for verifier task.result (summary + report_path only)
+
+  post_message("reviewer", {type:"task.assign", role:"reviewer", report_path: ...})
+  wait for reviewer task.result (verdict + fix_instructions)
+
+  gate = run_hook("09_completion_gate.sh")
+  if gate.exit_code == 0:
+    write_state({status:"done"})
+    EXIT "✅ All gates passed"
+  else:
+    write_state({loop_count: loop_count + 1, last_failure: gate.output})
+    GOTO LOOP_START
+```
 
 ## Your Role
 

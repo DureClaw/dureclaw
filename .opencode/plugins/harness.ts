@@ -61,6 +61,18 @@ export const HarnessPlugin: Plugin = async (ctx) => {
 
   const WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL ?? "";
 
+  // ── Distributed state-server config ─────────────────────────────────────
+  // When HARNESS_STATE_SERVER is set, read_state/write_state/post_message/read_mailbox
+  // use the HTTP API. Otherwise fall back to local file-based state.
+
+  const STATE_SERVER_URL = process.env.HARNESS_STATE_SERVER
+    ? process.env.HARNESS_STATE_SERVER.replace(/^ws/, "http")
+    : "";
+  const WORK_KEY = process.env.HARNESS_WORK_KEY ?? "";
+  const AGENT_NAME = process.env.HARNESS_AGENT_NAME ?? "agent@local";
+
+  const useRemoteState = !!(STATE_SERVER_URL && WORK_KEY);
+
   // ── Utilities ────────────────────────────────────────────────────────────
 
   function ensureDir(dir: string): void {
@@ -82,6 +94,42 @@ export const HarnessPlugin: Plugin = async (ctx) => {
 
   function ts(): string {
     return new Date().toISOString();
+  }
+
+  // ── Remote state helpers ─────────────────────────────────────────────────
+
+  async function remoteReadState(): Promise<Record<string, unknown>> {
+    const res = await fetch(`${STATE_SERVER_URL}/state/${WORK_KEY}`);
+    return (await res.json()) as Record<string, unknown>;
+  }
+
+  async function remotePatchState(updates: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const res = await fetch(`${STATE_SERVER_URL}/state/${WORK_KEY}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
+    });
+    return (await res.json()) as Record<string, unknown>;
+  }
+
+  async function remotePostMailbox(to: string, event: string, payload: unknown): Promise<void> {
+    await fetch(`${STATE_SERVER_URL}/mailbox/${to}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        work_key: WORK_KEY,
+        from: AGENT_NAME,
+        to,
+        event,
+        payload,
+        ts: ts(),
+      }),
+    });
+  }
+
+  async function remoteReadMailbox(agent: string): Promise<{ count: number; messages: unknown[] }> {
+    const res = await fetch(`${STATE_SERVER_URL}/mailbox/${agent}`);
+    return (await res.json()) as { count: number; messages: unknown[] };
   }
 
   function saveReport(name: string, content: string): string {
@@ -151,7 +199,8 @@ export const HarnessPlugin: Plugin = async (ctx) => {
     // Auto-save bash results to .opencode/reports/ (no Discord — too noisy)
     "tool.execute.after": async (input, output) => {
       if (input.tool !== "bash") return;
-      const cmd = (input.args?.command as string) ?? "";
+      const inputAny = input as unknown as { args?: { command?: string } };
+      const cmd = inputAny.args?.command ?? "";
       const safeCmd = cmd.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 40);
       const content = [
         `# Bash Report`,
@@ -254,9 +303,13 @@ export const HarnessPlugin: Plugin = async (ctx) => {
       }),
 
       read_state: tool({
-        description: "Read the current harness state.json file.",
+        description: "Read the current harness state (local file or remote state-server).",
         args: {},
         async execute() {
+          if (useRemoteState) {
+            const state = await remoteReadState();
+            return JSON.stringify(state, null, 2);
+          }
           const state = readJson(STATE_FILE, {
             run_id: null,
             goal: null,
@@ -273,7 +326,7 @@ export const HarnessPlugin: Plugin = async (ctx) => {
 
       write_state: tool({
         description:
-          "Merge updates into harness state.json (shallow merge). Pass JSON string of fields to update.",
+          "Merge updates into harness state (local file or remote state-server). Pass JSON string of fields to update.",
         args: {
           updates: tool.schema
             .string()
@@ -288,13 +341,23 @@ export const HarnessPlugin: Plugin = async (ctx) => {
           } catch {
             return `Error: updates must be valid JSON. Got: ${args.updates}`;
           }
-          const current = readJson<Record<string, unknown>>(STATE_FILE, {});
-          const next = { ...current, ...updates, updated_at: ts() };
-          ensureDir(STATE_DIR);
-          writeJson(STATE_FILE, next);
+
+          // Read current state before write (for Discord diff check)
+          const before: Record<string, unknown> = useRemoteState
+            ? await remoteReadState()
+            : readJson<Record<string, unknown>>(STATE_FILE, {});
+
+          let next: Record<string, unknown>;
+          if (useRemoteState) {
+            next = await remotePatchState(updates);
+          } else {
+            next = { ...before, ...updates, updated_at: ts() };
+            ensureDir(STATE_DIR);
+            writeJson(STATE_FILE, next);
+          }
 
           // Discord: only on goal start or completion (not every loop/status tick)
-          const isGoalStart = updates.goal && updates.status === "running" && !current.goal;
+          const isGoalStart = updates.goal && updates.status === "running" && !before.goal;
           const isGoalDone = updates.status === "done" || updates.status === "completed";
           if (isGoalStart) {
             await discordPost({
@@ -313,30 +376,38 @@ export const HarnessPlugin: Plugin = async (ctx) => {
             });
           }
 
-          return `State updated at ${STATE_FILE}`;
+          return useRemoteState
+            ? `State updated on state-server (work_key: ${WORK_KEY})`
+            : `State updated at ${STATE_FILE}`;
         },
       }),
 
       post_message: tool({
-        description: "Post a message to an agent's mailbox.",
+        description: "Post a message to an agent's mailbox (local file or remote state-server).",
         args: {
-          to: tool.schema.string().describe("Target agent name (e.g. builder)"),
+          to: tool.schema.string().describe("Target agent name (e.g. builder@gpu or builder)"),
           from: tool.schema
             .string()
-            .describe("Sender agent name (e.g. orchestrator)"),
-          type: tool.schema.string().describe("Message type (e.g. build_task)"),
+            .describe("Sender agent name (e.g. orchestrator@mac)"),
+          type: tool.schema.string().describe("Event type (e.g. task.assign, task.progress)"),
           payload: tool.schema
             .string()
             .describe("JSON string payload for the message"),
         },
         async execute(args) {
-          ensureDir(MAILBOX_DIR);
           let payload: unknown;
           try {
             payload = JSON.parse(args.payload);
           } catch {
             payload = args.payload;
           }
+
+          if (useRemoteState) {
+            await remotePostMailbox(args.to, args.type, payload);
+            return `Message posted to ${args.to} via state-server (event: ${args.type})`;
+          }
+
+          ensureDir(MAILBOX_DIR);
           const filename = `${args.to}_${args.type}_${Date.now()}.json`;
           const msgPath = join(MAILBOX_DIR, filename);
           writeJson(msgPath, {
@@ -353,13 +424,18 @@ export const HarnessPlugin: Plugin = async (ctx) => {
 
       read_mailbox: tool({
         description:
-          "Read unread messages for an agent from the mailbox. Messages are marked as read after retrieval.",
+          "Read unread messages for an agent (local file or remote state-server).",
         args: {
           agent: tool.schema
             .string()
-            .describe("Agent name to read messages for"),
+            .describe("Agent name to read messages for (e.g. orchestrator@mac or orchestrator)"),
         },
         async execute(args) {
+          if (useRemoteState) {
+            const result = await remoteReadMailbox(args.agent);
+            return JSON.stringify(result, null, 2);
+          }
+
           ensureDir(MAILBOX_DIR);
           let files: string[] = [];
           try {

@@ -18,6 +18,41 @@ permission:
 
 You are the **Reviewer** — you review code changes and provide fix instructions. You are read-only: no bash, no file edits.
 
+## Distributed Mode Context
+
+When running via agent-daemon, you receive a `task.assign` event from the orchestrator. Your
+output becomes the `task.result` payload — use `task.blocked` format if you find critical issues
+that must block progress.
+
+```yaml
+distributed:
+  work_key: ${HARNESS_WORK_KEY}
+  state_server: ${HARNESS_STATE_SERVER}
+  agent_name: ${HARNESS_AGENT_NAME}      # e.g. reviewer@mac
+```
+
+### task.result format (distributed)
+
+Output your 3-line summary to stdout, then:
+
+```
+ARTIFACT: .opencode/reports/review_<task_id>.md
+```
+
+If verdict is `CHANGES_NEEDED`, also output each fix instruction on its own line:
+```
+FIX: src/api.ts:45 — remove console.log because it leaks request data
+FIX: src/auth.ts:12 — use bcrypt.compare not == because timing attack
+```
+
+The agent-daemon captures stdout and constructs the `task.result` payload. The orchestrator reads
+`FIX:` lines to pass fix_instructions back to the builder.
+
+### task.blocked usage
+
+Output `BLOCKED: <reason>` only when there is a **critical security vulnerability** or
+**data loss risk** that should halt the loop entirely, not just request changes.
+
 ## Your Role
 
 When the Orchestrator sends a `review` request, you:

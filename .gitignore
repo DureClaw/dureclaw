@@ -5,3 +5,10 @@ bun.lockb
 .opencode/state/mailbox/*.json
 !.opencode/state/mailbox/README.md
 .env
+
+# Elixir build artifacts
+packages/phoenix-server/_build/
+packages/phoenix-server/deps/
+
+# Test artifacts
+distributed-test-result.txt

@@ -111,6 +111,113 @@ Reports are written to `.opencode/reports/`.
 
 ---
 
+## Distributed Mode (Multi-Machine)
+
+여러 머신에서 에이전트를 분산 실행한다. Elixir Phoenix 채널이 L1 메시지 버스 역할.
+
+### 아키텍처
+
+```
+┌──────────────────────────────────────────────────────┐
+│  NAS (24/7)  packages/phoenix-server/ (Elixir)       │
+│  ws://100.x.x.x:4000/socket/websocket                │
+└──────────────────┬───────────────────────────────────┘
+                   │  Tailscale
+      ┌────────────┼────────────┐
+      ▼            ▼            ▼
+  Mac             GPU PC       NAS CLI
+  orchestrator    builder      verifier
+  agent-daemon    agent-daemon agent-daemon
+```
+
+### 빠른 시작
+
+**1. Phoenix 서버 시작 (NAS)**
+
+```bash
+cd packages/phoenix-server
+mix deps.get
+mix phx.server   # port 4000
+```
+
+**2. Orchestrator 시작 (Mac)**
+
+```bash
+STATE_SERVER=ws://100.x.x.x:4000 \
+AGENT_ROLE=orchestrator \
+AGENT_NAME=orchestrator@mac \
+PROJECT_DIR=/path/to/project \
+bun run packages/agent-daemon/src/index.ts
+# → creates Work Key: LN-20260308-001
+```
+
+**3. 나머지 에이전트 시작**
+
+```bash
+# GPU: builder
+STATE_SERVER=ws://100.x.x.x:4000 \
+AGENT_ROLE=builder \
+AGENT_NAME=builder@gpu \
+WORK_KEY=LN-20260308-001 \
+bun run packages/agent-daemon/src/index.ts
+
+# NAS: verifier
+STATE_SERVER=ws://100.x.x.x:4000 \
+AGENT_ROLE=verifier \
+AGENT_NAME=verifier@nas \
+WORK_KEY=LN-20260308-001 \
+bun run packages/agent-daemon/src/index.ts
+```
+
+**4. 온라인 확인**
+
+```bash
+curl http://100.x.x.x:4000/api/presence
+# → {"agents":[{"name":"orchestrator@mac",...},{"name":"builder@gpu",...}]}
+```
+
+### Work Key 라이프사이클
+
+```
+POST /api/work-keys → "LN-YYYYMMDD-XXX" 발급
+  ↓ Phoenix Channel "work:LN-..." 생성
+  ↓ 에이전트 phx_join → presence 등록
+  ↓ task.assign → task.progress → task.result
+  ↓ state.status = "done"
+```
+
+### Phoenix Channel 프로토콜
+
+메시지 포맷 (5-tuple):
+```json
+[join_ref, ref, topic, event, payload]
+```
+
+채널 참여:
+```json
+["1","1","work:LN-20260308-001","phx_join",
+ {"agent_name":"builder@gpu","role":"builder","machine":"gpu"}]
+```
+
+태스크 할당:
+```json
+[null,"2","work:LN-20260308-001","task.assign",
+ {"to":"builder@gpu","task_id":"t-001","instructions":"..."}]
+```
+
+### 로컬 vs 분산 전환
+
+| | 로컬 (Mode A) | 분산 (Mode B) |
+|-|---------------|---------------|
+| 상태 | `state.json` | Phoenix ETS |
+| 메시지 | `mailbox/` 파일 | Phoenix Channel |
+| 에이전트 | OpenCode subagent | agent-daemon 프로세스 |
+| 전환 | `STATE_SERVER` 미설정 | `STATE_SERVER=ws://...` |
+
+자세한 내용: [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md)
+
+---
+
 ## Discord Notifications
 
 에이전트 대화와 훅 실행 결과를 Discord 채널로 실시간 미러링합니다.
@@ -317,6 +424,10 @@ open-agent-harness/
 | `tool.execute.after` Discord | 훅 실행 결과 → Discord |
 | `write_state` Discord | goal/status 변경 시 Discord 알림 |
 | `discord_notify` tool | 에이전트가 직접 Discord에 커스텀 알림 전송 |
+| `packages/phoenix-server/` | Elixir Phoenix 분산 메시지 버스 (실제 Phoenix 5-tuple 프로토콜) |
+| `packages/agent-daemon/` Phoenix proto | Phoenix Channel 프로토콜로 업그레이드 |
+| `docs/METHODOLOGY.md` | 로컬/분산 운영 방법론 문서 |
+| 에이전트 분산 컨텍스트 | orchestrator/builder/verifier/reviewer 프롬프트에 Work Key + Phoenix 이벤트 명세 추가 |
 
 ### Summary
 
