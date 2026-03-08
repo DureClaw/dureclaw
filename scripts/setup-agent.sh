@@ -112,4 +112,4 @@ exec env \
   AGENT_ROLE="$ROLE" \
   WORK_KEY="${WK:-}" \
   PROJECT_DIR="$DIR" \
-  bun run "$DAEMON_ENTRY"
+  bun run "$DAEMON_ENTRY" "$PHOENIX"
