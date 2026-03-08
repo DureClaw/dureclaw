@@ -12,23 +12,23 @@
 
 <style>
 :root {
-  --bg:       #07090f;
-  --bg2:      #0d1018;
-  --bg3:      #111520;
-  --border:   #1e2535;
-  --border2:  #2a3550;
-  --text:     #c8d4e8;
-  --text2:    #6b7fa0;
-  --text3:    #3a4a66;
-  --cyan:     #00d4ff;
-  --cyan2:    #00a8cc;
-  --green:    #00e87a;
-  --green2:   #00b85f;
-  --orange:   #ff8c42;
-  --orange2:  #cc6622;
-  --purple:   #8c6bff;
-  --red:      #ff4466;
-  --white:    #f0f4ff;
+  --bg:       #ffffff;
+  --bg2:      #f8fafc;
+  --bg3:      #f1f5f9;
+  --border:   #e2e8f0;
+  --border2:  #cbd5e1;
+  --text:     #1e293b;
+  --text2:    #475569;
+  --text3:    #94a3b8;
+  --cyan:     #0284c7;
+  --cyan2:    #0369a1;
+  --green:    #059669;
+  --green2:   #047857;
+  --orange:   #ea580c;
+  --orange2:  #c2410c;
+  --purple:   #7c3aed;
+  --red:      #dc2626;
+  --white:    #0f172a;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -42,26 +42,13 @@ body {
   overflow-x: hidden;
 }
 
-body::before {
-  content: '';
-  position: fixed; inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
-  opacity: 0.018; pointer-events: none; z-index: 9999;
-}
-body::after {
-  content: '';
-  position: fixed; inset: 0;
-  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
-  pointer-events: none; z-index: 9998;
-}
-
 .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
 
 /* NAV */
 nav {
   position: sticky; top: 0; z-index: 100;
   border-bottom: 1px solid var(--border);
-  background: rgba(7,9,15,0.92);
+  background: rgba(255,255,255,0.92);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
@@ -86,7 +73,7 @@ nav {
   content: '';
   position: absolute; top: -200px; left: 50%; transform: translateX(-50%);
   width: 800px; height: 600px;
-  background: radial-gradient(ellipse at center, rgba(0,212,255,0.06) 0%, transparent 70%);
+  background: radial-gradient(ellipse at center, rgba(2,132,199,0.05) 0%, transparent 70%);
   pointer-events: none;
 }
 .hero-badge {
@@ -120,7 +107,7 @@ nav {
 .install-bar {
   display: flex; align-items: center; justify-content: space-between;
   padding: 8px 16px; border-bottom: 1px solid var(--border);
-  background: rgba(255,255,255,0.02);
+  background: var(--bg3);
 }
 .install-bar-dots { display: flex; gap: 6px; }
 .install-bar-dots span { width: 10px; height: 10px; border-radius: 50%; background: var(--border2); }
@@ -259,7 +246,7 @@ nav {
 .oneliner-label {
   padding: 14px 16px; font-size: 10px; color: var(--text3);
   letter-spacing: 1px; border-right: 1px solid var(--border);
-  background: rgba(255,255,255,0.01);
+  background: var(--bg3);
 }
 .oneliner-label .role-badge {
   display: inline-block; padding: 2px 6px; border-radius: 2px;
@@ -285,7 +272,7 @@ thead { background: var(--bg2); }
 th { padding: 10px 16px; font-size: 10px; font-weight: 700; color: var(--text3); letter-spacing: 2px; text-align: left; border-bottom: 1px solid var(--border); }
 td { padding: 9px 16px; font-size: 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
 tr:last-child td { border-bottom: none; }
-tr:nth-child(even) td { background: rgba(255,255,255,0.01); }
+tr:nth-child(even) td { background: var(--bg2); }
 .ev { color: var(--cyan); font-weight: 500; }
 .dir { color: var(--text3); font-size: 10px; }
 .desc { color: var(--text2); }
@@ -392,9 +379,9 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
     <div class="hero-badge">LIVE · v0.1.0</div>
     <h1>open-agent-<em>harness</em></h1>
     <p class="hero-sub">
-      여러 머신의 AI 에이전트가 <strong style="color:var(--white)">NAS 공유 workspace</strong>에서 협업해<br/>
-      하나의 소프트웨어를 <strong style="color:var(--cyan)">병렬로 개발</strong>한다.<br/>
-      에이전트 추가는 <strong style="color:var(--green)">명령어 한 줄</strong>이면 충분하다.
+      AI 팀장이 여러 AI 직원에게 일을 나눠주고,<br/>
+      각자 <strong style="color:var(--cyan)">자기 컴퓨터에서 동시에</strong> 작업해 하나의 소프트웨어를 완성한다.<br/>
+      새 멤버 추가는 <strong style="color:var(--green)">명령어 한 줄</strong>이면 충분하다.
     </p>
 
     <div class="install-block">
@@ -420,24 +407,24 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
 
     <div class="what-grid">
       <div class="what-item">
-        <div class="what-item-label">STORAGE</div>
-        <div class="what-item-title">NAS 공유 Workspace</div>
-        <p>모든 에이전트가 동일한 NAS 경로를 마운트. 파일을 메시지로 복붙할 필요 없이 직접 읽고 쓴다.</p>
+        <div class="what-item-label">공유 파일함</div>
+        <div class="what-item-title">함께 보는 작업 공간</div>
+        <p>모든 AI가 같은 폴더를 바라본다. 한 AI가 쓴 코드를 다른 AI가 바로 읽어서 이어서 작업한다.</p>
       </div>
       <div class="what-item">
-        <div class="what-item-label">NETWORK</div>
-        <div class="what-item-title">Phoenix Channel</div>
-        <p>Elixir Phoenix WebSocket이 조율 레이어. task.assign → task.result 이벤트가 채널을 통해 실시간 브로드캐스트.</p>
+        <div class="what-item-label">실시간 연결</div>
+        <div class="what-item-title">즉각 반응하는 팀</div>
+        <p>팀장(오케스트레이터)이 일을 배분하면 각 AI 직원이 즉시 받아서 시작한다. 완료되면 자동으로 보고한다.</p>
       </div>
       <div class="what-item">
-        <div class="what-item-label">PARALLEL</div>
-        <div class="what-item-title">병렬 개발</div>
-        <p>builder들이 서로 다른 모듈을 동시에 개발. integrator가 NAS에서 직접 읽어 통합. 단일 에이전트 대비 시간 단축.</p>
+        <div class="what-item-label">동시 작업</div>
+        <div class="what-item-title">혼자보다 빠르게</div>
+        <p>A가 로그인 기능을 만드는 동안 B는 장바구니를 만든다. 한 명이 순서대로 하는 것보다 훨씬 빠르다.</p>
       </div>
       <div class="what-item">
-        <div class="what-item-label">SCALE</div>
-        <div class="what-item-title">원라인 확장</div>
-        <p>새 머신에서 명령어 한 줄로 에이전트 추가. Bun·OpenCode 자동 설치, Work Key 자동 감지, 즉시 협업 참여.</p>
+        <div class="what-item-label">간편 확장</div>
+        <div class="what-item-title">새 멤버, 한 줄로</div>
+        <p>새 컴퓨터를 팀에 추가하려면 명령어 한 줄만 입력하면 된다. 설치, 설정, 연결이 자동으로 처리된다.</p>
       </div>
     </div>
   </div>
@@ -463,11 +450,12 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
   <div class="container">
     <div class="section-header">
       <span class="section-num">02</span>
-      <h2 class="section-title">NAS 공유 <em>Workspace</em></h2>
+      <h2 class="section-title">공유 <em>작업 공간</em></h2>
     </div>
     <p style="color:var(--text2);font-size:13px;margin-bottom:20px;max-width:640px;">
-      각 에이전트가 같은 NAS 경로를 마운트하면 파일이 공유된다.
-      Phoenix Channel은 <em style="color:var(--white)">파일이 아니라 이벤트와 조율</em>만 담당한다.
+      NAS(네트워크 공유 드라이브)를 모든 컴퓨터에 연결하면
+      AI들이 같은 폴더에서 파일을 주고받으며 협업한다.
+      채팅으로 코드를 복붙하지 않아도 된다.
     </p>
     <div class="nas-diagram">
       <!-- 에이전트 -->
@@ -507,13 +495,13 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
 
       <!-- 결과 -->
       <div class="nas-col">
-        <div class="nas-title">하드웨어 활용</div>
-        <div class="nas-item"><span class="dot" style="background:var(--green)"></span><span style="font-size:10px;">코드 생성 · UI · 빠른 추론</span></div>
-        <div class="nas-item"><span class="dot" style="background:var(--orange)"></span><span style="font-size:10px;">ML 연산 · 배치 처리 · CUDA</span></div>
-        <div class="nas-item"><span class="dot" style="background:var(--purple)"></span><span style="font-size:10px;">통합 · 테스트 · CI 실행</span></div>
-        <div class="nas-item"><span class="dot" style="background:var(--cyan)"></span><span style="font-size:10px;">태스크 배분 · MCP 도구</span></div>
+        <div class="nas-title">각자 잘하는 일을</div>
+        <div class="nas-item"><span class="dot" style="background:var(--green)"></span><span style="font-size:10px;">코드 작성 · 빠르고 정확하게</span></div>
+        <div class="nas-item"><span class="dot" style="background:var(--orange)"></span><span style="font-size:10px;">무거운 AI 연산 · GPU 활용</span></div>
+        <div class="nas-item"><span class="dot" style="background:var(--purple)"></span><span style="font-size:10px;">테스트 실행 · 품질 검증</span></div>
+        <div class="nas-item"><span class="dot" style="background:var(--cyan)"></span><span style="font-size:10px;">업무 지시 · 결과 취합</span></div>
         <div style="margin-top:12px;padding:10px 12px;background:rgba(0,212,255,0.04);border:1px solid rgba(0,212,255,0.1);border-radius:3px;font-size:10px;color:var(--text2);">
-          <strong style="color:var(--cyan)">핵심:</strong> 에이전트는 자기 하드웨어 특성에 맞는 일을 하면서, 결과물은 NAS를 통해 자동으로 공유된다.
+          <strong style="color:var(--cyan)">핵심:</strong> 각 컴퓨터는 자기가 잘하는 일을 맡고, 결과물은 공유 드라이브에 자동으로 쌓인다.
         </div>
       </div>
     </div>
@@ -563,7 +551,8 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
           <div class="qs-note">
             <strong>서버 IP를 메모하세요.</strong><br/>
             Tailscale: <code>ws://100.x.x.x:4000</code><br/>
-            LAN: <code>ws://192.168.x.x:4000</code>
+            LAN: <code>ws://192.168.x.x:4000</code><br/>
+            <strong style="color:var(--orange)">대시보드:</strong> <code>http://서버IP:4000/</code>
           </div>
         </div>
       </div>
@@ -640,47 +629,47 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
   <div class="container">
     <div class="section-header">
       <span class="section-num">04</span>
-      <h2 class="section-title">병렬 개발 <em>예시</em></h2>
+      <h2 class="section-title">실제 협업 <em>예시</em></h2>
     </div>
     <p style="color:var(--text2);font-size:13px;margin-bottom:20px;max-width:640px;">
-      단일 에이전트는 users.py → items.py → main.py를 순차 실행.
-      Mode B는 <em style="color:var(--cyan)">users + items를 동시에</em> 개발하고 integrator가 NAS에서 직접 읽어 통합한다.
+      혼자 일하는 AI는 기능을 하나씩 순서대로 만든다.
+      여러 AI가 팀을 이루면 <em style="color:var(--cyan)">서로 다른 기능을 동시에</em> 만들고, 마지막에 합친다.
     </p>
     <div class="parallel-box">
       <div class="parallel-timeline">
 
         <div class="pt-row">
-          <div class="pt-time">t = 0s</div>
+          <div class="pt-time">시작</div>
           <div class="pt-content">
-            <div class="pt-label">오케스트레이터 — 동시 태스크 발사</div>
+            <div class="pt-label">팀장(AI)이 업무를 동시에 배분</div>
             <div class="pt-agents">
-              <div class="pt-agent active"><span class="dot cyan"></span><span class="pt-agent-name">agent1</span><span class="pt-arrow">→</span><span class="pt-agent-task">src/users.py 작성</span></div>
-              <div class="pt-agent active"><span class="dot orange"></span><span class="pt-agent-name">agent2</span><span class="pt-arrow">→</span><span class="pt-agent-task">src/items.py 작성</span></div>
-              <div class="pt-agent"><span class="dot grey"></span><span class="pt-agent-name">agent3</span><span class="pt-arrow">→</span><span class="pt-agent-task">대기 중</span></div>
+              <div class="pt-agent active"><span class="dot cyan"></span><span class="pt-agent-name">AI 직원 1</span><span class="pt-arrow">→</span><span class="pt-agent-task">회원 기능 담당</span></div>
+              <div class="pt-agent active"><span class="dot orange"></span><span class="pt-agent-name">AI 직원 2</span><span class="pt-arrow">→</span><span class="pt-agent-task">상품 기능 담당</span></div>
+              <div class="pt-agent"><span class="dot grey"></span><span class="pt-agent-name">AI 직원 3</span><span class="pt-arrow">→</span><span class="pt-agent-task">대기 중</span></div>
             </div>
           </div>
         </div>
 
         <div class="pt-row">
-          <div class="pt-time">t = 30s</div>
+          <div class="pt-time">30초 후</div>
           <div class="pt-content">
-            <div class="pt-label">NAS에 두 파일 동시 완성</div>
+            <div class="pt-label">두 기능이 동시에 완성 → 공유 폴더에 저장</div>
             <div class="pt-agents">
-              <div class="pt-agent"><span class="dot green"></span><span class="pt-agent-name">agent1</span><span class="pt-arrow">✓</span><span class="pt-agent-task">src/users.py 완료</span></div>
-              <div class="pt-agent"><span class="dot green"></span><span class="pt-agent-name">agent2</span><span class="pt-arrow">✓</span><span class="pt-agent-task">src/items.py 완료</span></div>
-              <div class="pt-agent active"><span class="dot purple"></span><span class="pt-agent-name">agent3</span><span class="pt-arrow">→</span><span class="pt-agent-task">NAS에서 두 파일 직접 읽기</span></div>
+              <div class="pt-agent"><span class="dot green"></span><span class="pt-agent-name">AI 직원 1</span><span class="pt-arrow">✓</span><span class="pt-agent-task">회원 기능 완료</span></div>
+              <div class="pt-agent"><span class="dot green"></span><span class="pt-agent-name">AI 직원 2</span><span class="pt-arrow">✓</span><span class="pt-agent-task">상품 기능 완료</span></div>
+              <div class="pt-agent active"><span class="dot purple"></span><span class="pt-agent-name">AI 직원 3</span><span class="pt-arrow">→</span><span class="pt-agent-task">공유 폴더에서 두 파일 읽어 통합</span></div>
             </div>
           </div>
         </div>
 
         <div class="pt-row">
-          <div class="pt-time">t = 75s</div>
+          <div class="pt-time">75초 후</div>
           <div class="pt-content">
-            <div class="pt-label">통합 완료</div>
+            <div class="pt-label">완성</div>
             <div class="pt-agents">
-              <div class="pt-agent"><span class="dot green"></span><span class="pt-agent-name">agent3</span><span class="pt-arrow">✓</span><span class="pt-agent-task">src/main.py + tests/ 완성</span></div>
+              <div class="pt-agent"><span class="dot green"></span><span class="pt-agent-name">AI 직원 3</span><span class="pt-arrow">✓</span><span class="pt-agent-task">전체 통합 + 테스트 완료</span></div>
             </div>
-            <div class="pt-result"><strong>4/4 통합 테스트 통과</strong> · NAS에 최종 아티팩트 저장 · 단일 에이전트 대비 ~40% 단축</div>
+            <div class="pt-result"><strong>테스트 4/4 통과</strong> · 혼자 순서대로 했으면 2배 시간 소요 · 팀으로 ~40% 단축</div>
           </div>
         </div>
 
@@ -694,22 +683,22 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
   <div class="container">
     <div class="section-header">
       <span class="section-num">05</span>
-      <h2 class="section-title">에이전트 <em>추가</em></h2>
+      <h2 class="section-title">AI 팀원 <em>추가하기</em></h2>
     </div>
     <p style="color:var(--text2);font-size:13px;margin-bottom:20px;max-width:640px;">
-      새 머신을 협업에 참여시키려면 명령어 한 줄이면 된다.
-      Bun · OpenCode가 없으면 자동 설치하고, Work Key는 서버에서 자동으로 감지한다.
+      새 컴퓨터를 팀에 합류시키려면 아래 명령어 중 하나를 복사해서 실행하면 끝이다.
+      필요한 프로그램 설치, 서버 연결, 팀 합류까지 전부 자동으로 처리된다.
     </p>
     <div class="oneliner-block">
 
       <div class="oneliner-row">
-        <div class="oneliner-label"><span class="role-badge chip orange">builder</span><br/>코드 작성</div>
+        <div class="oneliner-label"><span class="role-badge chip orange">builder</span><br/>코드 작성 담당</div>
         <div class="oneliner-cmd"><span class="dim">bash scripts/setup-agent.sh </span><span class="kw">ws://서버IP:4000</span> <span class="val">builder</span> <span class="dim">"" /workspace</span></div>
         <button class="oneliner-copy" onclick="copyText(this, 'bash scripts/setup-agent.sh ws://서버IP:4000 builder \"\" /workspace')">복사</button>
       </div>
 
       <div class="oneliner-row">
-        <div class="oneliner-label"><span class="role-badge chip purple">verifier</span><br/>테스트 실행</div>
+        <div class="oneliner-label"><span class="role-badge chip purple">verifier</span><br/>테스트 담당</div>
         <div class="oneliner-cmd"><span class="dim">bash scripts/setup-agent.sh </span><span class="kw">ws://서버IP:4000</span> <span class="val">verifier</span> <span class="dim">"" /workspace</span></div>
         <button class="oneliner-copy" onclick="copyText(this, 'bash scripts/setup-agent.sh ws://서버IP:4000 verifier \"\" /workspace')">복사</button>
       </div>
@@ -728,7 +717,7 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
 
     </div>
     <p style="margin-top:12px;font-size:11px;color:var(--text3);">
-      Work Key(<code>LN-YYYYMMDD-XXX</code>) 생략 시 서버에서 최신 WK 자동 감지 · <code>AGENT_NAME</code> 기본값: <code>role@hostname</code>
+      프로젝트 코드(<code>LN-YYYYMMDD-XXX</code>)를 생략하면 서버에서 자동으로 찾아준다 · 이름을 지정하지 않으면 <code>역할@컴퓨터이름</code>으로 자동 설정
     </p>
   </div>
 </section>
