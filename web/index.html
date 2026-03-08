@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>open-agent-harness — 분산 멀티에이전트 AI 개발 하네스</title>
-<meta name="description" content="Elixir Phoenix 기반 분산 멀티에이전트 AI 개발 워크플로우. orchestrator, builder, verifier, reviewer 에이전트를 여러 머신에서 실행."/>
+<meta name="description" content="NAS 공유 workspace + Phoenix Channel로 여러 머신의 AI 에이전트가 협업해 하나의 소프트웨어를 병렬로 개발. 명령어 한 줄로 에이전트 추가."/>
 
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
@@ -32,9 +32,7 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
 html { scroll-behavior: smooth; }
-
 body {
   background: var(--bg);
   color: var(--text);
@@ -44,29 +42,22 @@ body {
   overflow-x: hidden;
 }
 
-/* ─── NOISE TEXTURE ─── */
 body::before {
   content: '';
   position: fixed; inset: 0;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
-  opacity: 0.018;
-  pointer-events: none;
-  z-index: 9999;
+  opacity: 0.018; pointer-events: none; z-index: 9999;
 }
-
-/* ─── SCANLINES ─── */
 body::after {
   content: '';
   position: fixed; inset: 0;
   background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
-  pointer-events: none;
-  z-index: 9998;
+  pointer-events: none; z-index: 9998;
 }
 
-/* ─── LAYOUT ─── */
 .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
 
-/* ─── NAV ─── */
+/* NAV */
 nav {
   position: sticky; top: 0; z-index: 100;
   border-bottom: 1px solid var(--border);
@@ -74,23 +65,11 @@ nav {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
-.nav-inner {
-  display: flex; align-items: center; justify-content: space-between;
-  height: 52px;
-}
-.nav-logo {
-  font-family: 'Syne', sans-serif;
-  font-weight: 800; font-size: 15px;
-  color: var(--white); letter-spacing: -0.5px;
-  text-decoration: none;
-}
+.nav-inner { display: flex; align-items: center; justify-content: space-between; height: 52px; }
+.nav-logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 15px; color: var(--white); letter-spacing: -0.5px; text-decoration: none; }
 .nav-logo span { color: var(--cyan); }
 .nav-links { display: flex; gap: 28px; }
-.nav-links a {
-  color: var(--text2); font-size: 12px; text-decoration: none;
-  letter-spacing: 1px;
-  transition: color 0.2s;
-}
+.nav-links a { color: var(--text2); font-size: 12px; text-decoration: none; letter-spacing: 1px; transition: color 0.2s; }
 .nav-links a:hover { color: var(--cyan); }
 .nav-gh {
   display: flex; align-items: center; gap: 6px;
@@ -101,16 +80,11 @@ nav {
 }
 .nav-gh:hover { border-color: var(--cyan); color: var(--cyan); }
 
-/* ─── HERO ─── */
-.hero {
-  padding: 80px 0 60px;
-  position: relative;
-  overflow: hidden;
-}
+/* HERO */
+.hero { padding: 80px 0 60px; position: relative; overflow: hidden; }
 .hero::before {
   content: '';
-  position: absolute;
-  top: -200px; left: 50%; transform: translateX(-50%);
+  position: absolute; top: -200px; left: 50%; transform: translateX(-50%);
   width: 800px; height: 600px;
   background: radial-gradient(ellipse at center, rgba(0,212,255,0.06) 0%, transparent 70%);
   pointer-events: none;
@@ -119,181 +93,92 @@ nav {
   display: inline-flex; align-items: center; gap: 8px;
   background: rgba(0,212,255,0.06); border: 1px solid rgba(0,212,255,0.2);
   color: var(--cyan); font-size: 11px; letter-spacing: 2px;
-  padding: 5px 14px; border-radius: 2px;
-  margin-bottom: 28px;
+  padding: 5px 14px; border-radius: 2px; margin-bottom: 28px;
 }
 .hero-badge::before {
-  content: '';
-  width: 6px; height: 6px; border-radius: 50%;
-  background: var(--cyan);
-  box-shadow: 0 0 8px var(--cyan);
+  content: ''; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--cyan); box-shadow: 0 0 8px var(--cyan);
   animation: pulse 2s infinite;
 }
-@keyframes pulse {
-  0%, 100% { opacity: 1; } 50% { opacity: 0.4; }
-}
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 
 .hero h1 {
   font-family: 'Syne', sans-serif;
   font-size: clamp(36px, 6vw, 64px);
-  font-weight: 800;
-  color: var(--white);
-  letter-spacing: -2px;
-  line-height: 1.0;
-  margin-bottom: 16px;
+  font-weight: 800; color: var(--white);
+  letter-spacing: -2px; line-height: 1.0; margin-bottom: 16px;
 }
 .hero h1 em { font-style: normal; color: var(--cyan); }
+.hero-sub { font-size: 15px; color: var(--text2); max-width: 560px; line-height: 1.7; margin-bottom: 44px; }
 
-.hero-sub {
-  font-size: 15px; color: var(--text2);
-  max-width: 560px; line-height: 1.7;
-  margin-bottom: 44px;
-  font-family: 'JetBrains Mono', monospace;
-}
-
-/* ─── INSTALL BLOCK ─── */
+/* INSTALL BLOCK */
 .install-block {
-  background: var(--bg2);
-  border: 1px solid var(--border2);
-  border-radius: 6px;
-  overflow: hidden;
-  max-width: 640px;
-  margin-bottom: 16px;
-  box-shadow: 0 0 40px rgba(0,212,255,0.06);
+  background: var(--bg2); border: 1px solid var(--border2);
+  border-radius: 6px; overflow: hidden; max-width: 640px;
+  margin-bottom: 16px; box-shadow: 0 0 40px rgba(0,212,255,0.06);
 }
 .install-bar {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 8px 16px;
-  border-bottom: 1px solid var(--border);
+  padding: 8px 16px; border-bottom: 1px solid var(--border);
   background: rgba(255,255,255,0.02);
 }
 .install-bar-dots { display: flex; gap: 6px; }
-.install-bar-dots span {
-  width: 10px; height: 10px; border-radius: 50%;
-  background: var(--border2);
-}
+.install-bar-dots span { width: 10px; height: 10px; border-radius: 50%; background: var(--border2); }
 .install-bar-label { font-size: 10px; color: var(--text3); letter-spacing: 1px; }
-.install-cmd {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 18px 20px;
-  gap: 12px;
-}
-.install-cmd code {
-  color: var(--green); font-size: 13.5px;
-  word-break: break-all;
-}
+.install-cmd { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px; gap: 12px; }
+.install-cmd code { color: var(--green); font-size: 13.5px; word-break: break-all; }
 .install-cmd code .dim { color: var(--text3); }
 .install-cmd code .url { color: var(--cyan); }
 .copy-btn {
   flex-shrink: 0;
   background: rgba(0,232,122,0.08); border: 1px solid rgba(0,232,122,0.25);
   color: var(--green); font-family: inherit; font-size: 11px;
-  padding: 6px 14px; border-radius: 3px; cursor: pointer;
-  letter-spacing: 1px;
-  transition: background 0.2s, border-color 0.2s;
-  white-space: nowrap;
+  padding: 6px 14px; border-radius: 3px; cursor: pointer; letter-spacing: 1px;
+  transition: background 0.2s, border-color 0.2s; white-space: nowrap;
 }
 .copy-btn:hover { background: rgba(0,232,122,0.15); border-color: var(--green); }
 .copy-btn.copied { color: var(--cyan); border-color: var(--cyan); background: rgba(0,212,255,0.1); }
-
-.install-note {
-  font-size: 11px; color: var(--text3); letter-spacing: 0.5px;
-  margin-bottom: 48px;
-}
+.install-note { font-size: 11px; color: var(--text3); letter-spacing: 0.5px; margin-bottom: 48px; }
 .install-note a { color: var(--text2); text-decoration: none; }
 .install-note a:hover { color: var(--cyan); }
 
-/* ─── WHAT IS ─── */
+/* WHAT GRID */
 .what-grid {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
-  background: var(--border);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  overflow: hidden;
-  margin-bottom: 80px;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px;
+  background: var(--border); border: 1px solid var(--border);
+  border-radius: 6px; overflow: hidden; margin-bottom: 80px;
 }
-.what-item {
-  background: var(--bg);
-  padding: 24px 22px;
-}
-.what-item-label {
-  font-size: 9px; letter-spacing: 2px; color: var(--text3);
-  margin-bottom: 8px;
-  text-transform: uppercase;
-}
-.what-item-title {
-  font-family: 'Syne', sans-serif;
-  font-size: 15px; font-weight: 700;
-  color: var(--white); margin-bottom: 8px;
-}
+.what-item { background: var(--bg); padding: 24px 22px; }
+.what-item-label { font-size: 9px; letter-spacing: 2px; color: var(--text3); margin-bottom: 8px; text-transform: uppercase; }
+.what-item-title { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; color: var(--white); margin-bottom: 8px; }
 .what-item p { font-size: 12px; color: var(--text2); line-height: 1.6; }
 
-/* ─── ARCHITECTURE ─── */
+/* SECTION */
 .section { margin-bottom: 80px; }
-.section-header {
-  display: flex; align-items: baseline; gap: 16px;
-  margin-bottom: 24px;
-}
-.section-num {
-  font-family: 'Syne', sans-serif;
-  font-size: 11px; font-weight: 800; letter-spacing: 3px;
-  color: var(--text3);
-}
-.section-title {
-  font-family: 'Syne', sans-serif;
-  font-size: 22px; font-weight: 700;
-  color: var(--white); letter-spacing: -0.5px;
-}
+.section-header { display: flex; align-items: baseline; gap: 16px; margin-bottom: 24px; }
+.section-num { font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 800; letter-spacing: 3px; color: var(--text3); }
+.section-title { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 700; color: var(--white); letter-spacing: -0.5px; }
 .section-title em { font-style: normal; color: var(--cyan); }
 
-.arch-box {
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  overflow: hidden;
-  padding: 4px;
-}
+/* ARCH BOX */
+.arch-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; padding: 4px; }
 .arch-box svg { width: 100%; height: auto; display: block; border-radius: 4px; }
 
-/* ─── QUICK START CARDS ─── */
-.qs-grid {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
-}
-.qs-card {
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  overflow: hidden;
-  transition: border-color 0.2s;
-}
+/* QUICK START CARDS */
+.qs-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.qs-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; transition: border-color 0.2s; }
 .qs-card:hover { border-color: var(--border2); }
-.qs-header {
-  padding: 14px 18px 10px;
-  border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; gap: 10px;
-}
-.qs-icon {
-  width: 28px; height: 28px; border-radius: 4px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 13px; flex-shrink: 0;
-}
-.qs-icon.nas  { background: rgba(0,212,255,0.1); color: var(--cyan); }
-.qs-icon.orch { background: rgba(0,232,122,0.1); color: var(--green); }
-.qs-icon.build{ background: rgba(255,140,66,0.1); color: var(--orange); }
-
+.qs-header { padding: 14px 18px 10px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+.qs-icon { width: 28px; height: 28px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
+.qs-icon.nas   { background: rgba(0,212,255,0.1); color: var(--cyan); }
+.qs-icon.orch  { background: rgba(0,232,122,0.1); color: var(--green); }
+.qs-icon.build { background: rgba(255,140,66,0.1); color: var(--orange); }
+.qs-icon.plus  { background: rgba(140,107,255,0.1); color: var(--purple); }
 .qs-title { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; color: var(--white); }
 .qs-sub { font-size: 10px; color: var(--text3); letter-spacing: 0.5px; }
-
 .qs-body { padding: 14px 18px; }
-.qs-step {
-  display: flex; gap: 10px; margin-bottom: 10px;
-}
-.qs-step-num {
-  width: 18px; height: 18px; border-radius: 50%;
-  background: var(--border); color: var(--text3);
-  font-size: 9px; display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; margin-top: 2px;
-}
+.qs-step { display: flex; gap: 10px; margin-bottom: 10px; }
+.qs-step-num { width: 18px; height: 18px; border-radius: 50%; background: var(--border); color: var(--text3); font-size: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
 .qs-step-content { flex: 1; min-width: 0; }
 .qs-step-label { font-size: 10px; color: var(--text3); margin-bottom: 4px; letter-spacing: 0.5px; }
 .qs-cmd {
@@ -308,31 +193,97 @@ nav {
 .qs-cmd:hover { border-color: var(--border2); background: var(--bg2); }
 .qs-cmd.cyan { color: var(--cyan); }
 .qs-cmd.orange { color: var(--orange); }
-
-.qs-note {
-  margin-top: 12px; padding: 10px 12px;
-  background: rgba(0,212,255,0.04); border: 1px solid rgba(0,212,255,0.1);
-  border-radius: 3px; font-size: 10px; color: var(--text2); line-height: 1.5;
-}
+.qs-cmd.purple { color: var(--purple); }
+.qs-note { margin-top: 12px; padding: 10px 12px; background: rgba(0,212,255,0.04); border: 1px solid rgba(0,212,255,0.1); border-radius: 3px; font-size: 10px; color: var(--text2); line-height: 1.5; }
 .qs-note strong { color: var(--cyan); }
 
-/* ─── EVENTS TABLE ─── */
-.table-wrap {
-  border: 1px solid var(--border);
+/* PARALLEL FLOW */
+.parallel-box {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 6px; padding: 28px 32px;
+}
+.parallel-timeline {
+  display: flex; flex-direction: column; gap: 0;
+}
+.pt-row {
+  display: grid; grid-template-columns: 80px 1fr;
+  gap: 20px; position: relative;
+}
+.pt-row:not(:last-child)::after {
+  content: '';
+  position: absolute; left: 38px; top: 36px; bottom: 0;
+  width: 1px; background: var(--border);
+}
+.pt-time {
+  font-size: 10px; color: var(--text3); padding-top: 18px;
+  text-align: right; letter-spacing: 0.5px;
+}
+.pt-content { padding: 14px 0 20px; }
+.pt-label { font-size: 9px; letter-spacing: 2px; color: var(--text3); margin-bottom: 6px; text-transform: uppercase; }
+.pt-agents { display: flex; gap: 10px; flex-wrap: wrap; }
+.pt-agent {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 4px; padding: 8px 14px;
+  font-size: 11px;
+}
+.pt-agent.active { border-color: var(--border2); }
+.pt-agent .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.pt-agent .dot.cyan   { background: var(--cyan); box-shadow: 0 0 6px var(--cyan); animation: pulse 2s infinite; }
+.pt-agent .dot.orange { background: var(--orange); box-shadow: 0 0 6px var(--orange); animation: pulse 2s infinite; }
+.pt-agent .dot.purple { background: var(--purple); box-shadow: 0 0 6px var(--purple); animation: pulse 2s infinite; }
+.pt-agent .dot.green  { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 2s infinite; }
+.pt-agent .dot.grey   { background: var(--border2); }
+.pt-agent-name { color: var(--text); }
+.pt-agent-task { color: var(--text3); font-size: 10px; }
+.pt-arrow { color: var(--text3); margin: 0 4px; }
+.pt-result {
+  margin-top: 8px; padding: 8px 12px;
+  background: rgba(0,232,122,0.04); border: 1px solid rgba(0,232,122,0.15);
+  border-radius: 3px; font-size: 11px; color: var(--green2);
+}
+.pt-result strong { color: var(--green); }
+
+/* ONE-LINER BLOCK */
+.oneliner-block {
+  background: var(--bg2); border: 1px solid var(--border2);
   border-radius: 6px; overflow: hidden;
 }
+.oneliner-row {
+  display: grid; grid-template-columns: 120px 1fr auto;
+  align-items: center; gap: 0;
+  border-bottom: 1px solid var(--border);
+  padding: 0;
+}
+.oneliner-row:last-child { border-bottom: none; }
+.oneliner-label {
+  padding: 14px 16px; font-size: 10px; color: var(--text3);
+  letter-spacing: 1px; border-right: 1px solid var(--border);
+  background: rgba(255,255,255,0.01);
+}
+.oneliner-label .role-badge {
+  display: inline-block; padding: 2px 6px; border-radius: 2px;
+  font-size: 9px; font-weight: 700; letter-spacing: 1px; margin-bottom: 4px;
+}
+.oneliner-cmd { padding: 14px 16px; font-size: 11.5px; color: var(--green); }
+.oneliner-cmd .dim { color: var(--text3); }
+.oneliner-cmd .kw  { color: var(--cyan); }
+.oneliner-cmd .val { color: var(--orange); }
+.oneliner-copy {
+  padding: 14px 16px;
+  background: none; border: none; border-left: 1px solid var(--border);
+  color: var(--text3); font-family: inherit; font-size: 10px;
+  cursor: pointer; letter-spacing: 1px; white-space: nowrap;
+  transition: color 0.2s;
+}
+.oneliner-copy:hover { color: var(--cyan); }
+
+/* TABLE */
+.table-wrap { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
 table { width: 100%; border-collapse: collapse; }
 thead { background: var(--bg2); }
-th {
-  padding: 10px 16px; font-size: 10px; font-weight: 700;
-  color: var(--text3); letter-spacing: 2px;
-  text-align: left; border-bottom: 1px solid var(--border);
-}
-td {
-  padding: 9px 16px; font-size: 12px;
-  border-bottom: 1px solid var(--border);
-  vertical-align: top;
-}
+th { padding: 10px 16px; font-size: 10px; font-weight: 700; color: var(--text3); letter-spacing: 2px; text-align: left; border-bottom: 1px solid var(--border); }
+td { padding: 9px 16px; font-size: 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
 tr:last-child td { border-bottom: none; }
 tr:nth-child(even) td { background: rgba(255,255,255,0.01); }
 .ev { color: var(--cyan); font-weight: 500; }
@@ -340,46 +291,69 @@ tr:nth-child(even) td { background: rgba(255,255,255,0.01); }
 .desc { color: var(--text2); }
 .payload { color: var(--green); font-size: 11px; }
 
-/* ─── BADGE CHIPS ─── */
-.chip {
-  display: inline-block; padding: 2px 7px;
-  border-radius: 2px; font-size: 10px; font-weight: 700;
-  letter-spacing: 0.5px;
-}
+/* CHIPS */
+.chip { display: inline-block; padding: 2px 7px; border-radius: 2px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; }
 .chip.cyan   { background: rgba(0,212,255,0.1); color: var(--cyan); }
 .chip.green  { background: rgba(0,232,122,0.1); color: var(--green); }
 .chip.orange { background: rgba(255,140,66,0.1); color: var(--orange); }
 .chip.purple { background: rgba(140,107,255,0.1); color: var(--purple); }
 
-/* ─── FOOTER ─── */
-footer {
-  border-top: 1px solid var(--border);
-  padding: 32px 0;
-  margin-top: 40px;
+/* NAS CONCEPT */
+.nas-diagram {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 6px; padding: 28px 32px;
+  display: grid; grid-template-columns: 1fr auto 1fr;
+  gap: 24px; align-items: center;
 }
-.footer-inner {
-  display: flex; align-items: center; justify-content: space-between;
+.nas-col { display: flex; flex-direction: column; gap: 10px; }
+.nas-title { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; color: var(--white); margin-bottom: 4px; }
+.nas-item {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 4px; padding: 8px 12px; font-size: 11px;
 }
+.nas-item .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.nas-center { text-align: center; }
+.nas-storage {
+  background: var(--bg3); border: 2px solid var(--border2);
+  border-radius: 8px; padding: 20px 24px; text-align: center;
+}
+.nas-storage-icon { font-size: 28px; margin-bottom: 8px; }
+.nas-storage-label { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; color: var(--cyan); margin-bottom: 4px; }
+.nas-storage-sub { font-size: 10px; color: var(--text3); }
+.nas-storage-files { margin-top: 12px; display: flex; flex-direction: column; gap: 4px; }
+.nas-file { font-size: 10px; color: var(--text2); background: var(--bg2); border: 1px solid var(--border); padding: 3px 8px; border-radius: 2px; text-align: left; }
+.nas-file .written-by { color: var(--text3); font-size: 9px; }
+.nas-arrows { display: flex; flex-direction: column; gap: 6px; align-items: center; }
+.nas-arrow { font-size: 18px; color: var(--border2); }
+
+/* FOOTER */
+footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px; }
+.footer-inner { display: flex; align-items: center; justify-content: space-between; }
 .footer-left { font-size: 12px; color: var(--text3); }
 .footer-left strong { color: var(--text2); }
 .footer-links { display: flex; gap: 20px; }
 .footer-links a { font-size: 11px; color: var(--text3); text-decoration: none; }
 .footer-links a:hover { color: var(--cyan); }
 
-/* ─── RESPONSIVE ─── */
-@media (max-width: 768px) {
+/* RESPONSIVE */
+@media (max-width: 900px) {
+  .what-grid { grid-template-columns: repeat(2, 1fr); }
   .qs-grid { grid-template-columns: 1fr; }
-  .what-grid { grid-template-columns: 1fr; }
+  .nas-diagram { grid-template-columns: 1fr; }
+  .nas-arrows { flex-direction: row; }
+  .oneliner-row { grid-template-columns: 1fr; }
   .footer-inner { flex-direction: column; gap: 12px; text-align: center; }
   .nav-links { display: none; }
   .hero h1 { font-size: 32px; letter-spacing: -1px; }
 }
-
-/* ─── ANIMATIONS ─── */
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to   { opacity: 1; transform: translateY(0); }
+@media (max-width: 600px) {
+  .what-grid { grid-template-columns: 1fr; }
+  .parallel-box { padding: 16px; }
 }
+
+/* ANIMATIONS */
+@keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 .hero > * { animation: fadeUp 0.6s ease both; }
 .hero > *:nth-child(1) { animation-delay: 0.05s; }
 .hero > *:nth-child(2) { animation-delay: 0.12s; }
@@ -398,7 +372,9 @@ footer {
       <a href="/" class="nav-logo">oah<span>://</span></a>
       <div class="nav-links">
         <a href="#quickstart">시작하기</a>
-        <a href="#architecture">아키텍처</a>
+        <a href="#nas">NAS 설계</a>
+        <a href="#parallel">병렬 개발</a>
+        <a href="#add-agent">에이전트 추가</a>
         <a href="#events">이벤트</a>
         <a href="https://github.com/baryonlabs/open-agent-harness/blob/main/docs/METHODOLOGY.md">문서</a>
       </div>
@@ -416,9 +392,9 @@ footer {
     <div class="hero-badge">LIVE · v0.1.0</div>
     <h1>open-agent-<em>harness</em></h1>
     <p class="hero-sub">
-      분산 멀티에이전트 AI 개발 워크플로우.<br/>
-      orchestrator · builder · verifier · reviewer<br/>
-      를 여러 머신에서 Phoenix Channel로 연결한다.
+      여러 머신의 AI 에이전트가 <strong style="color:var(--white)">NAS 공유 workspace</strong>에서 협업해<br/>
+      하나의 소프트웨어를 <strong style="color:var(--cyan)">병렬로 개발</strong>한다.<br/>
+      에이전트 추가는 <strong style="color:var(--green)">명령어 한 줄</strong>이면 충분하다.
     </p>
 
     <div class="install-block">
@@ -444,19 +420,24 @@ footer {
 
     <div class="what-grid">
       <div class="what-item">
-        <div class="what-item-label">WHY</div>
-        <div class="what-item-title">분산 실행</div>
-        <p>Mac에서 orchestrator, GPU 서버에서 builder, NAS에서 verifier를 동시에 실행. 머신 경계를 투명하게 넘는다.</p>
+        <div class="what-item-label">STORAGE</div>
+        <div class="what-item-title">NAS 공유 Workspace</div>
+        <p>모든 에이전트가 동일한 NAS 경로를 마운트. 파일을 메시지로 복붙할 필요 없이 직접 읽고 쓴다.</p>
       </div>
       <div class="what-item">
-        <div class="what-item-label">HOW</div>
+        <div class="what-item-label">NETWORK</div>
         <div class="what-item-title">Phoenix Channel</div>
-        <p>Elixir Phoenix WebSocket을 L1 메시지 버스로 사용. task.assign → task.result 이벤트가 채널을 통해 브로드캐스트.</p>
+        <p>Elixir Phoenix WebSocket이 조율 레이어. task.assign → task.result 이벤트가 채널을 통해 실시간 브로드캐스트.</p>
       </div>
       <div class="what-item">
-        <div class="what-item-label">WHAT</div>
-        <div class="what-item-title">Work Key</div>
-        <p>세션마다 <code>LN-YYYYMMDD-XXX</code> Work Key가 발급된다. 모든 에이전트가 같은 채널에 JOIN해 협업한다.</p>
+        <div class="what-item-label">PARALLEL</div>
+        <div class="what-item-title">병렬 개발</div>
+        <p>builder들이 서로 다른 모듈을 동시에 개발. integrator가 NAS에서 직접 읽어 통합. 단일 에이전트 대비 시간 단축.</p>
+      </div>
+      <div class="what-item">
+        <div class="what-item-label">SCALE</div>
+        <div class="what-item-title">원라인 확장</div>
+        <p>새 머신에서 명령어 한 줄로 에이전트 추가. Bun·OpenCode 자동 설치, Work Key 자동 감지, 즉시 협업 참여.</p>
       </div>
     </div>
   </div>
@@ -477,17 +458,78 @@ footer {
   </div>
 </section>
 
+<!-- NAS DESIGN -->
+<section class="section" id="nas">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-num">02</span>
+      <h2 class="section-title">NAS 공유 <em>Workspace</em></h2>
+    </div>
+    <p style="color:var(--text2);font-size:13px;margin-bottom:20px;max-width:640px;">
+      각 에이전트가 같은 NAS 경로를 마운트하면 파일이 공유된다.
+      Phoenix Channel은 <em style="color:var(--white)">파일이 아니라 이벤트와 조율</em>만 담당한다.
+    </p>
+    <div class="nas-diagram">
+      <!-- 에이전트 -->
+      <div class="nas-col">
+        <div class="nas-title">에이전트</div>
+        <div class="nas-item"><span class="dot" style="background:var(--green)"></span><span>agent1 (builder) · Mac M3</span></div>
+        <div class="nas-item"><span class="dot" style="background:var(--orange)"></span><span>agent2 (builder) · GPU 서버</span></div>
+        <div class="nas-item"><span class="dot" style="background:var(--purple)"></span><span>agent3 (integrator) · 빌드 서버</span></div>
+        <div class="nas-item"><span class="dot" style="background:var(--cyan)"></span><span>orchestrator · Claude Code</span></div>
+      </div>
+
+      <!-- 화살표 + NAS -->
+      <div class="nas-center">
+        <div class="nas-arrows">
+          <div class="nas-arrow">⟷</div>
+          <div class="nas-arrow">⟷</div>
+          <div class="nas-arrow">⟷</div>
+        </div>
+        <div style="margin:16px 0;">
+          <div class="nas-storage">
+            <div class="nas-storage-icon">🗄</div>
+            <div class="nas-storage-label">NAS</div>
+            <div class="nas-storage-sub">/workspace/project1/</div>
+            <div class="nas-storage-files">
+              <div class="nas-file">src/users.py <span class="written-by">← agent1</span></div>
+              <div class="nas-file">src/items.py <span class="written-by">← agent2</span></div>
+              <div class="nas-file">src/main.py  <span class="written-by">← agent3</span></div>
+              <div class="nas-file">tests/       <span class="written-by">← agent3</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="nas-arrows">
+          <div class="nas-arrow">⟷</div>
+        </div>
+        <div style="margin-top:16px;font-size:10px;color:var(--text3)">Phoenix Channel<br/>이벤트 조율만</div>
+      </div>
+
+      <!-- 결과 -->
+      <div class="nas-col">
+        <div class="nas-title">하드웨어 활용</div>
+        <div class="nas-item"><span class="dot" style="background:var(--green)"></span><span style="font-size:10px;">코드 생성 · UI · 빠른 추론</span></div>
+        <div class="nas-item"><span class="dot" style="background:var(--orange)"></span><span style="font-size:10px;">ML 연산 · 배치 처리 · CUDA</span></div>
+        <div class="nas-item"><span class="dot" style="background:var(--purple)"></span><span style="font-size:10px;">통합 · 테스트 · CI 실행</span></div>
+        <div class="nas-item"><span class="dot" style="background:var(--cyan)"></span><span style="font-size:10px;">태스크 배분 · MCP 도구</span></div>
+        <div style="margin-top:12px;padding:10px 12px;background:rgba(0,212,255,0.04);border:1px solid rgba(0,212,255,0.1);border-radius:3px;font-size:10px;color:var(--text2);">
+          <strong style="color:var(--cyan)">핵심:</strong> 에이전트는 자기 하드웨어 특성에 맞는 일을 하면서, 결과물은 NAS를 통해 자동으로 공유된다.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- QUICK START -->
 <section class="section" id="quickstart">
   <div class="container">
     <div class="section-header">
-      <span class="section-num">02</span>
+      <span class="section-num">03</span>
       <h2 class="section-title">빠른 <em>시작</em></h2>
     </div>
 
     <div class="qs-grid">
-
-      <!-- Server Card -->
+      <!-- Server -->
       <div class="qs-card">
         <div class="qs-header">
           <div class="qs-icon nas">⬡</div>
@@ -501,25 +543,32 @@ footer {
             <div class="qs-step-num">1</div>
             <div class="qs-step-content">
               <div class="qs-step-label">레포 클론</div>
-              <button class="qs-cmd cyan" onclick="copyText(this, 'git clone https://github.com/baryonlabs/open-agent-harness.git && cd open-agent-harness')">git clone …/open-agent-harness.git</button>
+              <button class="qs-cmd cyan" onclick="copyText(this, 'git clone https://github.com/baryonlabs/open-agent-harness.git && cd open-agent-harness')">git clone …/open-agent-harness</button>
             </div>
           </div>
           <div class="qs-step">
             <div class="qs-step-num">2</div>
             <div class="qs-step-content">
               <div class="qs-step-label">서버 시작</div>
-              <button class="qs-cmd cyan" onclick="copyText(this, 'bash scripts/setup-server.sh')">$ oah-server</button>
+              <button class="qs-cmd cyan" onclick="copyText(this, 'bash scripts/setup-server.sh')">$ bash scripts/setup-server.sh</button>
+            </div>
+          </div>
+          <div class="qs-step">
+            <div class="qs-step-num">3</div>
+            <div class="qs-step-content">
+              <div class="qs-step-label">NAS workspace 마운트</div>
+              <button class="qs-cmd cyan" onclick="copyText(this, 'mount -t nfs nas-ip:/volume/project /workspace')">$ mount nas:/volume/project /workspace</button>
             </div>
           </div>
           <div class="qs-note">
-            <strong>출력 IP를 확인하세요.</strong><br/>
+            <strong>서버 IP를 메모하세요.</strong><br/>
             Tailscale: <code>ws://100.x.x.x:4000</code><br/>
             LAN: <code>ws://192.168.x.x:4000</code>
           </div>
         </div>
       </div>
 
-      <!-- Orchestrator Card -->
+      <!-- Orchestrator -->
       <div class="qs-card">
         <div class="qs-header">
           <div class="qs-icon orch">◎</div>
@@ -540,18 +589,18 @@ footer {
             <div class="qs-step-num">2</div>
             <div class="qs-step-content">
               <div class="qs-step-label">오케스트레이터 시작</div>
-              <button class="qs-cmd" onclick="copyText(this, 'oah-agent ws://100.x.x.x:4000 orchestrator .')">oah-agent ws://… orchestrator .</button>
+              <button class="qs-cmd" onclick="copyText(this, 'ROLE=orchestrator bash scripts/setup-agent.sh ws://100.x.x.x:4000')">ROLE=orchestrator oah-agent ws://…</button>
             </div>
           </div>
           <div class="qs-note">
             <strong>Work Key가 출력됩니다.</strong><br/>
-            다른 머신에 복사해 전달하세요.<br/>
-            <code>LN-20260308-001</code>
+            <code>LN-20260308-001</code><br/>
+            다른 머신 연결 명령어도 자동 출력.
           </div>
         </div>
       </div>
 
-      <!-- Builder Card -->
+      <!-- Builder -->
       <div class="qs-card">
         <div class="qs-header">
           <div class="qs-icon build">▣</div>
@@ -564,25 +613,123 @@ footer {
           <div class="qs-step">
             <div class="qs-step-num">1</div>
             <div class="qs-step-content">
-              <div class="qs-step-label">설치 (최초 1회)</div>
-              <button class="qs-cmd orange" onclick="copyText(this, 'curl -fsSL https://baryonlabs.github.io/install.sh | bash')">curl …/install.sh | bash</button>
+              <div class="qs-step-label">설치 + 연결 (한 번에)</div>
+              <button class="qs-cmd orange" onclick="copyText(this, 'bash scripts/setup-agent.sh ws://100.x.x.x:4000 builder')">$ oah-agent ws://… builder</button>
             </div>
           </div>
           <div class="qs-step">
             <div class="qs-step-num">2</div>
             <div class="qs-step-content">
-              <div class="qs-step-label">에이전트 시작 (WK 자동 감지)</div>
-              <button class="qs-cmd orange" onclick="copyText(this, 'oah-agent ws://100.x.x.x:4000 builder')">oah-agent ws://… builder</button>
+              <div class="qs-step-label">NAS workspace 지정 (선택)</div>
+              <button class="qs-cmd orange" onclick="copyText(this, 'bash scripts/setup-agent.sh ws://100.x.x.x:4000 builder \"\" /workspace')">$ oah-agent ws://… builder &quot;&quot; /workspace</button>
             </div>
           </div>
           <div class="qs-note">
-            WK 명시도 가능:<br/>
-            <code>oah-agent ws://… builder LN-…-001</code>
+            WK 생략 시 자동 감지.<br/>
+            Bun · OpenCode 없으면 자동 설치.<br/>
+            <code>oah-agent ws://… verifier LN-…-001</code>
           </div>
         </div>
       </div>
+    </div>
+  </div>
+</section>
+
+<!-- PARALLEL DEV -->
+<section class="section" id="parallel">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-num">04</span>
+      <h2 class="section-title">병렬 개발 <em>예시</em></h2>
+    </div>
+    <p style="color:var(--text2);font-size:13px;margin-bottom:20px;max-width:640px;">
+      단일 에이전트는 users.py → items.py → main.py를 순차 실행.
+      Mode B는 <em style="color:var(--cyan)">users + items를 동시에</em> 개발하고 integrator가 NAS에서 직접 읽어 통합한다.
+    </p>
+    <div class="parallel-box">
+      <div class="parallel-timeline">
+
+        <div class="pt-row">
+          <div class="pt-time">t = 0s</div>
+          <div class="pt-content">
+            <div class="pt-label">오케스트레이터 — 동시 태스크 발사</div>
+            <div class="pt-agents">
+              <div class="pt-agent active"><span class="dot cyan"></span><span class="pt-agent-name">agent1</span><span class="pt-arrow">→</span><span class="pt-agent-task">src/users.py 작성</span></div>
+              <div class="pt-agent active"><span class="dot orange"></span><span class="pt-agent-name">agent2</span><span class="pt-arrow">→</span><span class="pt-agent-task">src/items.py 작성</span></div>
+              <div class="pt-agent"><span class="dot grey"></span><span class="pt-agent-name">agent3</span><span class="pt-arrow">→</span><span class="pt-agent-task">대기 중</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pt-row">
+          <div class="pt-time">t = 30s</div>
+          <div class="pt-content">
+            <div class="pt-label">NAS에 두 파일 동시 완성</div>
+            <div class="pt-agents">
+              <div class="pt-agent"><span class="dot green"></span><span class="pt-agent-name">agent1</span><span class="pt-arrow">✓</span><span class="pt-agent-task">src/users.py 완료</span></div>
+              <div class="pt-agent"><span class="dot green"></span><span class="pt-agent-name">agent2</span><span class="pt-arrow">✓</span><span class="pt-agent-task">src/items.py 완료</span></div>
+              <div class="pt-agent active"><span class="dot purple"></span><span class="pt-agent-name">agent3</span><span class="pt-arrow">→</span><span class="pt-agent-task">NAS에서 두 파일 직접 읽기</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pt-row">
+          <div class="pt-time">t = 75s</div>
+          <div class="pt-content">
+            <div class="pt-label">통합 완료</div>
+            <div class="pt-agents">
+              <div class="pt-agent"><span class="dot green"></span><span class="pt-agent-name">agent3</span><span class="pt-arrow">✓</span><span class="pt-agent-task">src/main.py + tests/ 완성</span></div>
+            </div>
+            <div class="pt-result"><strong>4/4 통합 테스트 통과</strong> · NAS에 최종 아티팩트 저장 · 단일 에이전트 대비 ~40% 단축</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ADD AGENT -->
+<section class="section" id="add-agent">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-num">05</span>
+      <h2 class="section-title">에이전트 <em>추가</em></h2>
+    </div>
+    <p style="color:var(--text2);font-size:13px;margin-bottom:20px;max-width:640px;">
+      새 머신을 협업에 참여시키려면 명령어 한 줄이면 된다.
+      Bun · OpenCode가 없으면 자동 설치하고, Work Key는 서버에서 자동으로 감지한다.
+    </p>
+    <div class="oneliner-block">
+
+      <div class="oneliner-row">
+        <div class="oneliner-label"><span class="role-badge chip orange">builder</span><br/>코드 작성</div>
+        <div class="oneliner-cmd"><span class="dim">bash scripts/setup-agent.sh </span><span class="kw">ws://서버IP:4000</span> <span class="val">builder</span> <span class="dim">"" /workspace</span></div>
+        <button class="oneliner-copy" onclick="copyText(this, 'bash scripts/setup-agent.sh ws://서버IP:4000 builder \"\" /workspace')">복사</button>
+      </div>
+
+      <div class="oneliner-row">
+        <div class="oneliner-label"><span class="role-badge chip purple">verifier</span><br/>테스트 실행</div>
+        <div class="oneliner-cmd"><span class="dim">bash scripts/setup-agent.sh </span><span class="kw">ws://서버IP:4000</span> <span class="val">verifier</span> <span class="dim">"" /workspace</span></div>
+        <button class="oneliner-copy" onclick="copyText(this, 'bash scripts/setup-agent.sh ws://서버IP:4000 verifier \"\" /workspace')">복사</button>
+      </div>
+
+      <div class="oneliner-row">
+        <div class="oneliner-label"><span class="role-badge chip cyan">reviewer</span><br/>코드 리뷰</div>
+        <div class="oneliner-cmd"><span class="dim">bash scripts/setup-agent.sh </span><span class="kw">ws://서버IP:4000</span> <span class="val">reviewer</span> <span class="dim">"" /workspace</span></div>
+        <button class="oneliner-copy" onclick="copyText(this, 'bash scripts/setup-agent.sh ws://서버IP:4000 reviewer \"\" /workspace')">복사</button>
+      </div>
+
+      <div class="oneliner-row">
+        <div class="oneliner-label"><span class="role-badge chip green">신규 설치</span><br/>자동 설치 포함</div>
+        <div class="oneliner-cmd"><span class="dim">ROLE=builder DIR=/workspace bash &lt;(curl -fsSL </span><span class="kw">https://raw.githubusercontent.com/baryonlabs/open-agent-harness/main/scripts/setup-agent.sh</span><span class="dim">) ws://서버IP:4000</span></div>
+        <button class="oneliner-copy" onclick="copyText(this, 'ROLE=builder DIR=/workspace bash <(curl -fsSL https://raw.githubusercontent.com/baryonlabs/open-agent-harness/main/scripts/setup-agent.sh) ws://서버IP:4000')">복사</button>
+      </div>
 
     </div>
+    <p style="margin-top:12px;font-size:11px;color:var(--text3);">
+      Work Key(<code>LN-YYYYMMDD-XXX</code>) 생략 시 서버에서 최신 WK 자동 감지 · <code>AGENT_NAME</code> 기본값: <code>role@hostname</code>
+    </p>
   </div>
 </section>
 
@@ -590,74 +737,23 @@ footer {
 <section class="section" id="events">
   <div class="container">
     <div class="section-header">
-      <span class="section-num">03</span>
+      <span class="section-num">06</span>
       <h2 class="section-title">채널 <em>이벤트</em></h2>
     </div>
     <div class="table-wrap">
       <table>
         <thead>
-          <tr>
-            <th>EVENT</th>
-            <th>DIRECTION</th>
-            <th>PAYLOAD (주요 필드)</th>
-            <th>설명</th>
-          </tr>
+          <tr><th>EVENT</th><th>DIRECTION</th><th>PAYLOAD (주요 필드)</th><th>설명</th></tr>
         </thead>
         <tbody>
-          <tr>
-            <td><span class="ev">task.assign</span></td>
-            <td><span class="dir">orch → builder</span></td>
-            <td><span class="payload">to, task_id, instructions</span></td>
-            <td><span class="desc">태스크 할당. builder가 OpenCode 실행.</span></td>
-          </tr>
-          <tr>
-            <td><span class="ev">task.progress</span></td>
-            <td><span class="dir">builder → all</span></td>
-            <td><span class="payload">task_id, message, output_tail</span></td>
-            <td><span class="desc">10초마다 진행 상황 브로드캐스트.</span></td>
-          </tr>
-          <tr>
-            <td><span class="ev">task.result</span></td>
-            <td><span class="dir">builder → all</span></td>
-            <td><span class="payload">task_id, exit_code, artifacts[]</span></td>
-            <td><span class="desc">태스크 완료. ARTIFACT: 라인 파싱됨.</span></td>
-          </tr>
-          <tr>
-            <td><span class="ev">task.blocked</span></td>
-            <td><span class="dir">any → all</span></td>
-            <td><span class="payload">task_id, reason</span></td>
-            <td><span class="desc">진행 불가. orchestrator가 재배정 판단.</span></td>
-          </tr>
-          <tr>
-            <td><span class="ev">task.approval_requested</span></td>
-            <td><span class="dir">any → orch</span></td>
-            <td><span class="payload">task_id, action, rationale</span></td>
-            <td><span class="desc">인간 승인 게이트 (ACP).</span></td>
-          </tr>
-          <tr>
-            <td><span class="ev">state.update</span></td>
-            <td><span class="dir">any → server</span></td>
-            <td><span class="payload">key: value pairs</span></td>
-            <td><span class="desc">ETS Work Key 상태 업데이트.</span></td>
-          </tr>
-          <tr>
-            <td><span class="ev">mailbox.post</span></td>
-            <td><span class="dir">any → target</span></td>
-            <td><span class="payload">to, body</span></td>
-            <td><span class="desc">오프라인이면 큐잉, 온라인이면 즉시 전달.</span></td>
-          </tr>
-          <tr>
-            <td><span class="ev">agent.hello</span></td>
-            <td><span class="dir">server → all</span></td>
-            <td><span class="payload">agent, role, machine</span></td>
-            <td><span class="desc">에이전트 JOIN 알림.</span></td>
-          </tr>
-          <tr>
-            <td><span class="ev">agent.bye</span></td>
-            <td><span class="dir">server → all</span></td>
-            <td><span class="payload">agent, role</span></td>
-            <td><span class="desc">에이전트 퇴장 알림.</span></td>
-          </tr>
+          <tr><td><span class="ev">task.assign</span></td><td><span class="dir">orch → agent</span></td><td><span class="payload">to, task_id, role, instructions</span></td><td><span class="desc">태스크 할당. 대상 agent가 OpenCode 실행.</span></td></tr>
+          <tr><td><span class="ev">task.progress</span></td><td><span class="dir">agent → all</span></td><td><span class="payload">task_id, message, output_tail</span></td><td><span class="desc">10초마다 진행 상황 브로드캐스트.</span></td></tr>
+          <tr><td><span class="ev">task.result</span></td><td><span class="dir">agent → all</span></td><td><span class="payload">task_id, exit_code, artifacts[]</span></td><td><span class="desc">태스크 완료. ARTIFACT: 라인 자동 파싱.</span></td></tr>
+          <tr><td><span class="ev">task.blocked</span></td><td><span class="dir">any → all</span></td><td><span class="payload">task_id, reason</span></td><td><span class="desc">진행 불가. orchestrator가 재배정 판단.</span></td></tr>
+          <tr><td><span class="ev">state.update</span></td><td><span class="dir">any → server</span></td><td><span class="payload">key: value</span></td><td><span class="desc">Work Key 상태 업데이트 (ETS).</span></td></tr>
+          <tr><td><span class="ev">mailbox.post</span></td><td><span class="dir">any → target</span></td><td><span class="payload">to, body</span></td><td><span class="desc">오프라인이면 큐잉, 온라인이면 즉시 전달.</span></td></tr>
+          <tr><td><span class="ev">agent.hello</span></td><td><span class="dir">server → all</span></td><td><span class="payload">agent, role, machine</span></td><td><span class="desc">에이전트 JOIN 알림.</span></td></tr>
+          <tr><td><span class="ev">agent.bye</span></td><td><span class="dir">server → all</span></td><td><span class="payload">agent, role</span></td><td><span class="desc">에이전트 퇴장 알림.</span></td></tr>
         </tbody>
       </table>
     </div>
@@ -668,54 +764,24 @@ footer {
 <section class="section">
   <div class="container">
     <div class="section-header">
-      <span class="section-num">04</span>
+      <span class="section-num">07</span>
       <h2 class="section-title">REST <em>API</em></h2>
     </div>
     <div class="table-wrap">
       <table>
         <thead>
-          <tr>
-            <th>METHOD</th>
-            <th>ENDPOINT</th>
-            <th>응답</th>
-          </tr>
+          <tr><th>METHOD</th><th>ENDPOINT</th><th>설명</th></tr>
         </thead>
         <tbody>
-          <tr>
-            <td><span class="chip green">GET</span></td>
-            <td><span class="ev">/api/health</span></td>
-            <td><span class="desc"><span class="payload">{"ok":true,"work_keys":N}</span></span></td>
-          </tr>
-          <tr>
-            <td><span class="chip green">GET</span></td>
-            <td><span class="ev">/api/presence</span></td>
-            <td><span class="desc">온라인 에이전트 목록</span></td>
-          </tr>
-          <tr>
-            <td><span class="chip green">GET</span></td>
-            <td><span class="ev">/api/work-keys/latest</span></td>
-            <td><span class="desc">최신 Work Key (없으면 404)</span></td>
-          </tr>
-          <tr>
-            <td><span class="chip orange">POST</span></td>
-            <td><span class="ev">/api/work-keys</span></td>
-            <td><span class="desc">새 Work Key 발급</span></td>
-          </tr>
-          <tr>
-            <td><span class="chip green">GET</span></td>
-            <td><span class="ev">/api/state/:work_key</span></td>
-            <td><span class="desc">Work Key 상태 조회</span></td>
-          </tr>
-          <tr>
-            <td><span class="chip purple">PATCH</span></td>
-            <td><span class="ev">/api/state/:work_key</span></td>
-            <td><span class="desc">Work Key 상태 업데이트</span></td>
-          </tr>
-          <tr>
-            <td><span class="chip green">GET</span></td>
-            <td><span class="ev">/api/mailbox/:agent</span></td>
-            <td><span class="desc">오프라인 메시지 수신 (큐 삭제)</span></td>
-          </tr>
+          <tr><td><span class="chip green">GET</span></td><td><span class="ev">/api/health</span></td><td><span class="desc">서버 상태 · work_key 개수</span></td></tr>
+          <tr><td><span class="chip green">GET</span></td><td><span class="ev">/api/presence</span></td><td><span class="desc">온라인 에이전트 목록 (name, role, machine)</span></td></tr>
+          <tr><td><span class="chip green">GET</span></td><td><span class="ev">/api/work-keys/latest</span></td><td><span class="desc">최신 Work Key (없으면 404)</span></td></tr>
+          <tr><td><span class="chip orange">POST</span></td><td><span class="ev">/api/work-keys</span></td><td><span class="desc">새 Work Key 발급</span></td></tr>
+          <tr><td><span class="chip orange">POST</span></td><td><span class="ev">/api/task</span></td><td><span class="desc">태스크 브로드캐스트 · <span class="payload">{ role, to, instructions }</span></span></td></tr>
+          <tr><td><span class="chip orange">POST</span></td><td><span class="ev">/api/task/:id/result</span></td><td><span class="desc">태스크 결과 저장 · 채널 브로드캐스트</span></td></tr>
+          <tr><td><span class="chip green">GET</span></td><td><span class="ev">/api/state/:work_key</span></td><td><span class="desc">Work Key 상태 조회</span></td></tr>
+          <tr><td><span class="chip purple">PATCH</span></td><td><span class="ev">/api/state/:work_key</span></td><td><span class="desc">Work Key 상태 업데이트</span></td></tr>
+          <tr><td><span class="chip green">GET</span></td><td><span class="ev">/api/mailbox/:agent</span></td><td><span class="desc">오프라인 메시지 수신 후 큐 삭제</span></td></tr>
         </tbody>
       </table>
     </div>
@@ -731,8 +797,9 @@ footer {
       </div>
       <div class="footer-links">
         <a href="https://github.com/baryonlabs/open-agent-harness">GitHub</a>
-        <a href="https://github.com/baryonlabs/open-agent-harness/blob/main/docs/METHODOLOGY.md">문서</a>
-        <a href="https://github.com/baryonlabs/open-agent-harness/blob/main/docs/INSTALL.md">설치 가이드</a>
+        <a href="https://github.com/baryonlabs/open-agent-harness/blob/main/docs/METHODOLOGY.md">방법론</a>
+        <a href="https://github.com/baryonlabs/open-agent-harness/blob/main/README.md">README</a>
+        <a href="https://github.com/baryonlabs/open-agent-harness/blob/main/examples/mode_b_parallel_api/README.md">병렬 예시</a>
         <a href="https://github.com/baryonlabs/open-agent-harness/issues">이슈</a>
       </div>
     </div>
@@ -748,7 +815,6 @@ function copyText(btn, text) {
     setTimeout(() => { btn.textContent = orig; btn.style.color = ''; }, 1800);
   });
 }
-
 function copyInstall(btn) {
   const cmd = 'curl -fsSL https://baryonlabs.github.io/install.sh | bash';
   navigator.clipboard.writeText(cmd).then(() => {
