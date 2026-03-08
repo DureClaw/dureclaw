@@ -246,7 +246,63 @@ SERVER_SCRIPT
 chmod +x "$BIN_DIR/oah-server"
 echo "✅ oah-server 완료"
 
-# ─── 5. PATH 등록 ─────────────────────────────────────────────────────────────
+# ─── 5. oah-ctl 커맨드 생성 ──────────────────────────────────────────────────
+
+echo "→ ctl.ts 다운로드 중..."
+curl -fsSL "$PAGES_BASE/ctl.ts" -o "$OAH_DIR/ctl.ts"
+echo "✅ ctl.ts 완료"
+
+cat > "$BIN_DIR/oah-ctl" << 'CTL_SCRIPT'
+#!/usr/bin/env bash
+# oah-ctl — open-agent-harness control CLI
+#
+# 사용법:
+#   oah-ctl                           # interactive REPL
+#   oah-ctl status                    # 에이전트 목록
+#   oah-ctl task "instructions"       # builder에게 태스크
+#   oah-ctl task --to agent "..."     # 특정 에이전트에게
+#   oah-ctl logs                      # 실시간 이벤트 스트림
+#
+# 옵션:
+#   --server ws://host:4000           # Phoenix 서버 URL
+
+set -euo pipefail
+
+export PATH="$HOME/.bun/bin:$PATH"
+OAH_DIR="$HOME/.open-agent-harness"
+CTL="$OAH_DIR/ctl.ts"
+PAGES_BASE="https://baryonlabs.github.io"
+
+# Bun 확인
+if ! command -v bun &>/dev/null; then
+  echo "→ Bun 설치 중..."
+  curl -fsSL https://bun.sh/install | bash
+  export PATH="$HOME/.bun/bin:$PATH"
+fi
+
+# ctl.ts 없으면 다운로드
+if [[ ! -f "$CTL" ]]; then
+  echo "→ ctl.ts 다운로드 중..."
+  curl -fsSL "$PAGES_BASE/ctl.ts" -o "$CTL"
+fi
+
+# SERVER 기본값: 첫 번째 --server 인자 또는 localhost
+SERVER="${STATE_SERVER:-ws://localhost:4000}"
+for i in "$@"; do
+  if [[ "$prev" == "--server" || "$prev" == "-s" ]]; then
+    SERVER="$i"
+    break
+  fi
+  prev="$i"
+done
+
+exec env STATE_SERVER="$SERVER" bun run "$CTL" "$@"
+CTL_SCRIPT
+
+chmod +x "$BIN_DIR/oah-ctl"
+echo "✅ oah-ctl 완료"
+
+# ─── 6. PATH 등록 ─────────────────────────────────────────────────────────────
 
 PATH_LINE='export PATH="$HOME/.local/bin:$PATH"'
 added_to=()
@@ -273,6 +329,7 @@ echo ""
 echo " 커맨드:"
 echo "   oah-server                            Phoenix 서버 시작"
 echo "   oah-agent <url> [role] [wk] [dir]    에이전트 시작"
+echo "   oah-ctl [--server <url>]              중앙 관리 CLI"
 echo ""
 echo " 예시:"
 echo "   oah-server"
