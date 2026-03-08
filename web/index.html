@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>open-agent-harness — 분산 멀티에이전트 AI 개발 하네스</title>
+<meta name="description" content="Elixir Phoenix 기반 분산 멀티에이전트 AI 개발 워크플로우. orchestrator, builder, verifier, reviewer 에이전트를 여러 머신에서 실행."/>
+
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+
+<style>
+:root {
+  --bg:       #07090f;
+  --bg2:      #0d1018;
+  --bg3:      #111520;
+  --border:   #1e2535;
+  --border2:  #2a3550;
+  --text:     #c8d4e8;
+  --text2:    #6b7fa0;
+  --text3:    #3a4a66;
+  --cyan:     #00d4ff;
+  --cyan2:    #00a8cc;
+  --green:    #00e87a;
+  --green2:   #00b85f;
+  --orange:   #ff8c42;
+  --orange2:  #cc6622;
+  --purple:   #8c6bff;
+  --red:      #ff4466;
+  --white:    #f0f4ff;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* ─── NOISE TEXTURE ─── */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  opacity: 0.018;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ─── SCANLINES ─── */
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+  pointer-events: none;
+  z-index: 9998;
+}
+
+/* ─── LAYOUT ─── */
+.container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+/* ─── NAV ─── */
+nav {
+  position: sticky; top: 0; z-index: 100;
+  border-bottom: 1px solid var(--border);
+  background: rgba(7,9,15,0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.nav-inner {
+  display: flex; align-items: center; justify-content: space-between;
+  height: 52px;
+}
+.nav-logo {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800; font-size: 15px;
+  color: var(--white); letter-spacing: -0.5px;
+  text-decoration: none;
+}
+.nav-logo span { color: var(--cyan); }
+.nav-links { display: flex; gap: 28px; }
+.nav-links a {
+  color: var(--text2); font-size: 12px; text-decoration: none;
+  letter-spacing: 1px;
+  transition: color 0.2s;
+}
+.nav-links a:hover { color: var(--cyan); }
+.nav-gh {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--border); border: 1px solid var(--border2);
+  color: var(--text); font-size: 11px; font-family: inherit;
+  padding: 5px 12px; border-radius: 4px;
+  text-decoration: none; transition: border-color 0.2s, color 0.2s;
+}
+.nav-gh:hover { border-color: var(--cyan); color: var(--cyan); }
+
+/* ─── HERO ─── */
+.hero {
+  padding: 80px 0 60px;
+  position: relative;
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -200px; left: 50%; transform: translateX(-50%);
+  width: 800px; height: 600px;
+  background: radial-gradient(ellipse at center, rgba(0,212,255,0.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(0,212,255,0.06); border: 1px solid rgba(0,212,255,0.2);
+  color: var(--cyan); font-size: 11px; letter-spacing: 2px;
+  padding: 5px 14px; border-radius: 2px;
+  margin-bottom: 28px;
+}
+.hero-badge::before {
+  content: '';
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 8px var(--cyan);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; } 50% { opacity: 0.4; }
+}
+
+.hero h1 {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(36px, 6vw, 64px);
+  font-weight: 800;
+  color: var(--white);
+  letter-spacing: -2px;
+  line-height: 1.0;
+  margin-bottom: 16px;
+}
+.hero h1 em { font-style: normal; color: var(--cyan); }
+
+.hero-sub {
+  font-size: 15px; color: var(--text2);
+  max-width: 560px; line-height: 1.7;
+  margin-bottom: 44px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ─── INSTALL BLOCK ─── */
+.install-block {
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  overflow: hidden;
+  max-width: 640px;
+  margin-bottom: 16px;
+  box-shadow: 0 0 40px rgba(0,212,255,0.06);
+}
+.install-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255,255,255,0.02);
+}
+.install-bar-dots { display: flex; gap: 6px; }
+.install-bar-dots span {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--border2);
+}
+.install-bar-label { font-size: 10px; color: var(--text3); letter-spacing: 1px; }
+.install-cmd {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 20px;
+  gap: 12px;
+}
+.install-cmd code {
+  color: var(--green); font-size: 13.5px;
+  word-break: break-all;
+}
+.install-cmd code .dim { color: var(--text3); }
+.install-cmd code .url { color: var(--cyan); }
+.copy-btn {
+  flex-shrink: 0;
+  background: rgba(0,232,122,0.08); border: 1px solid rgba(0,232,122,0.25);
+  color: var(--green); font-family: inherit; font-size: 11px;
+  padding: 6px 14px; border-radius: 3px; cursor: pointer;
+  letter-spacing: 1px;
+  transition: background 0.2s, border-color 0.2s;
+  white-space: nowrap;
+}
+.copy-btn:hover { background: rgba(0,232,122,0.15); border-color: var(--green); }
+.copy-btn.copied { color: var(--cyan); border-color: var(--cyan); background: rgba(0,212,255,0.1); }
+
+.install-note {
+  font-size: 11px; color: var(--text3); letter-spacing: 0.5px;
+  margin-bottom: 48px;
+}
+.install-note a { color: var(--text2); text-decoration: none; }
+.install-note a:hover { color: var(--cyan); }
+
+/* ─── WHAT IS ─── */
+.what-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 80px;
+}
+.what-item {
+  background: var(--bg);
+  padding: 24px 22px;
+}
+.what-item-label {
+  font-size: 9px; letter-spacing: 2px; color: var(--text3);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+.what-item-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 15px; font-weight: 700;
+  color: var(--white); margin-bottom: 8px;
+}
+.what-item p { font-size: 12px; color: var(--text2); line-height: 1.6; }
+
+/* ─── ARCHITECTURE ─── */
+.section { margin-bottom: 80px; }
+.section-header {
+  display: flex; align-items: baseline; gap: 16px;
+  margin-bottom: 24px;
+}
+.section-num {
+  font-family: 'Syne', sans-serif;
+  font-size: 11px; font-weight: 800; letter-spacing: 3px;
+  color: var(--text3);
+}
+.section-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 22px; font-weight: 700;
+  color: var(--white); letter-spacing: -0.5px;
+}
+.section-title em { font-style: normal; color: var(--cyan); }
+
+.arch-box {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  padding: 4px;
+}
+.arch-box svg { width: 100%; height: auto; display: block; border-radius: 4px; }
+
+/* ─── QUICK START CARDS ─── */
+.qs-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+}
+.qs-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+.qs-card:hover { border-color: var(--border2); }
+.qs-header {
+  padding: 14px 18px 10px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+}
+.qs-icon {
+  width: 28px; height: 28px; border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; flex-shrink: 0;
+}
+.qs-icon.nas  { background: rgba(0,212,255,0.1); color: var(--cyan); }
+.qs-icon.orch { background: rgba(0,232,122,0.1); color: var(--green); }
+.qs-icon.build{ background: rgba(255,140,66,0.1); color: var(--orange); }
+
+.qs-title { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; color: var(--white); }
+.qs-sub { font-size: 10px; color: var(--text3); letter-spacing: 0.5px; }
+
+.qs-body { padding: 14px 18px; }
+.qs-step {
+  display: flex; gap: 10px; margin-bottom: 10px;
+}
+.qs-step-num {
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--border); color: var(--text3);
+  font-size: 9px; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; margin-top: 2px;
+}
+.qs-step-content { flex: 1; min-width: 0; }
+.qs-step-label { font-size: 10px; color: var(--text3); margin-bottom: 4px; letter-spacing: 0.5px; }
+.qs-cmd {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 3px; padding: 7px 10px;
+  font-size: 11px; color: var(--green);
+  cursor: pointer; display: block; width: 100%;
+  font-family: inherit; text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.qs-cmd:hover { border-color: var(--border2); background: var(--bg2); }
+.qs-cmd.cyan { color: var(--cyan); }
+.qs-cmd.orange { color: var(--orange); }
+
+.qs-note {
+  margin-top: 12px; padding: 10px 12px;
+  background: rgba(0,212,255,0.04); border: 1px solid rgba(0,212,255,0.1);
+  border-radius: 3px; font-size: 10px; color: var(--text2); line-height: 1.5;
+}
+.qs-note strong { color: var(--cyan); }
+
+/* ─── EVENTS TABLE ─── */
+.table-wrap {
+  border: 1px solid var(--border);
+  border-radius: 6px; overflow: hidden;
+}
+table { width: 100%; border-collapse: collapse; }
+thead { background: var(--bg2); }
+th {
+  padding: 10px 16px; font-size: 10px; font-weight: 700;
+  color: var(--text3); letter-spacing: 2px;
+  text-align: left; border-bottom: 1px solid var(--border);
+}
+td {
+  padding: 9px 16px; font-size: 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+tr:last-child td { border-bottom: none; }
+tr:nth-child(even) td { background: rgba(255,255,255,0.01); }
+.ev { color: var(--cyan); font-weight: 500; }
+.dir { color: var(--text3); font-size: 10px; }
+.desc { color: var(--text2); }
+.payload { color: var(--green); font-size: 11px; }
+
+/* ─── BADGE CHIPS ─── */
+.chip {
+  display: inline-block; padding: 2px 7px;
+  border-radius: 2px; font-size: 10px; font-weight: 700;
+  letter-spacing: 0.5px;
+}
+.chip.cyan   { background: rgba(0,212,255,0.1); color: var(--cyan); }
+.chip.green  { background: rgba(0,232,122,0.1); color: var(--green); }
+.chip.orange { background: rgba(255,140,66,0.1); color: var(--orange); }
+.chip.purple { background: rgba(140,107,255,0.1); color: var(--purple); }
+
+/* ─── FOOTER ─── */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 32px 0;
+  margin-top: 40px;
+}
+.footer-inner {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.footer-left { font-size: 12px; color: var(--text3); }
+.footer-left strong { color: var(--text2); }
+.footer-links { display: flex; gap: 20px; }
+.footer-links a { font-size: 11px; color: var(--text3); text-decoration: none; }
+.footer-links a:hover { color: var(--cyan); }
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 768px) {
+  .qs-grid { grid-template-columns: 1fr; }
+  .what-grid { grid-template-columns: 1fr; }
+  .footer-inner { flex-direction: column; gap: 12px; text-align: center; }
+  .nav-links { display: none; }
+  .hero h1 { font-size: 32px; letter-spacing: -1px; }
+}
+
+/* ─── ANIMATIONS ─── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.hero > * { animation: fadeUp 0.6s ease both; }
+.hero > *:nth-child(1) { animation-delay: 0.05s; }
+.hero > *:nth-child(2) { animation-delay: 0.12s; }
+.hero > *:nth-child(3) { animation-delay: 0.18s; }
+.hero > *:nth-child(4) { animation-delay: 0.24s; }
+.hero > *:nth-child(5) { animation-delay: 0.30s; }
+.hero > *:nth-child(6) { animation-delay: 0.36s; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="container">
+    <div class="nav-inner">
+      <a href="/" class="nav-logo">oah<span>://</span></a>
+      <div class="nav-links">
+        <a href="#quickstart">시작하기</a>
+        <a href="#architecture">아키텍처</a>
+        <a href="#events">이벤트</a>
+        <a href="https://github.com/baryonlabs/open-agent-harness/blob/main/docs/METHODOLOGY.md">문서</a>
+      </div>
+      <a href="https://github.com/baryonlabs/open-agent-harness" class="nav-gh" target="_blank">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        GitHub
+      </a>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-badge">LIVE · v0.1.0</div>
+    <h1>open-agent-<em>harness</em></h1>
+    <p class="hero-sub">
+      분산 멀티에이전트 AI 개발 워크플로우.<br/>
+      orchestrator · builder · verifier · reviewer<br/>
+      를 여러 머신에서 Phoenix Channel로 연결한다.
+    </p>
+
+    <div class="install-block">
+      <div class="install-bar">
+        <div class="install-bar-dots">
+          <span style="background:#ff5f57"></span>
+          <span style="background:#febc2e"></span>
+          <span style="background:#28c840"></span>
+        </div>
+        <span class="install-bar-label">INSTALL</span>
+        <span style="width:40px"></span>
+      </div>
+      <div class="install-cmd">
+        <code id="install-cmd-text"><span class="dim">curl -fsSL </span><span class="url">https://baryonlabs.github.io/install.sh</span><span class="dim"> | bash</span></code>
+        <button class="copy-btn" onclick="copyInstall(this)">복사</button>
+      </div>
+    </div>
+
+    <p class="install-note">
+      Bun · OpenCode 자동 설치 · <code>~/.local/bin</code> 등록 ·
+      <a href="https://github.com/baryonlabs/open-agent-harness" target="_blank">소스 보기 ↗</a>
+    </p>
+
+    <div class="what-grid">
+      <div class="what-item">
+        <div class="what-item-label">WHY</div>
+        <div class="what-item-title">분산 실행</div>
+        <p>Mac에서 orchestrator, GPU 서버에서 builder, NAS에서 verifier를 동시에 실행. 머신 경계를 투명하게 넘는다.</p>
+      </div>
+      <div class="what-item">
+        <div class="what-item-label">HOW</div>
+        <div class="what-item-title">Phoenix Channel</div>
+        <p>Elixir Phoenix WebSocket을 L1 메시지 버스로 사용. task.assign → task.result 이벤트가 채널을 통해 브로드캐스트.</p>
+      </div>
+      <div class="what-item">
+        <div class="what-item-label">WHAT</div>
+        <div class="what-item-title">Work Key</div>
+        <p>세션마다 <code>LN-YYYYMMDD-XXX</code> Work Key가 발급된다. 모든 에이전트가 같은 채널에 JOIN해 협업한다.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ARCHITECTURE -->
+<section class="section" id="architecture">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-num">01</span>
+      <h2 class="section-title">시스템 <em>아키텍처</em></h2>
+    </div>
+    <div class="arch-box">
+      <object type="image/svg+xml" data="architecture.svg" style="width:100%;display:block;border-radius:4px;" aria-label="시스템 아키텍처 다이어그램">
+        <img src="architecture.svg" alt="시스템 아키텍처" style="width:100%;display:block;border-radius:4px;"/>
+      </object>
+    </div>
+  </div>
+</section>
+
+<!-- QUICK START -->
+<section class="section" id="quickstart">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-num">02</span>
+      <h2 class="section-title">빠른 <em>시작</em></h2>
+    </div>
+
+    <div class="qs-grid">
+
+      <!-- Server Card -->
+      <div class="qs-card">
+        <div class="qs-header">
+          <div class="qs-icon nas">⬡</div>
+          <div>
+            <div class="qs-title">NAS / 서버</div>
+            <div class="qs-sub">PHOENIX SERVER · 24/7</div>
+          </div>
+        </div>
+        <div class="qs-body">
+          <div class="qs-step">
+            <div class="qs-step-num">1</div>
+            <div class="qs-step-content">
+              <div class="qs-step-label">레포 클론</div>
+              <button class="qs-cmd cyan" onclick="copyText(this, 'git clone https://github.com/baryonlabs/open-agent-harness.git && cd open-agent-harness')">git clone …/open-agent-harness.git</button>
+            </div>
+          </div>
+          <div class="qs-step">
+            <div class="qs-step-num">2</div>
+            <div class="qs-step-content">
+              <div class="qs-step-label">서버 시작</div>
+              <button class="qs-cmd cyan" onclick="copyText(this, 'bash scripts/setup-server.sh')">$ oah-server</button>
+            </div>
+          </div>
+          <div class="qs-note">
+            <strong>출력 IP를 확인하세요.</strong><br/>
+            Tailscale: <code>ws://100.x.x.x:4000</code><br/>
+            LAN: <code>ws://192.168.x.x:4000</code>
+          </div>
+        </div>
+      </div>
+
+      <!-- Orchestrator Card -->
+      <div class="qs-card">
+        <div class="qs-header">
+          <div class="qs-icon orch">◎</div>
+          <div>
+            <div class="qs-title">Mac · Orchestrator</div>
+            <div class="qs-sub">WORK KEY 발급 · 태스크 조율</div>
+          </div>
+        </div>
+        <div class="qs-body">
+          <div class="qs-step">
+            <div class="qs-step-num">1</div>
+            <div class="qs-step-content">
+              <div class="qs-step-label">설치 (최초 1회)</div>
+              <button class="qs-cmd" onclick="copyText(this, 'curl -fsSL https://baryonlabs.github.io/install.sh | bash')">curl …/install.sh | bash</button>
+            </div>
+          </div>
+          <div class="qs-step">
+            <div class="qs-step-num">2</div>
+            <div class="qs-step-content">
+              <div class="qs-step-label">오케스트레이터 시작</div>
+              <button class="qs-cmd" onclick="copyText(this, 'oah-agent ws://100.x.x.x:4000 orchestrator .')">oah-agent ws://… orchestrator .</button>
+            </div>
+          </div>
+          <div class="qs-note">
+            <strong>Work Key가 출력됩니다.</strong><br/>
+            다른 머신에 복사해 전달하세요.<br/>
+            <code>LN-20260308-001</code>
+          </div>
+        </div>
+      </div>
+
+      <!-- Builder Card -->
+      <div class="qs-card">
+        <div class="qs-header">
+          <div class="qs-icon build">▣</div>
+          <div>
+            <div class="qs-title">GPU PC · Builder</div>
+            <div class="qs-sub">BUILDER · VERIFIER · REVIEWER</div>
+          </div>
+        </div>
+        <div class="qs-body">
+          <div class="qs-step">
+            <div class="qs-step-num">1</div>
+            <div class="qs-step-content">
+              <div class="qs-step-label">설치 (최초 1회)</div>
+              <button class="qs-cmd orange" onclick="copyText(this, 'curl -fsSL https://baryonlabs.github.io/install.sh | bash')">curl …/install.sh | bash</button>
+            </div>
+          </div>
+          <div class="qs-step">
+            <div class="qs-step-num">2</div>
+            <div class="qs-step-content">
+              <div class="qs-step-label">에이전트 시작 (WK 자동 감지)</div>
+              <button class="qs-cmd orange" onclick="copyText(this, 'oah-agent ws://100.x.x.x:4000 builder')">oah-agent ws://… builder</button>
+            </div>
+          </div>
+          <div class="qs-note">
+            WK 명시도 가능:<br/>
+            <code>oah-agent ws://… builder LN-…-001</code>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- EVENTS TABLE -->
+<section class="section" id="events">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-num">03</span>
+      <h2 class="section-title">채널 <em>이벤트</em></h2>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>EVENT</th>
+            <th>DIRECTION</th>
+            <th>PAYLOAD (주요 필드)</th>
+            <th>설명</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="ev">task.assign</span></td>
+            <td><span class="dir">orch → builder</span></td>
+            <td><span class="payload">to, task_id, instructions</span></td>
+            <td><span class="desc">태스크 할당. builder가 OpenCode 실행.</span></td>
+          </tr>
+          <tr>
+            <td><span class="ev">task.progress</span></td>
+            <td><span class="dir">builder → all</span></td>
+            <td><span class="payload">task_id, message, output_tail</span></td>
+            <td><span class="desc">10초마다 진행 상황 브로드캐스트.</span></td>
+          </tr>
+          <tr>
+            <td><span class="ev">task.result</span></td>
+            <td><span class="dir">builder → all</span></td>
+            <td><span class="payload">task_id, exit_code, artifacts[]</span></td>
+            <td><span class="desc">태스크 완료. ARTIFACT: 라인 파싱됨.</span></td>
+          </tr>
+          <tr>
+            <td><span class="ev">task.blocked</span></td>
+            <td><span class="dir">any → all</span></td>
+            <td><span class="payload">task_id, reason</span></td>
+            <td><span class="desc">진행 불가. orchestrator가 재배정 판단.</span></td>
+          </tr>
+          <tr>
+            <td><span class="ev">task.approval_requested</span></td>
+            <td><span class="dir">any → orch</span></td>
+            <td><span class="payload">task_id, action, rationale</span></td>
+            <td><span class="desc">인간 승인 게이트 (ACP).</span></td>
+          </tr>
+          <tr>
+            <td><span class="ev">state.update</span></td>
+            <td><span class="dir">any → server</span></td>
+            <td><span class="payload">key: value pairs</span></td>
+            <td><span class="desc">ETS Work Key 상태 업데이트.</span></td>
+          </tr>
+          <tr>
+            <td><span class="ev">mailbox.post</span></td>
+            <td><span class="dir">any → target</span></td>
+            <td><span class="payload">to, body</span></td>
+            <td><span class="desc">오프라인이면 큐잉, 온라인이면 즉시 전달.</span></td>
+          </tr>
+          <tr>
+            <td><span class="ev">agent.hello</span></td>
+            <td><span class="dir">server → all</span></td>
+            <td><span class="payload">agent, role, machine</span></td>
+            <td><span class="desc">에이전트 JOIN 알림.</span></td>
+          </tr>
+          <tr>
+            <td><span class="ev">agent.bye</span></td>
+            <td><span class="dir">server → all</span></td>
+            <td><span class="payload">agent, role</span></td>
+            <td><span class="desc">에이전트 퇴장 알림.</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- REST API -->
+<section class="section">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-num">04</span>
+      <h2 class="section-title">REST <em>API</em></h2>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>METHOD</th>
+            <th>ENDPOINT</th>
+            <th>응답</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="chip green">GET</span></td>
+            <td><span class="ev">/api/health</span></td>
+            <td><span class="desc"><span class="payload">{"ok":true,"work_keys":N}</span></span></td>
+          </tr>
+          <tr>
+            <td><span class="chip green">GET</span></td>
+            <td><span class="ev">/api/presence</span></td>
+            <td><span class="desc">온라인 에이전트 목록</span></td>
+          </tr>
+          <tr>
+            <td><span class="chip green">GET</span></td>
+            <td><span class="ev">/api/work-keys/latest</span></td>
+            <td><span class="desc">최신 Work Key (없으면 404)</span></td>
+          </tr>
+          <tr>
+            <td><span class="chip orange">POST</span></td>
+            <td><span class="ev">/api/work-keys</span></td>
+            <td><span class="desc">새 Work Key 발급</span></td>
+          </tr>
+          <tr>
+            <td><span class="chip green">GET</span></td>
+            <td><span class="ev">/api/state/:work_key</span></td>
+            <td><span class="desc">Work Key 상태 조회</span></td>
+          </tr>
+          <tr>
+            <td><span class="chip purple">PATCH</span></td>
+            <td><span class="ev">/api/state/:work_key</span></td>
+            <td><span class="desc">Work Key 상태 업데이트</span></td>
+          </tr>
+          <tr>
+            <td><span class="chip green">GET</span></td>
+            <td><span class="ev">/api/mailbox/:agent</span></td>
+            <td><span class="desc">오프라인 메시지 수신 (큐 삭제)</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-left">
+        <strong>open-agent-harness</strong> · MIT License · baryonlabs
+      </div>
+      <div class="footer-links">
+        <a href="https://github.com/baryonlabs/open-agent-harness">GitHub</a>
+        <a href="https://github.com/baryonlabs/open-agent-harness/blob/main/docs/METHODOLOGY.md">문서</a>
+        <a href="https://github.com/baryonlabs/open-agent-harness/blob/main/docs/INSTALL.md">설치 가이드</a>
+        <a href="https://github.com/baryonlabs/open-agent-harness/issues">이슈</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+function copyText(btn, text) {
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✓ 복사됨';
+    btn.style.color = 'var(--cyan)';
+    setTimeout(() => { btn.textContent = orig; btn.style.color = ''; }, 1800);
+  });
+}
+
+function copyInstall(btn) {
+  const cmd = 'curl -fsSL https://baryonlabs.github.io/install.sh | bash';
+  navigator.clipboard.writeText(cmd).then(() => {
+    btn.textContent = '✓ 복사됨';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = '복사'; btn.classList.remove('copied'); }, 1800);
+  });
+}
+</script>
+
+</body>
+</html>

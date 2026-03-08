@@ -4,7 +4,7 @@
 # GitHub 계정 없이 설치 가능 (git 불필요)
 #
 # 설치:
-#   curl -fsSL https://baryonlabs.github.io/open-agent-harness/install.sh | bash
+#   curl -fsSL https://baryonlabs.github.io/install.sh | bash
 #
 # 설치 후:
 #   oah-server                                    # Phoenix 서버 시작
@@ -12,7 +12,7 @@
 
 set -euo pipefail
 
-PAGES_BASE="https://baryonlabs.github.io/open-agent-harness"
+PAGES_BASE="https://baryonlabs.github.io"
 OAH_DIR="$HOME/.open-agent-harness"
 BIN_DIR="$HOME/.local/bin"
 
@@ -89,7 +89,7 @@ fi
 
 # ─── daemon.ts 최신 버전 확인 (자동 업데이트) ───────────────────────────────
 
-PAGES_BASE="https://baryonlabs.github.io/open-agent-harness"
+PAGES_BASE="https://baryonlabs.github.io"
 if [[ ! -f "$DAEMON" ]]; then
   echo "→ agent-daemon.ts 다운로드 중..."
   curl -fsSL "$PAGES_BASE/agent-daemon.ts" -o "$DAEMON"
@@ -271,6 +271,6 @@ if [[ ${#added_to[@]} -gt 0 ]]; then
   echo ""
 fi
 echo " 업데이트:"
-echo "   curl -fsSL https://baryonlabs.github.io/open-agent-harness/install.sh | bash"
+echo "   curl -fsSL https://baryonlabs.github.io/install.sh | bash"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
