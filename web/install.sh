@@ -151,19 +151,40 @@ cat > "$BIN_DIR/oah-server" << 'SERVER_SCRIPT'
 # oah-server — Phoenix 서버 launcher
 #
 # 사용법:
-#   oah-server          # 포트 4000 (기본값)
+#   oah-server                        # 포트 4000 (기본값)
 #   PORT=8080 oah-server
+#   SERVER_DIR=/path/to/phoenix-server oah-server   # 기존 빌드 사용
 
 set -euo pipefail
 
 PORT="${PORT:-4000}"
 OAH_DIR="$HOME/.open-agent-harness"
 OAH_REPO="https://github.com/baryonlabs/open-agent-harness.git"
-SERVER_DIR="$OAH_DIR/phoenix-server"
 
-# ─── 서버 소스 준비 ─────────────────────────────────────────────────────────
+# ─── Mix PATH 설정 (Homebrew/asdf 포함) ─────────────────────────────────────
 
-if [[ ! -d "$SERVER_DIR" ]]; then
+export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.asdf/shims:$HOME/.asdf/bin:$PATH"
+
+# ─── SERVER_DIR 결정 (우선순위: 환경변수 > 기존 빌드 감지 > 기본값) ─────────
+
+if [[ -z "${SERVER_DIR:-}" ]]; then
+  # 기존 빌드 자동 감지 (mix.exs가 있는 phoenix-server 디렉토리 탐색)
+  for candidate in \
+    "$OAH_DIR/phoenix-server" \
+    "$HOME/dev/open-agent-harness/packages/phoenix-server" \
+    "$HOME/open-agent-harness/packages/phoenix-server" \
+    "$PWD/packages/phoenix-server"; do
+    if [[ -f "$candidate/mix.exs" ]]; then
+      SERVER_DIR="$candidate"
+      break
+    fi
+  done
+  SERVER_DIR="${SERVER_DIR:-$OAH_DIR/phoenix-server}"
+fi
+
+# ─── 서버 소스 준비 (없을 때만 git clone) ───────────────────────────────────
+
+if [[ ! -f "$SERVER_DIR/mix.exs" ]]; then
   echo "→ Phoenix 서버 소스 다운로드 중..."
   if command -v git &>/dev/null; then
     REPO_DIR="$OAH_DIR/repo"
@@ -175,14 +196,12 @@ if [[ ! -d "$SERVER_DIR" ]]; then
     cp -r "$REPO_DIR/packages/phoenix-server" "$SERVER_DIR"
     echo "✅ 서버 소스 준비 완료"
   else
-    echo "❌ git이 필요합니다."
-    echo "   Mac:   brew install git"
-    echo "   Linux: sudo apt-get install git"
+    echo "❌ git이 필요합니다: brew install git"
     exit 1
   fi
 fi
 
-# ─── Elixir/Mix 확인 ────────────────────────────────────────────────────────
+# ─── Elixir/Mix 확인 (없을 때만 설치) ──────────────────────────────────────
 
 if ! command -v mix &>/dev/null; then
   echo "→ Elixir 설치 중..."
@@ -190,38 +209,34 @@ if ! command -v mix &>/dev/null; then
     brew install elixir
   elif command -v apt-get &>/dev/null; then
     sudo apt-get install -y elixir
-  elif command -v asdf &>/dev/null; then
-    asdf plugin add erlang || true
-    asdf plugin add elixir || true
-    asdf install erlang latest
-    asdf install elixir latest
-    asdf global elixir latest
   else
     echo "❌ Elixir를 수동으로 설치하세요: https://elixir-lang.org/install.html"
     exit 1
   fi
 fi
 
-# ─── 의존성 설치 및 서버 시작 ───────────────────────────────────────────────
+# ─── 의존성 설치 (deps/ 없을 때만) ─────────────────────────────────────────
 
 cd "$SERVER_DIR"
-mix local.hex --force --if-missing --quiet
-mix local.rebar --force --if-missing --quiet
 
 if [[ ! -d deps ]]; then
   echo "→ 의존성 설치 중..."
+  mix local.hex --force --if-missing --quiet
+  mix local.rebar --force --if-missing --quiet
   mix deps.get --quiet
 fi
 
-# 로컬 IP 출력
-LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || ifconfig 2>/dev/null | grep 'inet ' | grep -v '127.0.0.1' | head -1 | awk '{print $2}')
+# ─── 서버 시작 ──────────────────────────────────────────────────────────────
+
+LOCAL_IP=$(ifconfig 2>/dev/null | grep 'inet ' | grep -v '127.0.0.1' | head -1 | awk '{print $2}' || hostname -I 2>/dev/null | awk '{print $1}' || echo "")
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo " oah-server | Phoenix"
-echo " Port  → $PORT"
-[[ -n "${LOCAL_IP:-}" ]] && echo " LAN   → http://$LOCAL_IP:$PORT"
-echo " API   → http://localhost:$PORT/api/health"
+echo " Port      → $PORT"
+echo " Server    → $SERVER_DIR"
+[[ -n "${LOCAL_IP:-}" ]] && echo " LAN       → http://$LOCAL_IP:$PORT"
+echo " API       → http://localhost:$PORT/api/health"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
