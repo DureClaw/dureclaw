@@ -64,6 +64,45 @@ defmodule HarnessServer.Router do
     send_json(conn, 201, %{work_key: work_key})
   end
 
+  # ── POST /api/task ───────────────────────────────────────────────────────────
+  # Dispatch a task to connected agents via Phoenix Channel broadcast.
+  # Body: {"instructions": "...", "role": "builder", "to": "agent@machine"}
+  # Returns: {"task_id": "http-...", "work_key": "LN-..."}
+
+  post "/api/task" do
+    {:ok, body, conn} = Plug.Conn.read_body(conn)
+
+    case Jason.decode(body) do
+      {:ok, params} ->
+        wk = StateStore.latest_work_key() || StateStore.generate_work_key()
+        task_id = "http-#{System.system_time(:millisecond)}"
+
+        payload = %{
+          "task_id"      => task_id,
+          "from"         => "http@controller",
+          "role"         => Map.get(params, "role", "builder"),
+          "to"           => Map.get(params, "to"),
+          "instructions" => Map.get(params, "instructions", ""),
+        }
+
+        HarnessServer.Endpoint.broadcast("work:#{wk}", "task.assign", payload)
+        send_json(conn, 201, %{task_id: task_id, work_key: wk})
+
+      {:error, _} ->
+        send_json(conn, 400, %{error: "invalid JSON"})
+    end
+  end
+
+  # ── GET /api/task/:task_id ───────────────────────────────────────────────────
+  # Poll for task result. Returns 202 while pending, 200 when done.
+
+  get "/api/task/:task_id" do
+    case StateStore.get_task_result(task_id) do
+      {:ok, result} -> send_json(conn, 200, result)
+      :not_found    -> send_json(conn, 202, %{status: "pending", task_id: task_id})
+    end
+  end
+
   # ── GET /api/state/:work_key ────────────────────────────────────────────────
 
   get "/api/state/:work_key" do

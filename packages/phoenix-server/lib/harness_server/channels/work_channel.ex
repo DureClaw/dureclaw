@@ -84,11 +84,27 @@ defmodule HarnessServer.WorkChannel do
 
   @impl true
   def handle_in(event, payload, socket)
+      when event in ["task.result", "task.blocked"] do
+    msg =
+      payload
+      |> Map.put("from",  socket.assigns.agent_name)
+      |> Map.put("event", event)
+      |> Map.put("ts",    DateTime.utc_now() |> DateTime.to_iso8601())
+
+    # Store for REST polling (GET /api/task/:task_id)
+    if task_id = Map.get(payload, "task_id") do
+      StateStore.store_task_result(task_id, msg)
+    end
+
+    broadcast!(socket, event, msg)
+    {:reply, {:ok, %{broadcast: true}}, socket}
+  end
+
+  @impl true
+  def handle_in(event, payload, socket)
       when event in [
         "task.assign",
         "task.progress",
-        "task.blocked",
-        "task.result",
         "task.approval_requested"
       ] do
     msg =

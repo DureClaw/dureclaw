@@ -22,6 +22,7 @@ defmodule HarnessServer.StateStore do
 
   @state_table :harness_state
   @mailbox_table :harness_mailbox
+  @task_table :harness_tasks
 
   # ─── Public API ─────────────────────────────────────────────────────────────
 
@@ -75,6 +76,19 @@ defmodule HarnessServer.StateStore do
     GenServer.call(__MODULE__, {:pop_mailbox, agent_name})
   end
 
+  @doc "Store task result for REST polling."
+  def store_task_result(task_id, result) do
+    :ets.insert(@task_table, {task_id, result})
+  end
+
+  @doc "Get stored task result. Returns {:ok, result} or :not_found."
+  def get_task_result(task_id) do
+    case :ets.lookup(@task_table, task_id) do
+      [{^task_id, result}] -> {:ok, result}
+      [] -> :not_found
+    end
+  end
+
   @doc "Peek at mailbox count without clearing."
   def mailbox_count(agent_name) do
     case :ets.lookup(@mailbox_table, agent_name) do
@@ -89,6 +103,7 @@ defmodule HarnessServer.StateStore do
   def init(_) do
     :ets.new(@state_table, [:named_table, :public, read_concurrency: true])
     :ets.new(@mailbox_table, [:named_table, :public, read_concurrency: true])
+    :ets.new(@task_table, [:named_table, :public, read_concurrency: true])
     {:ok, %{counter: %{}}}
   end
 
