@@ -1,10 +1,11 @@
 defmodule HarnessServer.StateStore do
   @moduledoc """
-  ETS-backed state store for Work Key state and agent mailboxes.
+  Persistent state store for Work Key state and agent mailboxes.
 
   Tables:
-    :harness_state   — {work_key, state_map}
-    :harness_mailbox — {agent_name, [messages]}
+    :harness_state   — {work_key, state_map}  → DETS (disk, survives restarts)
+    :harness_mailbox — {agent_name, [msgs]}   → DETS (disk, survives restarts)
+    :harness_tasks   — {task_id, result}      → ETS  (ephemeral, polling only)
 
   Work Key state shape:
     %{
@@ -18,13 +19,15 @@ defmodule HarnessServer.StateStore do
       created_at: iso8601,
       updated_at: iso8601
     }
+
+  Data directory: $OAH_DATA_DIR (default: "data/")
   """
 
   use GenServer
 
-  @state_table :harness_state
+  @state_table   :harness_state
   @mailbox_table :harness_mailbox
-  @task_table :harness_tasks
+  @task_table    :harness_tasks
 
   # ─── Public API ─────────────────────────────────────────────────────────────
 
@@ -44,7 +47,7 @@ defmodule HarnessServer.StateStore do
 
   @doc "Get state map for a work key."
   def get(work_key) do
-    case :ets.lookup(@state_table, work_key) do
+    case :dets.lookup(@state_table, work_key) do
       [{^work_key, state}] -> state
       [] -> %{}
     end
@@ -57,7 +60,7 @@ defmodule HarnessServer.StateStore do
 
   @doc "List all work keys (sorted ascending)."
   def list_work_keys do
-    :ets.tab2list(@state_table) |> Enum.map(fn {k, _} -> k end) |> Enum.sort()
+    dets_to_list(@state_table) |> Enum.map(fn {k, _} -> k end) |> Enum.sort()
   end
 
   @doc "Return the most recently created work key, or nil."
@@ -78,7 +81,7 @@ defmodule HarnessServer.StateStore do
     GenServer.call(__MODULE__, {:pop_mailbox, agent_name})
   end
 
-  @doc "Store task result for REST polling."
+  @doc "Store task result for REST polling (ETS, ephemeral)."
   def store_task_result(task_id, result) do
     :ets.insert(@task_table, {task_id, result})
   end
@@ -93,7 +96,7 @@ defmodule HarnessServer.StateStore do
 
   @doc "Peek at mailbox count without clearing."
   def mailbox_count(agent_name) do
-    case :ets.lookup(@mailbox_table, agent_name) do
+    case :dets.lookup(@mailbox_table, agent_name) do
       [{^agent_name, msgs}] -> length(msgs)
       [] -> 0
     end
@@ -103,10 +106,36 @@ defmodule HarnessServer.StateStore do
 
   @impl true
   def init(_) do
-    :ets.new(@state_table, [:named_table, :public, read_concurrency: true])
-    :ets.new(@mailbox_table, [:named_table, :public, read_concurrency: true])
+    data_dir = System.get_env("OAH_DATA_DIR", "data")
+    File.mkdir_p!(data_dir)
+
+    {:ok, _} = :dets.open_file(@state_table, [
+      file: String.to_charlist(Path.join(data_dir, "harness_state.dets")),
+      type: :set
+    ])
+
+    {:ok, _} = :dets.open_file(@mailbox_table, [
+      file: String.to_charlist(Path.join(data_dir, "harness_mailbox.dets")),
+      type: :set
+    ])
+
+    # Task results are ephemeral (REST polling only, no need to persist)
     :ets.new(@task_table, [:named_table, :public, read_concurrency: true])
-    {:ok, %{counter: %{}}}
+
+    # Rebuild daily counter from persisted work keys
+    counter = rebuild_counter()
+
+    n = length(dets_to_list(@state_table))
+    IO.puts("[StateStore] loaded #{n} work key(s) from disk (dir=#{data_dir})")
+
+    {:ok, %{counter: counter}}
+  end
+
+  @impl true
+  def terminate(_reason, _state) do
+    :dets.close(@state_table)
+    :dets.close(@mailbox_table)
+    :ok
   end
 
   @impl true
@@ -116,16 +145,16 @@ defmodule HarnessServer.StateStore do
     work_key = "LN-#{today}-#{String.pad_leading("#{counter}", 3, "0")}"
     new_state = put_in(state.counter[today], counter)
 
-    :ets.insert(@state_table, {work_key, %{
-      work_key: work_key,
-      status: "created",
-      goal: Map.get(meta, "goal", nil),
-      project_dir: Map.get(meta, "project_dir", nil),
+    :dets.insert(@state_table, {work_key, %{
+      work_key:       work_key,
+      status:         "created",
+      goal:           Map.get(meta, "goal", nil),
+      project_dir:    Map.get(meta, "project_dir", nil),
       shared_context: Map.get(meta, "context", %{}),
-      loop_count: 0,
-      tasks: [],
-      created_at: DateTime.utc_now() |> DateTime.to_iso8601(),
-      updated_at: DateTime.utc_now() |> DateTime.to_iso8601()
+      loop_count:     0,
+      tasks:          [],
+      created_at:     DateTime.utc_now() |> DateTime.to_iso8601(),
+      updated_at:     DateTime.utc_now() |> DateTime.to_iso8601()
     }})
 
     {:reply, work_key, new_state}
@@ -133,17 +162,17 @@ defmodule HarnessServer.StateStore do
 
   @impl true
   def handle_call({:ensure_work_key, work_key}, _from, state) do
-    unless :ets.member(@state_table, work_key) do
-      :ets.insert(@state_table, {work_key, %{
-        work_key: work_key,
-        status: "created",
-        goal: nil,
-        project_dir: nil,
+    unless :dets.member(@state_table, work_key) do
+      :dets.insert(@state_table, {work_key, %{
+        work_key:       work_key,
+        status:         "created",
+        goal:           nil,
+        project_dir:    nil,
         shared_context: %{},
-        loop_count: 0,
-        tasks: [],
-        created_at: DateTime.utc_now() |> DateTime.to_iso8601(),
-        updated_at: DateTime.utc_now() |> DateTime.to_iso8601()
+        loop_count:     0,
+        tasks:          [],
+        created_at:     DateTime.utc_now() |> DateTime.to_iso8601(),
+        updated_at:     DateTime.utc_now() |> DateTime.to_iso8601()
       }})
     end
 
@@ -152,7 +181,7 @@ defmodule HarnessServer.StateStore do
 
   @impl true
   def handle_call({:update, work_key, updates}, _from, state) do
-    current = case :ets.lookup(@state_table, work_key) do
+    current = case :dets.lookup(@state_table, work_key) do
       [{^work_key, s}] -> s
       [] -> %{work_key: work_key, created_at: DateTime.utc_now() |> DateTime.to_iso8601()}
     end
@@ -160,29 +189,51 @@ defmodule HarnessServer.StateStore do
     updated = Map.merge(current, updates)
               |> Map.put(:updated_at, DateTime.utc_now() |> DateTime.to_iso8601())
 
-    :ets.insert(@state_table, {work_key, updated})
+    :dets.insert(@state_table, {work_key, updated})
     {:reply, updated, state}
   end
 
   @impl true
   def handle_call({:enqueue_mailbox, agent_name, msg}, _from, state) do
-    msgs = case :ets.lookup(@mailbox_table, agent_name) do
+    msgs = case :dets.lookup(@mailbox_table, agent_name) do
       [{^agent_name, existing}] -> existing
       [] -> []
     end
 
-    :ets.insert(@mailbox_table, {agent_name, msgs ++ [msg]})
+    :dets.insert(@mailbox_table, {agent_name, msgs ++ [msg]})
     {:reply, :ok, state}
   end
 
   @impl true
   def handle_call({:pop_mailbox, agent_name}, _from, state) do
-    msgs = case :ets.lookup(@mailbox_table, agent_name) do
+    msgs = case :dets.lookup(@mailbox_table, agent_name) do
       [{^agent_name, existing}] -> existing
       [] -> []
     end
 
-    :ets.delete(@mailbox_table, agent_name)
+    :dets.delete(@mailbox_table, agent_name)
     {:reply, msgs, state}
+  end
+
+  # ─── Private ─────────────────────────────────────────────────────────────────
+
+  # DETS has no tab2list — use foldl to collect all entries.
+  defp dets_to_list(table) do
+    :dets.foldl(fn item, acc -> [item | acc] end, [], table)
+  end
+
+  # Rebuild the daily sequence counter from persisted work keys so that
+  # newly generated keys don't collide after a server restart.
+  defp rebuild_counter do
+    dets_to_list(@state_table)
+    |> Enum.reduce(%{}, fn {key, _}, acc ->
+      case String.split(to_string(key), "-") do
+        ["LN", date, seq] ->
+          n = String.to_integer(seq)
+          Map.update(acc, date, n, &max(&1, n))
+        _ ->
+          acc
+      end
+    end)
   end
 end

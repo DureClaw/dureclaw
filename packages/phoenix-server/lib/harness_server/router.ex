@@ -645,6 +645,7 @@ async function createWorkKey(){
     selWk=d.work_key;
     closeWkModal();
     addLog('system',`Work Key 생성: ${d.work_key}${goal?' — '+goal:''}`);
+    wsJoinNewWorkKey(d.work_key);
     poll();
   }catch{addLog('system','Work Key 생성 실패');}
 }
@@ -735,9 +736,12 @@ function refreshAgentDetail(name){
         <div class="adet-k">현재 태스크</div>
         <div class="adet-v"><div class="${taskBoxCls}">${e(taskInstr)}</div></div>
       </div>
-      ${agentLogs.length?`<div class="adet-row">
-        <div class="adet-k">최근 이벤트</div>
-        <div class="adet-v" style="font-size:10px;color:var(--text3);line-height:1.8">${agentLogs.map(l=>`<span style="color:var(--text3)">${e(l.t)}</span> <span class="lv ${l.ev.replace(/\./g,'-')}" style="font-size:10px">${e(l.ev)}</span> ${e(l.msg.slice(0,50))}`).join('<br>')}</div>
+      ${(taskOutput[name]||agentLogs.length)?`<div class="adet-row">
+        <div class="adet-k">${taskOutput[name]?'실시간 출력':'최근 이벤트'}</div>
+        <div class="adet-v">${taskOutput[name]
+          ?`<pre id="adp-live-out" style="font-size:10px;color:var(--text2);background:var(--bg3);border:1px solid var(--border2);border-radius:4px;padding:8px 10px;max-height:160px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;line-height:1.5;margin:0">${e(taskOutput[name])}</pre>`
+          :`<div style="font-size:10px;color:var(--text3);line-height:1.8">${agentLogs.map(l=>`<span style="color:var(--text3)">${e(l.t)}</span> <span class="lv ${l.ev.replace(/\./g,'-')}" style="font-size:10px">${e(l.ev)}</span> ${e(l.msg.slice(0,50))}`).join('<br>')}</div>`
+        }</div>
       </div>`:''}
       <div class="adet-row">
         <div class="adet-k">로그 필터</div>
@@ -850,64 +854,155 @@ function addLog(ev, msg, agentName){
   if(selAgent&&(agentName===selAgent||msg.includes(selAgent)))refreshAgentDetail(selAgent);
 }
 
-// ── WebSocket ─────────────────────────────────────────────────────────────────
+// ── WebSocket (Phoenix Channel observer) ─────────────────────────────────────
+// Connects to the Phoenix Channel as a read-only observer.
+// • Joins all existing work key channels on connect
+// • Auto-joins new channels when created (via createWorkKey)
+// • Exponential backoff reconnect (1s → 30s)
+// • Tracks task.progress output per agent for live tail
+
+let wsRef=1;
+let wsJoinRef=null;
+let wsJoinedTopics=new Set(); // topics we've joined in this WS session
+let wsReconnectDelay=1000;
+let wsHbTimer=null;
+const taskOutput={}; // agent → latest output tail
+
+function wsSend(arr){try{if(ws?.readyState===1)ws.send(JSON.stringify(arr));}catch{}}
+
+function wsJoinTopic(topic){
+  if(wsJoinedTopics.has(topic))return;
+  wsJoinedTopics.add(topic);
+  const jref=String(wsRef++);
+  wsJoinRef=jref;
+  wsSend([jref,jref,topic,'phx_join',{role:'observer',agent_name:'dashboard@browser'}]);
+}
 
 function connectWs(){
   const proto=location.protocol==='https:'?'wss':'ws';
   ws=new WebSocket(`${proto}://${location.host}/socket/websocket?vsn=2.0.0`);
+
   ws.onopen=()=>{
-    setInterval(()=>ws.send(JSON.stringify([null,String(ref++),'phoenix','heartbeat',{}])),30000);
-    fetch('/api/work-keys/latest').then(r=>r.json()).then(d=>{
-      if(d.work_key)ws.send(JSON.stringify(['1',String(ref++),'work:'+d.work_key,'phx_join',{role:'observer',agent:'dashboard'}]));
+    wsReconnectDelay=1000;
+    wsJoinedTopics.clear();
+    if(wsHbTimer)clearInterval(wsHbTimer);
+    wsHbTimer=setInterval(()=>wsSend([null,String(wsRef++),'phoenix','heartbeat',{}]),30000);
+
+    // Join all current work key channels
+    fetch('/api/work-keys').then(r=>r.json()).then(d=>{
+      (d.work_keys||[]).forEach(wk=>wsJoinTopic('work:'+wk));
     }).catch(()=>{});
   };
+
   ws.onmessage=evt=>{
     try{
-      const [,,topic,ev,payload]=JSON.parse(evt.data);
-      if(ev==='phx_reply'||ev==='heartbeat'||ev==='phx_close')return;
+      const [,, topic, ev, payload]=JSON.parse(evt.data);
+
+      // Ignore protocol internals
+      if(ev==='phx_reply'){
+        // Successful join — if topic is a new WK, update UI
+        if(payload?.status==='ok'&&topic.startsWith('work:')){
+          const wk=topic.replace('work:','');
+          if(!document.querySelector(`.wkk[data-wk="${wk}"]`))poll();
+        }
+        return;
+      }
+      if(ev==='phx_error'||ev==='phx_close'||ev==='presence_state'||ev==='presence_diff'||topic==='phoenix')return;
 
       const from=payload?.from||payload?.agent||null;
       const taskId=payload?.task_id||'';
       let msg='';
 
       if(ev==='task.assign'){
-        const to=payload?.to||'?';
-        const instr=(payload?.instructions||'').slice(0,60);
+        const to=payload?.to||'broadcast';
+        const instr=(payload?.instructions||'').slice(0,80);
         msg=`→ ${to}: ${instr}`;
-        if(to){
+        if(to&&to!=='broadcast'){
           agentState[to]=agentState[to]||{};
-          Object.assign(agentState[to],{task_id:taskId,instructions:payload?.instructions||'',status:'working',started:new Date().toISOString(),completed:null,exit_code:null});
+          Object.assign(agentState[to],{
+            task_id:taskId,
+            instructions:payload?.instructions||'',
+            status:'working',
+            started:new Date().toISOString(),
+            completed:null,
+            exit_code:null
+          });
+          taskOutput[to]='';
           renderAgents(allAgents);
         }
       } else if(ev==='task.result'){
         const agentFrom=payload?.from||'?';
-        msg=`${agentFrom}: exit=${payload?.exit_code??'?'} ${taskId}`;
+        const exitCode=payload?.exit_code??'?';
+        msg=`${agentFrom}: exit=${exitCode} — ${taskId}`;
         tasks++;id('s3').textContent=tasks;
         if(agentFrom&&agentState[agentFrom]){
-          agentState[agentFrom].status='done';
-          agentState[agentFrom].exit_code=payload?.exit_code??0;
-          agentState[agentFrom].completed=new Date().toISOString();
+          Object.assign(agentState[agentFrom],{
+            status: exitCode===0||exitCode==='0'?'done':'error',
+            exit_code: exitCode,
+            completed: new Date().toISOString()
+          });
+          taskOutput[agentFrom]='';
           renderAgents(allAgents);
         }
       } else if(ev==='task.progress'){
-        msg=`${from||'?'}: ${payload?.message||taskId}`;
+        const tail=payload?.output_tail||'';
+        if(tail&&from){
+          taskOutput[from]=tail;
+          // Append to agent detail if open
+          const outEl=id('adp-live-out');
+          if(outEl&&selAgent===from){
+            outEl.textContent=tail;outEl.scrollTop=outEl.scrollHeight;
+          }
+        }
+        msg=`${from||'?'}: ${payload?.message||'working...'}`;
       } else if(ev==='task.blocked'){
-        msg=`${from||'?'}: ${payload?.reason||taskId}`;
-        if(from&&agentState[from]){agentState[from].status='blocked';renderAgents(allAgents);}
+        const agentFrom=payload?.from||'?';
+        msg=`${agentFrom}: ${payload?.error||payload?.reason||taskId}`;
+        if(agentFrom&&agentState[agentFrom]){
+          agentState[agentFrom].status='blocked';
+          renderAgents(allAgents);
+        }
       } else if(ev==='agent.hello'){
-        msg=`${payload?.agent||'?'} (${payload?.role||'?'}) @ ${payload?.machine||'?'}`;
+        const a=payload?.agent||'?';
+        msg=`${a} (${payload?.role||'?'}) @ ${payload?.machine||'?'}`;
+        // Immediately add to agent list without waiting for next poll
+        const existing=allAgents.find(x=>x.name===a);
+        if(!existing){
+          allAgents=[...allAgents,{
+            name:a,role:payload?.role||'builder',
+            machine:payload?.machine||'',
+            work_key:payload?.work_key||selWk||'',
+            online_since:new Date().toISOString()
+          }];
+          renderAgents(allAgents);renderDispatchAgents(allAgents);
+        }
       } else if(ev==='agent.bye'){
-        msg=`${payload?.agent||'?'} 퇴장`;
+        const a=payload?.agent||'?';
+        msg=`${a} 퇴장`;
+        allAgents=allAgents.filter(x=>x.name!==a);
+        renderAgents(allAgents);renderDispatchAgents(allAgents);
       } else {
         msg=payload?.message||taskId||JSON.stringify(payload).slice(0,80);
       }
 
-      addLog(ev, msg, from);
+      addLog(ev,msg,from);
     }catch{}
   };
-  ws.onclose=()=>setTimeout(connectWs,5000);
-  ws.onerror=()=>ws.close();
+
+  ws.onclose=()=>{
+    if(wsHbTimer){clearInterval(wsHbTimer);wsHbTimer=null;}
+    wsJoinedTopics.clear();
+    console.log('[ws] reconnecting in',wsReconnectDelay,'ms');
+    setTimeout(connectWs,wsReconnectDelay);
+    wsReconnectDelay=Math.min(wsReconnectDelay*2,30000);
+    if(connected){connected=false;addLog('system','WebSocket 재연결 중...');}
+  };
+
+  ws.onerror=()=>ws?.close();
 }
+
+// Called after creating a new work key so the dashboard joins that channel too
+function wsJoinNewWorkKey(wk){wsJoinTopic('work:'+wk);}
 
 let pct=0;
 setInterval(()=>{pct=pct>=100?0:pct+100/(POLL/50);id('rp').style.width=pct+'%';},50);

@@ -95,12 +95,22 @@ interface TaskPayload {
 
 const activeTasks = new Map<string, { abort: AbortController }>();
 
+/** Max simultaneous OpenCode subprocesses per daemon. */
+const MAX_CONCURRENT_TASKS = 2;
+
+/**
+ * Results queued while WS was disconnected.
+ * Flushed to channel once we successfully re-join.
+ */
+const pendingResults: Array<{ event: AgentEvent; payload: Record<string, unknown> }> = [];
+
 // ─── Phoenix Channel State ────────────────────────────────────────────────────
 
 let ws: WebSocket | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let reconnectDelay = 1000;
 let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+let isJoined = false;
 
 /** Monotonically increasing ref counter for messages */
 let refCounter = 0;
@@ -120,8 +130,24 @@ function sendRaw(msg: PhxMsg) {
 }
 
 function sendEvent(event: AgentEvent, payload: Record<string, unknown>) {
-  const topic = `work:${WORK_KEY}`;
-  sendRaw([joinRef, nextRef(), topic, event, payload]);
+  if (ws?.readyState === WebSocket.OPEN && isJoined) {
+    const topic = `work:${WORK_KEY}`;
+    sendRaw([joinRef, nextRef(), topic, event, payload]);
+  } else {
+    // WS disconnected — queue for delivery after reconnect
+    pendingResults.push({ event, payload });
+    console.log(`[daemon] queued ${event} (pending=${pendingResults.length})`);
+  }
+}
+
+function flushPending() {
+  if (pendingResults.length === 0) return;
+  console.log(`[daemon] flushing ${pendingResults.length} pending result(s)`);
+  while (pendingResults.length > 0) {
+    const item = pendingResults.shift()!;
+    const topic = `work:${WORK_KEY}`;
+    sendRaw([joinRef, nextRef(), topic, item.event, item.payload]);
+  }
 }
 
 // ─── Heartbeat ───────────────────────────────────────────────────────────────
@@ -184,6 +210,7 @@ function connect() {
 
   ws.onclose = () => {
     stopHeartbeat();
+    isJoined = false;
     console.log(`[daemon] disconnected — reconnecting in ${reconnectDelay}ms`);
     reconnectTimer = setTimeout(connect, reconnectDelay);
     reconnectDelay = Math.min(reconnectDelay * 2, 30_000);
@@ -244,6 +271,7 @@ function handlePhxMessage([msgJoinRef, ref, topic, event, payload]: PhxMsg) {
         const workKey = resp.work_key ?? WORK_KEY;
         const project = resp.project ?? {};
 
+        isJoined = true;
         console.log(`[channel] joined ${topic} (work_key=${workKey})`);
 
         // Override PROJECT_DIR if the work key has one set
@@ -260,6 +288,9 @@ function handlePhxMessage([msgJoinRef, ref, topic, event, payload]: PhxMsg) {
         if (project["shared_context"] && Object.keys(project["shared_context"] as object).length > 0) {
           console.log(`[project] shared_context keys: ${Object.keys(project["shared_context"] as object).join(", ")}`);
         }
+
+        // Deliver any results that were queued during disconnect
+        flushPending();
       } else {
         console.error(`[channel] join failed: ${topic}`, payload);
       }
@@ -334,6 +365,18 @@ async function handleTaskAssign(payload: TaskPayload) {
   // Role check
   if (payload.role && payload.role !== AGENT_ROLE) {
     console.log(`[task] ${taskId} is for role '${payload.role}', I'm '${AGENT_ROLE}' — ignoring`);
+    return;
+  }
+
+  // Concurrency limit — reject if too many tasks are already running
+  if (activeTasks.size >= MAX_CONCURRENT_TASKS) {
+    console.warn(`[task] ${taskId} rejected — already running ${activeTasks.size}/${MAX_CONCURRENT_TASKS} tasks`);
+    sendEvent("task.blocked", {
+      task_id: taskId,
+      to: payload.from,
+      error: `Agent busy (${activeTasks.size} active tasks). Try again later.`,
+      status: "blocked",
+    });
     return;
   }
 
