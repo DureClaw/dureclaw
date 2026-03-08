@@ -31,7 +31,10 @@ defmodule HarnessServer.WorkChannel do
 
   @impl true
   def join("work:" <> work_key, payload, socket) do
-    StateStore.ensure_work_key(work_key)
+    # Only register real work keys (LN-YYYYMMDD-XXX pattern), not internal topics
+    if String.starts_with?(work_key, "LN-") do
+      StateStore.ensure_work_key(work_key)
+    end
 
     agent_name = Map.get(payload, "agent_name", socket.assigns.agent_name)
     role       = Map.get(payload, "role",       socket.assigns.role)
