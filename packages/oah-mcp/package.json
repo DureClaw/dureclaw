@@ -1,0 +1,12 @@
+{
+  "name": "@oah/mcp",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "open-agent-harness MCP server — Phoenix Channel bridge for Claude Code / OpenCode",
+  "scripts": {
+    "start": "bun run src/index.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.10.2"
+  }
+}

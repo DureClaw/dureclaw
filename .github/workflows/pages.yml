@@ -26,6 +26,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Sync web/ from packages/
+        run: |
+          cp packages/agent-daemon/src/index.ts web/agent-daemon.ts
+          cp packages/ctl/src/index.ts web/ctl.ts
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
 

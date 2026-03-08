@@ -5,6 +5,10 @@ defmodule HarnessServer.Router do
 
   alias HarnessServer.{Presence, StateStore}
 
+  plug Plug.Parsers,
+    parsers: [:json],
+    json_decoder: Jason
+
   plug :match
   plug :dispatch
 
@@ -70,27 +74,45 @@ defmodule HarnessServer.Router do
   # Returns: {"task_id": "http-...", "work_key": "LN-..."}
 
   post "/api/task" do
-    {:ok, body, conn} = Plug.Conn.read_body(conn)
+    params = conn.body_params
+    wk = StateStore.latest_work_key() || StateStore.generate_work_key()
+    task_id = "http-#{System.system_time(:millisecond)}"
 
-    case Jason.decode(body) do
-      {:ok, params} ->
-        wk = StateStore.latest_work_key() || StateStore.generate_work_key()
-        task_id = "http-#{System.system_time(:millisecond)}"
+    payload = %{
+      "task_id"      => task_id,
+      "from"         => "http@controller",
+      "role"         => Map.get(params, "role", "builder"),
+      "to"           => Map.get(params, "to"),
+      "instructions" => Map.get(params, "instructions", ""),
+    }
 
-        payload = %{
-          "task_id"      => task_id,
-          "from"         => "http@controller",
-          "role"         => Map.get(params, "role", "builder"),
-          "to"           => Map.get(params, "to"),
-          "instructions" => Map.get(params, "instructions", ""),
-        }
+    HarnessServer.Endpoint.broadcast("work:#{wk}", "task.assign", payload)
 
-        HarnessServer.Endpoint.broadcast("work:#{wk}", "task.assign", payload)
-        send_json(conn, 201, %{task_id: task_id, work_key: wk})
-
-      {:error, _} ->
-        send_json(conn, 400, %{error: "invalid JSON"})
+    # Also enqueue to mailbox so OpenCode plugins can poll via REST
+    if to = Map.get(params, "to") do
+      StateStore.enqueue_mailbox(to, payload)
     end
+
+    send_json(conn, 201, %{task_id: task_id, work_key: wk})
+  end
+
+  # ── POST /api/task/:task_id/result ──────────────────────────────────────────
+  # OpenCode harness plugin calls this to submit task result.
+  # Body: {"status":"done","summary":"...","artifacts":["file.ts"],"from":"agent1@machine"}
+
+  post "/api/task/:task_id/result" do
+    result =
+      conn.body_params
+      |> Map.put("task_id", task_id)
+      |> Map.put("event", "task.result")
+      |> Map.put("ts", DateTime.utc_now() |> DateTime.to_iso8601())
+
+    StateStore.store_task_result(task_id, result)
+
+    wk = StateStore.latest_work_key()
+    if wk, do: HarnessServer.Endpoint.broadcast("work:#{wk}", "task.result", result)
+
+    send_json(conn, 200, %{ok: true, task_id: task_id})
   end
 
   # ── GET /api/task/:task_id ───────────────────────────────────────────────────
@@ -113,16 +135,9 @@ defmodule HarnessServer.Router do
   # ── PATCH /api/state/:work_key ──────────────────────────────────────────────
 
   patch "/api/state/:work_key" do
-    {:ok, body, conn} = Plug.Conn.read_body(conn)
-
-    case Jason.decode(body) do
-      {:ok, updates} ->
-        state = StateStore.update(work_key, updates)
-        send_json(conn, 200, state)
-
-      {:error, _} ->
-        send_json(conn, 400, %{error: "invalid JSON"})
-    end
+    updates = conn.body_params
+    state = StateStore.update(work_key, updates)
+    send_json(conn, 200, state)
   end
 
   # ── GET /api/mailbox/:agent ─────────────────────────────────────────────────
@@ -135,16 +150,9 @@ defmodule HarnessServer.Router do
   # ── POST /api/mailbox/:agent ────────────────────────────────────────────────
 
   post "/api/mailbox/:agent" do
-    {:ok, body, conn} = Plug.Conn.read_body(conn)
-
-    case Jason.decode(body) do
-      {:ok, msg} ->
-        StateStore.enqueue_mailbox(agent, msg)
-        send_json(conn, 201, %{ok: true, queued: true})
-
-      {:error, _} ->
-        send_json(conn, 400, %{error: "invalid JSON"})
-    end
+    msg = conn.body_params
+    StateStore.enqueue_mailbox(agent, msg)
+    send_json(conn, 201, %{ok: true, queued: true})
   end
 
   # ── Fallback ────────────────────────────────────────────────────────────────

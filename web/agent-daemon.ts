@@ -17,10 +17,12 @@
  *   AGENT_NAME=builder@gpu \
  *   AGENT_ROLE=builder \
  *   WORK_KEY=LN-20260308-001 \
- *   bun run agent-daemon.ts
+ *   bun run src/index.ts
  *
  * Env vars:
  *   STATE_SERVER   Base URL of phoenix-server (default: ws://localhost:4000)
+ *                  Accepts ws:// or http:// — ws:// used for WebSocket,
+ *                  http:// used for REST.
  *   AGENT_NAME     Unique name: role@machine (default: orchestrator@local)
  *   AGENT_ROLE     orchestrator|planner|builder|verifier|reviewer
  *   AGENT_MACHINE  machine label (default: hostname)
@@ -52,6 +54,16 @@ let WORK_KEY = process.env.WORK_KEY ?? "";
 
 // ─── Phoenix Protocol Types ──────────────────────────────────────────────────
 
+/**
+ * Phoenix WebSocket message (5-tuple):
+ *   [join_ref, ref, topic, event, payload]
+ *
+ * - join_ref: string|null — ref from the join message; null for server pushes
+ * - ref:      string|null — per-message unique reference
+ * - topic:    string      — channel topic, e.g. "work:LN-20260308-001"
+ * - event:    string      — event name
+ * - payload:  object      — message body
+ */
 type PhxMsg = [string | null, string | null, string, string, Record<string, unknown>];
 
 type AgentEvent =
@@ -90,11 +102,13 @@ let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let reconnectDelay = 1000;
 let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 
+/** Monotonically increasing ref counter for messages */
 let refCounter = 0;
 function nextRef(): string {
   return String(++refCounter);
 }
 
+/** The join_ref used during phx_join (reused for phx_reply matching) */
 let joinRef: string | null = null;
 
 // ─── Send helpers ─────────────────────────────────────────────────────────────
@@ -136,10 +150,12 @@ function connect() {
     reconnectDelay = 1000;
     console.log(`[daemon] WebSocket connected`);
 
+    // If no work key, fetch or create one via REST
     if (!WORK_KEY) {
       WORK_KEY = await fetchOrCreateWorkKey();
     }
 
+    // Join the Phoenix channel
     joinRef = nextRef();
     const topic = `work:${WORK_KEY}`;
     sendRaw([joinRef, joinRef, topic, "phx_join", {
@@ -178,12 +194,14 @@ function connect() {
 
 async function fetchOrCreateWorkKey(): Promise<string> {
   if (AGENT_ROLE === "orchestrator") {
+    // Orchestrator always creates a fresh Work Key
     const res = await fetch(`${HTTP_BASE}/api/work-keys`, { method: "POST" });
     const { work_key } = await res.json() as { work_key: string };
     console.log(`[daemon] created Work Key: ${work_key}`);
     return work_key;
   }
 
+  // Non-orchestrators: poll for the latest Work Key (orchestrator creates it)
   console.log(`[daemon] waiting for orchestrator to create a Work Key...`);
   for (let attempt = 1; attempt <= 30; attempt++) {
     try {
@@ -198,6 +216,7 @@ async function fetchOrCreateWorkKey(): Promise<string> {
     if (attempt % 5 === 0) console.log(`[daemon] still waiting... (${attempt * 2}s)`);
   }
 
+  // Last resort: create own Work Key
   console.warn(`[daemon] no Work Key found after 60s, creating one`);
   const res = await fetch(`${HTTP_BASE}/api/work-keys`, { method: "POST" });
   const { work_key } = await res.json() as { work_key: string };
@@ -207,14 +226,18 @@ async function fetchOrCreateWorkKey(): Promise<string> {
 // ─── Phoenix message handler ──────────────────────────────────────────────────
 
 function handlePhxMessage([msgJoinRef, ref, topic, event, payload]: PhxMsg) {
-  const _ = { msgJoinRef, ref };
+  const _ = { msgJoinRef, ref }; // used for pattern matching if needed
 
   switch (event) {
+    // Phoenix system events
     case "phx_reply": {
       const status = (payload as { status?: string }).status;
       const response = (payload as { response?: unknown }).response;
 
-      if (topic === "phoenix") return;
+      if (topic === "phoenix") {
+        // heartbeat reply — ignore
+        return;
+      }
 
       if (status === "ok") {
         const workKey = (response as { work_key?: string })?.work_key ?? WORK_KEY;
@@ -233,6 +256,7 @@ function handlePhxMessage([msgJoinRef, ref, topic, event, payload]: PhxMsg) {
       console.log(`[channel] closed: ${topic}`);
       break;
 
+    // Agent presence events
     case "agent.hello": {
       const p = payload as { agent?: string; role?: string; machine?: string };
       if (p.agent && p.agent !== AGENT_NAME) {
@@ -247,6 +271,7 @@ function handlePhxMessage([msgJoinRef, ref, topic, event, payload]: PhxMsg) {
       break;
     }
 
+    // Task events — only handle if targeted at us or broadcast
     case "task.assign": {
       const p = payload as unknown as TaskPayload;
       const to = p.to;
@@ -265,9 +290,10 @@ function handlePhxMessage([msgJoinRef, ref, topic, event, payload]: PhxMsg) {
       break;
     }
 
+    // Mailbox delivery
     case "mailbox.message":
     case "mailbox.delivered": {
-      const p = payload as { count?: number };
+      const p = payload as { count?: number; messages?: unknown[] };
       if (event === "mailbox.delivered" && (p.count ?? 0) > 0) {
         console.log(`[mailbox] ${p.count} queued message(s) delivered`);
       }
@@ -275,6 +301,7 @@ function handlePhxMessage([msgJoinRef, ref, topic, event, payload]: PhxMsg) {
     }
 
     default:
+      // Log other events for debugging (avoid noise from server broadcasts)
       if (event !== "presence_state" && event !== "presence_diff") {
         console.log(`[event] ${event} on ${topic}`);
       }
@@ -286,6 +313,7 @@ function handlePhxMessage([msgJoinRef, ref, topic, event, payload]: PhxMsg) {
 async function handleTaskAssign(payload: TaskPayload) {
   const taskId = payload.task_id ?? `task-${Date.now()}`;
 
+  // Role check
   if (payload.role && payload.role !== AGENT_ROLE) {
     console.log(`[task] ${taskId} is for role '${payload.role}', I'm '${AGENT_ROLE}' — ignoring`);
     return;
@@ -297,6 +325,7 @@ async function handleTaskAssign(payload: TaskPayload) {
   const abort = new AbortController();
   activeTasks.set(taskId, { abort });
 
+  // Report start
   sendEvent("task.progress", {
     task_id: taskId,
     to: payload.from,
@@ -347,7 +376,7 @@ async function runOpenCode(
   payload: TaskPayload,
   signal: AbortSignal,
 ): Promise<OpenCodeResult> {
-  const timeout = payload.timeout_ms ?? 300_000;
+  const timeout = payload.timeout_ms ?? 300_000; // 5min default
   const timeoutId = setTimeout(() => {
     if (!signal.aborted) console.log(`[task] ${taskId} timed out`);
   }, timeout);
@@ -464,6 +493,7 @@ function shutdown(reason: string) {
 
   if (ws?.readyState === WebSocket.OPEN && WORK_KEY) {
     sendEvent("agent.bye", { reason });
+    // Give send a tick to flush before closing
     setTimeout(() => {
       ws?.close();
       process.exit(0);

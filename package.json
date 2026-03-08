@@ -8,11 +8,10 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "bun build .opencode/plugin/harness.ts --outdir .opencode/plugin/dist --target node",
     "typecheck": "tsc --noEmit",
     "init": "bash scripts/init.sh",
-    "state-server": "bun run packages/state-server/src/index.ts",
-    "agent": "bun run packages/agent-daemon/src/index.ts"
+    "agent": "bun run packages/agent-daemon/src/index.ts",
+    "mcp": "bun run packages/oah-mcp/src/index.ts"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
