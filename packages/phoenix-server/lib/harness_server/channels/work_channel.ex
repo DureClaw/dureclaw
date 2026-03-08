@@ -58,8 +58,10 @@ defmodule HarnessServer.WorkChannel do
     # broadcast_from! / push cannot be called inside join/3 in Phoenix 1.7+
     send(self(), :after_join)
 
-    presences = Presence.list(socket)
-    {:ok, %{presences: presences, work_key: work_key}, socket}
+    presences   = Presence.list(socket)
+    project     = StateStore.get(work_key)
+
+    {:ok, %{presences: presences, work_key: work_key, project: project}, socket}
   end
 
   # ─── After join: announce presence + deliver offline mailbox ───────────────

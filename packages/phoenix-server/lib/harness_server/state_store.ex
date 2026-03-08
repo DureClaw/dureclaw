@@ -11,6 +11,8 @@ defmodule HarnessServer.StateStore do
       work_key: "LN-20260308-001",
       status: "created" | "running" | "done" | "failed",
       goal: nil | string,
+      project_dir: nil | string,
+      shared_context: %{},
       loop_count: 0,
       tasks: [],
       created_at: iso8601,
@@ -31,8 +33,8 @@ defmodule HarnessServer.StateStore do
   end
 
   @doc "Generate a new Work Key in LN-YYYYMMDD-XXX format."
-  def generate_work_key do
-    GenServer.call(__MODULE__, :generate_work_key)
+  def generate_work_key(meta \\ %{}) do
+    GenServer.call(__MODULE__, {:generate_work_key, meta})
   end
 
   @doc "Ensure a work key entry exists (idempotent)."
@@ -108,7 +110,7 @@ defmodule HarnessServer.StateStore do
   end
 
   @impl true
-  def handle_call(:generate_work_key, _from, state) do
+  def handle_call({:generate_work_key, meta}, _from, state) do
     today = Date.utc_today() |> Date.to_string() |> String.replace("-", "")
     counter = Map.get(state.counter, today, 0) + 1
     work_key = "LN-#{today}-#{String.pad_leading("#{counter}", 3, "0")}"
@@ -117,7 +119,9 @@ defmodule HarnessServer.StateStore do
     :ets.insert(@state_table, {work_key, %{
       work_key: work_key,
       status: "created",
-      goal: nil,
+      goal: Map.get(meta, "goal", nil),
+      project_dir: Map.get(meta, "project_dir", nil),
+      shared_context: Map.get(meta, "context", %{}),
       loop_count: 0,
       tasks: [],
       created_at: DateTime.utc_now() |> DateTime.to_iso8601(),
@@ -134,6 +138,8 @@ defmodule HarnessServer.StateStore do
         work_key: work_key,
         status: "created",
         goal: nil,
+        project_dir: nil,
+        shared_context: %{},
         loop_count: 0,
         tasks: [],
         created_at: DateTime.utc_now() |> DateTime.to_iso8601(),

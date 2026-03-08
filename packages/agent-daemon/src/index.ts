@@ -240,8 +240,26 @@ function handlePhxMessage([msgJoinRef, ref, topic, event, payload]: PhxMsg) {
       }
 
       if (status === "ok") {
-        const workKey = (response as { work_key?: string })?.work_key ?? WORK_KEY;
+        const resp = response as { work_key?: string; project?: Record<string, unknown> };
+        const workKey = resp.work_key ?? WORK_KEY;
+        const project = resp.project ?? {};
+
         console.log(`[channel] joined ${topic} (work_key=${workKey})`);
+
+        // Override PROJECT_DIR if the work key has one set
+        const serverDir = project["project_dir"] as string | undefined;
+        if (serverDir && serverDir !== PROJECT_DIR) {
+          console.log(`[project] project_dir from server: ${serverDir}`);
+          (globalThis as Record<string, unknown>)["EFFECTIVE_PROJECT_DIR"] = serverDir;
+        }
+
+        if (project["goal"]) {
+          console.log(`[project] goal: ${String(project["goal"]).slice(0, 100)}`);
+        }
+
+        if (project["shared_context"] && Object.keys(project["shared_context"] as object).length > 0) {
+          console.log(`[project] shared_context keys: ${Object.keys(project["shared_context"] as object).join(", ")}`);
+        }
       } else {
         console.error(`[channel] join failed: ${topic}`, payload);
       }
@@ -383,9 +401,10 @@ async function runOpenCode(
 
   const systemPrompt = buildSystemPrompt(payload);
 
+  const effectiveDir = (globalThis as Record<string, unknown>)["EFFECTIVE_PROJECT_DIR"] as string ?? PROJECT_DIR;
   const proc = spawn({
     cmd: [OPENCODE_BIN, "run", "--format", "default", systemPrompt],
-    cwd: PROJECT_DIR,
+    cwd: effectiveDir,
     stdout: "pipe",
     stderr: "pipe",
     env: {
@@ -470,6 +489,7 @@ function buildSystemPrompt(payload: TaskPayload): string {
   return [
     `[MULTI-AGENT HARNESS — DISTRIBUTED MODE]`,
     `Agent: ${AGENT_NAME} | Role: ${AGENT_ROLE} | Work Key: ${WORK_KEY}`,
+    `Project Dir: ${(globalThis as Record<string, unknown>)["EFFECTIVE_PROJECT_DIR"] as string ?? PROJECT_DIR}`,
     `Channel: work:${WORK_KEY} @ ${HTTP_BASE}`,
     ``,
     roleDesc,
