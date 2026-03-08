@@ -9,6 +9,9 @@
   ],
   "scripts": {
     "typecheck": "tsc --noEmit",
+    "test": "bun test test/",
+    "test:a": "bun test test/mode_a.test.ts",
+    "test:b": "bun test test/mode_b.test.ts",
     "init": "bash scripts/init.sh",
     "agent": "bun run packages/agent-daemon/src/index.ts",
     "mcp": "bun run packages/oah-mcp/src/index.ts"
