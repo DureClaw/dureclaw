@@ -437,7 +437,7 @@ nav{flex-shrink:0;background:var(--bg2);border-bottom:1px solid var(--border);di
     </div>
     <div class="modal-foot">
       <button class="btn btn-ghost" onclick="closeWkModal()">취소</button>
-      <button class="btn btn-primary" onclick="createWorkKey()">생성</button>
+      <button class="btn btn-primary" id="wk-modal-submit" onclick="createWorkKey()">생성</button>
     </div>
   </div>
 </div>
@@ -869,7 +869,7 @@ async function loadWkState(wk){
     const res=await fetch(`/api/state/${encodeURIComponent(wk)}`,{signal:AbortSignal.timeout(3000)});
     if(!res.ok)return;
     const s=await res.json();
-    wkMeta[wk]={goal:s.goal||null,project_dir:s.project_dir||null,status:s.status||'created'};
+    wkMeta[wk]={goal:s.goal||null,project_dir:s.project_dir||null,status:s.status||'created',shared_context:s.shared_context||{}};
 
     // State editor
     id('state-wk-label').textContent=wk;
@@ -912,7 +912,7 @@ async function saveWkState(){
     if(res.ok){
       id('state-status').textContent='✓ 저장됨';id('state-status').style.color='var(--green)';
       setTimeout(()=>{id('state-status').textContent='';},3000);
-      wkMeta[selWk]={goal,project_dir,status:activeWkStatus};
+      wkMeta[selWk]={goal,project_dir,status:activeWkStatus,shared_context};
       updateProjBanner(selWk);
       loadWkState(selWk);
     }
@@ -934,16 +934,24 @@ function updateProjBanner(wk){
 
 // ── Work Key modal ──────────────────────────────────────────────────────────
 let editingWk=null;
-function openWkModal(mode){editingWk=null;id('wk-modal-title').textContent='새 Work Key 생성';id('wk-goal').value='';id('wk-dir').value='';id('wk-ctx').value='';id('wk-modal').style.display='flex';id('wk-goal').focus();}
+function openWkModal(mode){editingWk=null;id('wk-modal-title').textContent='새 Work Key 생성';id('wk-modal-submit').textContent='생성';id('wk-goal').value='';id('wk-dir').value='';id('wk-ctx').value='';id('wk-modal').style.display='flex';id('wk-goal').focus();}
 function closeWkModal(){id('wk-modal').style.display='none';}
-function editWk(wk){
-  const m=wkMeta[wk]||{};
+async function editWk(wk){
   editingWk=wk;
   id('wk-modal-title').textContent='Work Key 편집: '+wk;
+  id('wk-modal-submit').textContent='저장';
+  id('wk-modal').style.display='flex';
+  // Fetch fresh state if not cached
+  if(!wkMeta[wk]?.goal&&!wkMeta[wk]?.project_dir){
+    try{
+      const r=await fetch(`/api/state/${encodeURIComponent(wk)}`);
+      if(r.ok){const s=await r.json();wkMeta[wk]={goal:s.goal||null,project_dir:s.project_dir||null,status:s.status||'created',shared_context:s.shared_context||{}};}
+    }catch{}
+  }
+  const m=wkMeta[wk]||{};
   id('wk-goal').value=m.goal||'';
   id('wk-dir').value=m.project_dir||'';
-  id('wk-ctx').value='';
-  id('wk-modal').style.display='flex';
+  id('wk-ctx').value=m.shared_context&&Object.keys(m.shared_context).length?JSON.stringify(m.shared_context):'';
   id('wk-goal').focus();
 }
 async function createWorkKey(){
@@ -959,7 +967,7 @@ async function createWorkKey(){
       method:'PATCH',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({goal,project_dir,shared_context:context})
     });
-    wkMeta[editingWk]={goal,project_dir};
+    wkMeta[editingWk]={goal,project_dir,shared_context:context};
     addLog('system',`WK 편집: ${editingWk}`,null);
     closeWkModal();loadWkState(editingWk);poll();return;
   }
