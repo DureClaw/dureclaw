@@ -80,7 +80,11 @@ defmodule HarnessServer.Router do
 
   post "/api/task" do
     params = conn.body_params
-    wk = StateStore.latest_work_key() || StateStore.generate_work_key()
+    # Prefer explicit work_key from body; fall back to latest; create if none
+    wk =
+      Map.get(params, "work_key") ||
+      StateStore.latest_work_key() ||
+      StateStore.generate_work_key()
     task_id = "http-#{System.system_time(:millisecond)}"
 
     payload = %{
@@ -880,7 +884,7 @@ function wsJoinTopic(topic){
 
 function connectWs(){
   const proto=location.protocol==='https:'?'wss':'ws';
-  ws=new WebSocket(`${proto}://${location.host}/socket/websocket?vsn=2.0.0`);
+  ws=new WebSocket(`${proto}://${location.host}/socket/websocket?vsn=2.0.0&agent_name=dashboard@browser&role=observer`);
 
   ws.onopen=()=>{
     wsReconnectDelay=1000;
