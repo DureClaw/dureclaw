@@ -80,9 +80,14 @@ export function detectCapabilities(): string[] {
   if (ram !== null) caps.push(`ram:${ram}g`);
 
   // AI backends
-  if (has("opencode"))  caps.push("opencode");
-  if (has("zeroclaw"))  caps.push("zeroclaw");
-  if (has("claude"))    caps.push("claude-cli");
+  if (has("opencode"))       caps.push("opencode");
+  if (has("zeroclaw"))       caps.push("zeroclaw");
+  if (has("claude"))         caps.push("claude-cli");    // Claude Code CLI
+  if (has("gemini"))         caps.push("gemini");        // Google Gemini CLI
+  if (has("codex"))          caps.push("codex");         // OpenAI Codex CLI
+  if (has("aider"))          caps.push("aider");         // Aider
+  if (has("continue"))       caps.push("continue-cli");  // Continue CLI
+  if (has("copilot"))        caps.push("copilot-cli");   // GitHub Copilot CLI
 
   // Runtimes
   if (has("python3") || has("python")) caps.push("python");

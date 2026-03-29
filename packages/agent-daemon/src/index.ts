@@ -56,7 +56,12 @@ let AGENT_NAME = process.env.AGENT_NAME ?? `${AGENT_ROLE}@${AGENT_MACHINE}`;
 const PROJECT_DIR = process.env.PROJECT_DIR ?? process.cwd();
 const OPENCODE_BIN    = process.env.OPENCODE_BIN    ?? "opencode";
 const ZEROCLAW_BIN    = process.env.ZEROCLAW_BIN    ?? "zeroclaw";
-const AGENT_BACKEND   = process.env.AGENT_BACKEND   ?? "opencode"; // "opencode" | "zeroclaw"
+const CLAUDE_BIN      = process.env.CLAUDE_BIN      ?? "claude";
+const GEMINI_BIN      = process.env.GEMINI_BIN      ?? "gemini";
+const CODEX_BIN       = process.env.CODEX_BIN       ?? "codex";
+const AIDER_BIN       = process.env.AIDER_BIN       ?? "aider";
+// "auto" = pick best available from capabilities at runtime
+const AGENT_BACKEND   = process.env.AGENT_BACKEND   ?? "auto";
 const AGENT_CAPABILITIES = detectCapabilities();
 
 // Normalise server URL: always keep ws:// for WS, derive http:// for REST
@@ -729,9 +734,10 @@ async function runOpenCode(
   const systemPrompt = buildSystemPrompt(payload);
 
   const effectiveDir = (globalThis as Record<string, unknown>)["EFFECTIVE_PROJECT_DIR"] as string ?? PROJECT_DIR;
-  const agentCmd = AGENT_BACKEND === "zeroclaw"
-    ? [ZEROCLAW_BIN, "agent", "-m", systemPrompt]
-    : [OPENCODE_BIN, "run", "--format", "default", systemPrompt];
+
+  // Task-level backend override > env AGENT_BACKEND > auto-detect from capabilities
+  const taskBackend = (payload as Record<string, unknown>).backend as string | undefined;
+  const agentCmd = buildAgentCmd(taskBackend ?? AGENT_BACKEND, systemPrompt);
 
   const proc = spawn({
     cmd: agentCmd,
@@ -799,6 +805,58 @@ async function runOpenCode(
     .map((l) => l.replace("ARTIFACT:", "").trim());
 
   return { output, exitCode, artifacts };
+}
+
+// ─── Multi-backend command builder ───────────────────────────────────────────
+
+/**
+ * Priority order for "auto":
+ *   claude-cli > opencode > gemini > codex > aider > zeroclaw
+ * Each backend's CLI interface is different — map to correct argv.
+ */
+function buildAgentCmd(backend: string, prompt: string): string[] {
+  const resolved = backend === "auto" ? autoSelectBackend() : backend;
+  console.log(`[backend] using: ${resolved}`);
+
+  switch (resolved) {
+    // Claude Code CLI  — `claude -p "<prompt>"`
+    case "claude-cli":
+    case "claude":
+      return [CLAUDE_BIN, "-p", prompt];
+
+    // OpenCode  — `opencode run "<prompt>"`
+    case "opencode":
+      return [OPENCODE_BIN, "run", "--format", "default", prompt];
+
+    // ZeroClaw  — `zeroclaw agent -m "<prompt>"`
+    case "zeroclaw":
+      return [ZEROCLAW_BIN, "agent", "-m", prompt];
+
+    // Google Gemini CLI  — `gemini -p "<prompt>"`
+    case "gemini":
+      return [GEMINI_BIN, "-p", prompt];
+
+    // OpenAI Codex CLI  — `codex "<prompt>"`
+    case "codex":
+      return [CODEX_BIN, prompt];
+
+    // Aider  — `aider --message "<prompt>" --yes-always --no-git`
+    case "aider":
+      return [AIDER_BIN, "--message", prompt, "--yes-always", "--no-git"];
+
+    default:
+      console.warn(`[backend] unknown backend "${resolved}", falling back to opencode`);
+      return [OPENCODE_BIN, "run", "--format", "default", prompt];
+  }
+}
+
+/** Pick best available backend from detected capabilities. */
+function autoSelectBackend(): string {
+  const priority = ["claude-cli", "opencode", "gemini", "codex", "aider", "zeroclaw"];
+  for (const b of priority) {
+    if (AGENT_CAPABILITIES.includes(b)) return b;
+  }
+  return "opencode"; // last resort
 }
 
 // ─── System prompt builder ────────────────────────────────────────────────────
