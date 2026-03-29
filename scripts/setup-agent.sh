@@ -136,15 +136,18 @@ if [[ "$USE_NODE" == "true" ]]; then
   # 32비트 ARM — Node.js + JS 번들 사용
   JS_BUNDLE="$HOME/.oah-agent.js"
   JS_URL="$OAH_BASE/oah-agent.js"
+  # ?nc=날짜 쿼리로 CDN 캐시 우회하여 실제 R2 크기 확인
+  NC_DATE=$(date +%Y%m%d)
+  JS_NOCACHE_URL="$JS_URL?nc=$NC_DATE"
   if [[ ! -f "$JS_BUNDLE" ]]; then
     echo "→ 에이전트(JS) 다운로드 중..."
-    curl -fsSL "$JS_URL" -o "$JS_BUNDLE"
+    curl -fsSL "$JS_NOCACHE_URL" -o "$JS_BUNDLE"
   else
-    REMOTE_SIZE=$(curl -sfI --max-time 5 "$JS_URL" | grep -i content-length | awk '{print $2}' | tr -d '\r')
+    REMOTE_SIZE=$(curl -sfI --max-time 5 "$JS_NOCACHE_URL" | grep -i content-length | awk '{print $2}' | tr -d '\r')
     LOCAL_SIZE=$(wc -c < "$JS_BUNDLE" | tr -d ' ')
     if [[ -n "$REMOTE_SIZE" && "$REMOTE_SIZE" != "$LOCAL_SIZE" ]]; then
       echo "→ 에이전트(JS) 업데이트 중..."
-      curl -fsSL "$JS_URL" -o "$JS_BUNDLE"
+      curl -fsSL "$JS_NOCACHE_URL" -o "$JS_BUNDLE"
     fi
   fi
 
