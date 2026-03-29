@@ -124,7 +124,7 @@ defmodule HarnessServer.Router do
 
     send_json(conn, 200, %{
       ok: true,
-      version: "0.2.0",
+      version: "0.3.0",
       work_keys: length(work_keys)
     })
   end

@@ -1,0 +1,63 @@
+{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+      },
+      "_agents": ["code-expert"],
+      "_description": "GitHub repo search, diff, file contents — for code-expert"
+    },
+    "qdrant": {
+      "command": "npx",
+      "args": ["-y", "mcp-server-qdrant"],
+      "env": {
+        "QDRANT_URL": "${QDRANT_URL:-http://localhost:6333}",
+        "COLLECTION_NAME": "code_cells"
+      },
+      "_agents": ["code-expert", "mfg-expert", "curriculum-expert", "visual-feedback", "executor", "learner-simulator"],
+      "_description": "Vector DB access for all analysis agents"
+    },
+    "jupyter": {
+      "command": "python3",
+      "args": ["-m", "mcp_jupyter"],
+      "_agents": ["executor", "learner-simulator"],
+      "_description": "Real Jupyter kernel execution — ML Jupyter MCP (ClaudeJupy)",
+      "_install": "pip install mcp-jupyter",
+      "_repo": "https://github.com/mayank-ketkar-sf/ClaudeJupy"
+    },
+    "code-context": {
+      "command": "npx",
+      "args": ["-y", "@zilliz/claude-context"],
+      "_agents": ["code-expert"],
+      "_description": "Semantic code search via Zilliz — for code-expert",
+      "_env_required": ["ZILLIZ_CLOUD_URI", "ZILLIZ_CLOUD_API_KEY"]
+    },
+    "knowledge-rag": {
+      "command": "npx",
+      "args": ["-y", "knowledge-rag-mcp"],
+      "_agents": ["mfg-expert", "curriculum-expert"],
+      "_description": "Web crawl + RAG for domain docs — manufacturing standards, curricula",
+      "_repo": "https://github.com/lyonzin/knowledge-rag"
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+      "_agents": ["code-expert", "executor"],
+      "_description": "Local file system access for notebook analysis"
+    }
+  },
+  "_notes": {
+    "activation": "MCP servers are activated per-agent. Each agent's prompt specifies which MCPs to use.",
+    "qdrant_setup": "Run scripts/setup_rag.sh before indexing. Then: python scripts/index_repo.py --repo <path> --collection <name>",
+    "jupyter_mcp": "Requires Jupyter running: jupyter notebook --no-browser. Then set JUPYTER_TOKEN env var.",
+    "env_vars": [
+      "GITHUB_TOKEN — GitHub Personal Access Token (for github MCP)",
+      "QDRANT_URL — Qdrant URL (default: http://localhost:6333)",
+      "JUPYTER_TOKEN — Jupyter server token (for jupyter MCP)",
+      "ZILLIZ_CLOUD_URI — Zilliz URI (optional, for code-context MCP)",
+      "ZILLIZ_CLOUD_API_KEY — Zilliz API key (optional)"
+    ]
+  }
+}
