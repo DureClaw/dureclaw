@@ -92,6 +92,7 @@ $selected = Show-Menu $peers
 if ($null -eq $selected) { exit 0 }
 
 $env:STATE_SERVER = $selected.URL
+if (-not $env:AGENT_ROLE) { $env:AGENT_ROLE = "builder" }
 Write-Host ""
 Write-Host "  Connecting: $($selected.URL)" -ForegroundColor Cyan
 

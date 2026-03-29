@@ -1,126 +1,120 @@
 #!/usr/bin/env bash
-# setup-server.sh — 한 줄로 Phoenix 서버 설치 + 시작
+# setup-server.sh — OAH Phoenix 서버 1줄 설치 + 시작
 #
-# 사용법 (Linux/Mac):
-#   bash scripts/setup-server.sh
-#   PORT=4000 bash scripts/setup-server.sh
+# 원라인 설치:
+#   bash <(curl -fsSL https://open-agent-harness.baryon.ai/setup-server.sh)
 #
 # 환경변수:
-#   PORT   리슨 포트 (기본: 4000)
-#   HOST   리슨 주소 (기본: 0.0.0.0)
+#   PORT             리슨 포트 (기본: 4000)
+#   HOST             리슨 주소 (기본: 0.0.0.0)
+#   OAH_DATA_DIR     데이터 저장 경로 (기본: $HOME/.oah-server/data)
+#   OAH_INSTALL_DIR  설치 경로      (기본: $HOME/.oah-server)
 
 set -euo pipefail
 
+OAH_BASE="https://open-agent-harness.baryon.ai"
 PORT="${PORT:-4000}"
 HOST="${HOST:-0.0.0.0}"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SERVER_DIR="$(cd "$SCRIPT_DIR/../packages/phoenix-server" && pwd)"
+INSTALL_DIR="${OAH_INSTALL_DIR:-$HOME/.oah-server}"
+DATA_DIR="${OAH_DATA_DIR:-$INSTALL_DIR/data}"
+
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+ARCH=$(uname -m)
+case "$ARCH" in
+  x86_64)        ARCH="x86_64" ;;
+  aarch64|arm64) ARCH="arm64" ;;
+  *)
+    echo "ERROR: 지원하지 않는 아키텍처: $ARCH"
+    exit 1 ;;
+esac
+
+TARBALL="oah-server-${OS}-${ARCH}.tar.gz"
+TARBALL_URL="$OAH_BASE/$TARBALL"
+EXE="$INSTALL_DIR/bin/harness_server"
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo " open-agent-harness — Phoenix 서버 설정"
-echo " Dir  : $SERVER_DIR"
-echo " Port : $PORT"
+echo " OAH Phoenix Server"
+echo " Install : $INSTALL_DIR"
+echo " Data    : $DATA_DIR"
+echo " Port    : $PORT"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-# ─── Elixir 확인 ──────────────────────────────────────────────────────────────
+# ─── 소스 빌드 (fallback) ──────────────────────────────────────────────────────
 
-check_elixir() {
-  command -v elixir &>/dev/null && elixir --version | grep -q "Elixir 1\." && return 0
-  return 1
-}
-
-install_elixir_mac() {
-  echo "→ Homebrew로 Elixir 설치 중..."
-  if ! command -v brew &>/dev/null; then
-    echo "❌ Homebrew가 없습니다: https://brew.sh 에서 설치 후 재시도"
+_source_build() {
+  command -v elixir &>/dev/null || {
+    echo "ERROR: Elixir가 없습니다."
+    if [[ "$OS" == "darwin" ]]; then
+      echo "  brew install elixir"
+    else
+      echo "  sudo apt install elixir  또는  https://elixir-lang.org/install.html"
+    fi
     exit 1
+  }
+  local SCRIPT_DIR
+  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  local SERVER_DIR
+  SERVER_DIR="$(cd "$SCRIPT_DIR/../packages/phoenix-server" && pwd)"
+  cd "$SERVER_DIR"
+  mix local.hex --force --quiet
+  mix local.rebar --force --quiet
+  MIX_ENV=prod mix deps.get --quiet
+  MIX_ENV=prod mix release harness_server --overwrite --quiet
+  INSTALL_DIR="$SERVER_DIR/_build/prod/rel/harness_server"
+  EXE="$INSTALL_DIR/bin/harness_server"
+  echo "✅ 소스 빌드 완료"
+}
+
+# ─── 1. 사전 빌드 바이너리 다운로드 ────────────────────────────────────────────
+
+if curl -sf --max-time 5 -I "$TARBALL_URL" | grep -q "200"; then
+  if [[ ! -x "$EXE" ]]; then
+    echo "→ 서버 다운로드 중... ($TARBALL)"
+    mkdir -p "$INSTALL_DIR"
+    curl -fsSL "$TARBALL_URL" | tar -xz -C "$INSTALL_DIR" --strip-components=1
+    chmod +x "$EXE"
+    echo "✅ 설치 완료"
+  else
+    # 원격 파일 크기로 업데이트 확인
+    REMOTE_SIZE=$(curl -sfI --max-time 5 "$TARBALL_URL" | grep -i content-length | awk '{print $2}' | tr -d '\r' || echo "")
+    LOCAL_SIZE=$(du -sk "$INSTALL_DIR" 2>/dev/null | awk '{print $1 * 1024}' || echo "0")
+    if [[ -n "$REMOTE_SIZE" && "$REMOTE_SIZE" -gt "$((LOCAL_SIZE + 2000000))" ]]; then
+      echo "→ 새 버전 업데이트 중..."
+      curl -fsSL "$TARBALL_URL" | tar -xz -C "$INSTALL_DIR" --strip-components=1
+      chmod +x "$EXE"
+      echo "✅ 업데이트 완료"
+    else
+      echo "✅ 최신 버전"
+    fi
   fi
-  brew install elixir
-}
-
-install_elixir_linux() {
-  echo "→ apt로 Elixir 설치 중..."
-  # Erlang Solutions 저장소 사용 (최신 Elixir)
-  wget -q https://packages.erlang-solutions.com/erlang-solutions_2.0_all.deb -O /tmp/erlang-solutions.deb
-  sudo dpkg -i /tmp/erlang-solutions.deb
-  sudo apt-get update -q
-  sudo apt-get install -y esl-erlang elixir
-}
-
-install_elixir_asdf() {
-  echo "→ asdf로 Elixir 설치 중..."
-  if ! command -v asdf &>/dev/null; then
-    git clone https://github.com/asdf-vm/asdf.git ~/.asdf --branch v0.14.0
-    echo '. "$HOME/.asdf/asdf.sh"' >> ~/.bashrc
-    source ~/.bashrc 2>/dev/null || source ~/.asdf/asdf.sh
-  fi
-  asdf plugin add erlang 2>/dev/null || true
-  asdf plugin add elixir 2>/dev/null || true
-  asdf install erlang 26.2.5
-  asdf install elixir 1.16.3-otp-26
-  asdf global erlang 26.2.5
-  asdf global elixir 1.16.3-otp-26
-}
-
-if check_elixir; then
-  echo "✅ $(elixir --version | head -1) (기존)"
 else
-  OS="$(uname -s)"
-  case "$OS" in
-    Darwin) install_elixir_mac ;;
-    Linux)
-      if command -v apt-get &>/dev/null; then
-        install_elixir_linux
-      else
-        install_elixir_asdf
-      fi
-      ;;
-    *)
-      echo "❌ 지원되지 않는 OS: $OS"
-      echo "   https://elixir-lang.org/install.html 에서 수동 설치 후 재시도"
-      exit 1
-      ;;
-  esac
-  echo "✅ $(elixir --version | head -1)"
+  echo "⚠ 사전 빌드 없음 ($TARBALL) — 소스 빌드 시도..."
+  _source_build
 fi
 
-# ─── Mix 의존성 설치 ──────────────────────────────────────────────────────────
+# ─── 2. 데이터 디렉토리 준비 ──────────────────────────────────────────────────
 
-cd "$SERVER_DIR"
-echo "→ mix deps.get..."
-mix local.hex --force --quiet
-mix local.rebar --force --quiet
-mix deps.get --quiet
-echo "✅ 의존성 설치 완료"
+mkdir -p "$DATA_DIR"
 
-# ─── Tailscale IP 안내 ────────────────────────────────────────────────────────
+# ─── 3. 접속 주소 안내 ────────────────────────────────────────────────────────
 
-TAILSCALE_IP=""
-if command -v tailscale &>/dev/null; then
-  TAILSCALE_IP=$(tailscale ip -4 2>/dev/null || echo "")
-fi
-
-LAN_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || ipconfig getifaddr en0 2>/dev/null || echo "")
+TAILSCALE_IP=$(tailscale ip -4 2>/dev/null || echo "")
+LAN_IP=$(ipconfig getifaddr en0 2>/dev/null || \
+         hostname -I 2>/dev/null | awk '{print $1}' || echo "")
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo " 서버 시작! 다른 머신에서 사용할 주소:"
-if [[ -n "$TAILSCALE_IP" ]]; then
-  echo ""
-  echo "  [Tailscale — 외부 네트워크]"
-  echo "  PHOENIX=ws://$TAILSCALE_IP:$PORT"
-fi
-if [[ -n "$LAN_IP" ]]; then
-  echo ""
-  echo "  [LAN — 같은 네트워크]"
-  echo "  PHOENIX=ws://$LAN_IP:$PORT"
-fi
-echo ""
-echo "  agent 시작 명령 예시:"
-echo "  PHOENIX=ws://<위 IP>:$PORT ROLE=builder bash scripts/setup-agent.sh"
+echo " 서버 시작! 에이전트 접속 명령:"
+[[ -n "$TAILSCALE_IP" ]] && echo "  [Tailscale]  PHOENIX=ws://$TAILSCALE_IP:$PORT bash <(curl -fsSL $OAH_BASE/setup-agent.sh)"
+[[ -n "$LAN_IP"       ]] && echo "  [LAN]        PHOENIX=ws://$LAN_IP:$PORT bash <(curl -fsSL $OAH_BASE/setup-agent.sh)"
+echo "  [로컬]       PHOENIX=ws://127.0.0.1:$PORT bash <(curl -fsSL $OAH_BASE/setup-agent.sh)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-# ─── 서버 시작 ────────────────────────────────────────────────────────────────
+# ─── 4. 서버 실행 (foreground) ────────────────────────────────────────────────
 
-exec env PORT="$PORT" HOST="$HOST" mix phx.server
+exec env \
+  PORT="$PORT" \
+  HOST="$HOST" \
+  OAH_DATA_DIR="$DATA_DIR" \
+  "$EXE" foreground
