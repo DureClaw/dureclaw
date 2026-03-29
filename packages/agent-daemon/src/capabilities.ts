@@ -1,6 +1,7 @@
 import { spawnSync, execSync } from "child_process";
 import { platform, arch } from "os";
 import { readFileSync, existsSync } from "fs";
+import { join } from "path";
 
 function has(cmd: string): boolean {
   try {
@@ -104,6 +105,69 @@ export function detectCapabilities(): string[] {
 
   // Peripherals
   if (hasRpiSpeakerphone()) caps.push("rpi-speakerphone");
+
+  // Windows-specific
+  if (platform() === "win32") {
+    caps.push(...detectWindowsCaps());
+  }
+
+  return caps;
+}
+
+// ─── Windows ─────────────────────────────────────────────────────────────────
+
+/** Installed printers via wmic. Returns ["printer:HP LaserJet", ...] */
+function windowsPrinters(): string[] {
+  const out = exec("wmic printer get Name /format:list");
+  return out
+    .split(/\r?\n/)
+    .map(l => l.match(/^Name=(.+)/)?.[1]?.trim())
+    .filter((n): n is string => !!n)
+    .map(n => `printer:${n}`);
+}
+
+/** Check if an EXE exists under Program Files (x86 + x64) */
+function hasWinApp(relPath: string): boolean {
+  const roots = [
+    process.env["ProgramFiles"]          ?? "C:\\Program Files",
+    process.env["ProgramFiles(x86)"]     ?? "C:\\Program Files (x86)",
+    process.env["ProgramW6432"]          ?? "C:\\Program Files",
+    process.env["LOCALAPPDATA"]          ? join(process.env["LOCALAPPDATA"], "Programs") : "",
+  ].filter(Boolean);
+  return roots.some(r => existsSync(join(r, relPath)));
+}
+
+function detectWindowsCaps(): string[] {
+  const caps: string[] = [];
+
+  // Printers (each printer listed individually so orchestrator can target by name)
+  caps.push(...windowsPrinters());
+
+  // Microsoft Office suite
+  const officeApps: [string, string][] = [
+    ["word",      "Microsoft Office\\root\\Office16\\WINWORD.EXE"],
+    ["excel",     "Microsoft Office\\root\\Office16\\EXCEL.EXE"],
+    ["powerpoint","Microsoft Office\\root\\Office16\\POWERPNT.EXE"],
+    ["outlook",   "Microsoft Office\\root\\Office16\\OUTLOOK.EXE"],
+    ["access",    "Microsoft Office\\root\\Office16\\MSACCESS.EXE"],
+  ];
+  const installedOffice = officeApps.filter(([, path]) => hasWinApp(path)).map(([name]) => name);
+  if (installedOffice.length > 0) {
+    caps.push("ms-office");
+    caps.push(...installedOffice.map(n => `office:${n}`));
+  }
+
+  // Developer tools
+  if (hasWinApp("Microsoft Visual Studio") || has("devenv")) caps.push("visual-studio");
+  if (has("code")) caps.push("vscode");
+  if (has("winget"))     caps.push("winget");
+  if (has("powershell") || has("pwsh")) caps.push("powershell");
+  if (has("wsl"))        caps.push("wsl");
+
+  // Adobe
+  if (hasWinApp("Adobe\\Acrobat DC\\Acrobat\\Acrobat.exe") ||
+      hasWinApp("Adobe\\Acrobat 11.0\\Acrobat\\Acrobat.exe")) caps.push("adobe-acrobat");
+  if (hasWinApp("Adobe\\Adobe Photoshop")) caps.push("photoshop");
 
   return caps;
 }
