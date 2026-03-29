@@ -13,3 +13,14 @@ packages/phoenix-server/data/
 
 # Test artifacts
 distributed-test-result.txt
+
+# Large dist binaries (served via R2 CDN)
+dist/oah-agent-darwin-arm64
+dist/oah-agent-darwin-x64
+dist/oah-agent-linux-arm64
+dist/oah-agent-linux-x64
+dist/oah-agent-windows.exe
+dist/oah-agent-windows.upx
+oah-agent.js
+qdrant_storage/
+.wrangler/
