@@ -97,8 +97,8 @@ Write-Host "  Connecting: $($selected.URL)" -ForegroundColor Cyan
 
 $exe = "$env:USERPROFILE\.oah-agent.exe"
 if (-not (Test-Path $exe)) {
-    Write-Host "  Downloading agent..." -ForegroundColor DarkGray
-    Invoke-WebRequest "https://open-agent-harness.baryon.ai/oah-agent-windows.exe" -OutFile $exe -UseBasicParsing
+    Write-Host "  Downloading agent (~108MB)..." -ForegroundColor DarkGray
+    curl.exe -L --progress-bar "https://open-agent-harness.baryon.ai/oah-agent-windows.exe" -o $exe
 }
 
 & $exe

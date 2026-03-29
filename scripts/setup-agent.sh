@@ -1,23 +1,16 @@
 #!/usr/bin/env bash
 # oah-agent — open-agent-harness agent daemon launcher
 #
-# 사용법 (포지셔널):
-#   oah-agent <phoenix-url> [role] [work-key] [project-dir]
-#
-# 사용법 (환경변수):
-#   PHOENIX=ws://... ROLE=builder [WK=...] [DIR=...] oah-agent
-#
-# 예시:
-#   oah-agent ws://100.64.0.1:4000 builder
-#   oah-agent ws://100.64.0.1:4000 orchestrator .
-#   oah-agent ws://100.64.0.1:4000 builder LN-20260308-001 /path/to/project
+# 사용법:
+#   bash <(curl -fsSL https://open-agent-harness.baryon.ai/setup-agent.sh)
+#   PHOENIX=ws://... ROLE=builder bash <(curl -fsSL ...)
 
 set -euo pipefail
 
-OAH_REPO="https://github.com/baryonlabs/open-agent-harness.git"
-OAH_DIR="${OPEN_AGENT_DIR:-$HOME/.open-agent-harness}"
+OAH_BASE="https://open-agent-harness.baryon.ai"
+EXE="$HOME/.oah-agent"
 
-# ─── 인수 파싱 (포지셔널 우선, 환경변수 fallback) ─────────────────────────────
+# ─── 인수 파싱 ────────────────────────────────────────────────────────────────
 
 ROLE="${2:-${ROLE:-builder}}"
 WK="${3:-${WK:-}}"
@@ -93,57 +86,72 @@ _ts_tui() {
 PHOENIX="${1:-${PHOENIX:-}}"
 
 if [[ -z "$PHOENIX" ]]; then
-  # 1) oah.local 시도
   if curl -sf --max-time 3 "http://oah.local:4000/api/health" > /dev/null 2>&1; then
     PHOENIX="ws://oah.local:4000"
     echo "→ oah.local 연결됨"
-  else
-    # 2) Tailscale TUI
-    if command -v tailscale &>/dev/null; then
-      if ! _ts_tui; then
-        echo ""
-        echo "서버를 찾을 수 없습니다. 직접 지정:"
-        echo "  PHOENIX=ws://<서버IP>:4000 bash <(curl -fsSL https://open-agent-harness.baryon.ai/setup-agent.sh)"
-        exit 1
-      fi
-    else
-      echo "FAILED: oah.local 연결 실패, Tailscale 도 없습니다."
-      echo ""
-      echo "서버 IP 를 직접 지정하세요:"
-      echo "  PHOENIX=ws://<서버IP>:4000 bash <(curl -fsSL https://open-agent-harness.baryon.ai/setup-agent.sh)"
+  elif command -v tailscale &>/dev/null; then
+    if ! _ts_tui; then
+      echo "서버를 찾을 수 없습니다. 직접 지정:"
+      echo "  PHOENIX=ws://<서버IP>:4000 bash <(curl -fsSL $OAH_BASE/setup-agent.sh)"
       exit 1
     fi
+  else
+    echo "FAILED: oah.local 연결 실패, Tailscale 도 없습니다."
+    echo "  PHOENIX=ws://<서버IP>:4000 bash <(curl -fsSL $OAH_BASE/setup-agent.sh)"
+    exit 1
   fi
 fi
 
 HTTP_BASE="${PHOENIX/ws:/http:}"
 HTTP_BASE="${HTTP_BASE/wss:/https:}"
 
-# ─── 레포 경로 결정 (설치된 경로 → 로컬 레포 → 클론) ─────────────────────────
+# ─── 1. 서버 연결 확인 ────────────────────────────────────────────────────────
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [[ -f "$SCRIPT_DIR/../packages/agent-daemon/src/index.ts" ]]; then
-  # 레포 안에서 직접 실행
-  DAEMON_ENTRY="$(cd "$SCRIPT_DIR/.." && pwd)/packages/agent-daemon/src/index.ts"
-elif [[ -f "$OAH_DIR/packages/agent-daemon/src/index.ts" ]]; then
-  # 전역 설치 경로
-  DAEMON_ENTRY="$OAH_DIR/packages/agent-daemon/src/index.ts"
-else
-  echo "→ open-agent-harness 다운로드 중..."
-  git clone --depth=1 "$OAH_REPO" "$OAH_DIR"
-  DAEMON_ENTRY="$OAH_DIR/packages/agent-daemon/src/index.ts"
+for i in 1 2 3 4 5; do
+  if curl -sf "$HTTP_BASE/api/health" > /dev/null 2>&1; then break; fi
+  if [[ $i -eq 5 ]]; then
+    echo "FAILED: Phoenix server unreachable: $HTTP_BASE"
+    exit 1
+  fi
+  echo "→ 서버 대기 중... ($i/5)"
+  sleep 2
+done
+
+# ─── 2. 바이너리 다운로드 ─────────────────────────────────────────────────────
+
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+ARCH=$(uname -m)
+case "$ARCH" in
+  x86_64)          ARCH="x64" ;;
+  aarch64|arm64)   ARCH="arm64" ;;
+  armv7l|armv6l)
+    echo "ERROR: 32비트 ARM은 지원하지 않습니다. Raspberry Pi 64비트 OS를 사용하세요."
+    echo "  https://www.raspberrypi.com/software/ → Raspberry Pi OS (64-bit)"
+    exit 1 ;;
+  *)
+    echo "ERROR: 지원하지 않는 아키텍처: $ARCH"
+    exit 1 ;;
+esac
+
+BINARY_NAME="oah-agent-${OS}-${ARCH}"
+BINARY_URL="$OAH_BASE/$BINARY_NAME"
+
+if [[ ! -f "$EXE" ]]; then
+  echo "→ 에이전트 다운로드 중... ($BINARY_NAME)"
+  curl -fsSL "$BINARY_URL" -o "$EXE"
+  chmod +x "$EXE"
+elif curl -sf --max-time 5 -I "$BINARY_URL" | grep -q "200"; then
+  # 원격 파일이 더 새로우면 업데이트
+  REMOTE_SIZE=$(curl -sfI "$BINARY_URL" | grep -i content-length | awk '{print $2}' | tr -d '\r')
+  LOCAL_SIZE=$(wc -c < "$EXE" | tr -d ' ')
+  if [[ -n "$REMOTE_SIZE" && "$REMOTE_SIZE" != "$LOCAL_SIZE" ]]; then
+    echo "→ 에이전트 업데이트 중..."
+    curl -fsSL "$BINARY_URL" -o "$EXE"
+    chmod +x "$EXE"
+  fi
 fi
 
-# ─── 1. Bun ───────────────────────────────────────────────────────────────────
-
-export PATH="$HOME/.bun/bin:$PATH"
-if ! command -v bun &>/dev/null; then
-  echo "→ Bun 설치 중..."
-  curl -fsSL https://bun.sh/install | bash
-  export PATH="$HOME/.bun/bin:$PATH"
-fi
-
-# ─── 2. OpenCode ──────────────────────────────────────────────────────────────
+# ─── 3. OpenCode ──────────────────────────────────────────────────────────────
 
 export PATH="$HOME/.opencode/bin:$PATH"
 if ! command -v opencode &>/dev/null; then
@@ -152,19 +160,7 @@ if ! command -v opencode &>/dev/null; then
   export PATH="$HOME/.opencode/bin:$PATH"
 fi
 
-# ─── 3. Phoenix 서버 연결 확인 ────────────────────────────────────────────────
-
-for i in 1 2 3 4 5; do
-  if curl -sf "$HTTP_BASE/api/health" > /dev/null 2>&1; then break; fi
-  if [[ $i -eq 5 ]]; then
-    echo "FAILED: Phoenix server unreachable: $HTTP_BASE"
-    exit 1
-  fi
-  echo "→ Phoenix 서버 대기 중... ($i/5)"
-  sleep 2
-done
-
-# ─── 4. Work Key (orchestrator는 생성, 나머지는 daemon이 auto-discover) ────────
+# ─── 4. Work Key ──────────────────────────────────────────────────────────────
 
 if [[ -z "$WK" ]] && [[ "$ROLE" == "orchestrator" ]]; then
   WK=$(curl -sf -X POST "$HTTP_BASE/api/work-keys" \
@@ -172,9 +168,7 @@ if [[ -z "$WK" ]] && [[ "$ROLE" == "orchestrator" ]]; then
   echo ""
   echo "┌─────────────────────────────────────────────────┐"
   echo "│  Work Key: $WK"
-  echo "│"
-  echo "│  다른 머신에서 연결:                            │"
-  echo "│  oah-agent $PHOENIX builder $WK"
+  echo "│  다른 머신: PHOENIX=$PHOENIX bash <(curl -fsSL $OAH_BASE/setup-agent.sh)"
   echo "└─────────────────────────────────────────────────┘"
   echo ""
 fi
@@ -194,4 +188,4 @@ exec env \
   AGENT_ROLE="$ROLE" \
   WORK_KEY="${WK:-}" \
   PROJECT_DIR="$DIR" \
-  bun run "$DAEMON_ENTRY" "$PHOENIX"
+  "$EXE"
