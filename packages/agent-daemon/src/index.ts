@@ -33,6 +33,8 @@
 
 import { spawnCompat as spawn } from "./spawn-compat.ts";
 import { hostname } from "os";
+import { detectCapabilities } from "./capabilities.ts";
+import { orchestrateGoal } from "./orchestrator.ts";
 
 // Node.js WebSocket polyfill (Bun has it built-in, Node.js 20 does not)
 import WSPolyfill from "ws";
@@ -55,6 +57,7 @@ const PROJECT_DIR = process.env.PROJECT_DIR ?? process.cwd();
 const OPENCODE_BIN    = process.env.OPENCODE_BIN    ?? "opencode";
 const ZEROCLAW_BIN    = process.env.ZEROCLAW_BIN    ?? "zeroclaw";
 const AGENT_BACKEND   = process.env.AGENT_BACKEND   ?? "opencode"; // "opencode" | "zeroclaw"
+const AGENT_CAPABILITIES = detectCapabilities();
 
 // Normalise server URL: always keep ws:// for WS, derive http:// for REST
 const WS_BASE = STATE_SERVER_RAW.replace(/^http/, "ws").replace(/\/$/, "");
@@ -225,6 +228,7 @@ function connect() {
       agent_name: AGENT_NAME,
       role: AGENT_ROLE,
       machine: AGENT_MACHINE,
+      capabilities: AGENT_CAPABILITIES,
     }]);
 
     console.log(`[daemon] sent phx_join → ${topic}`);
@@ -376,6 +380,7 @@ function handlePhxMessage([msgJoinRef, ref, topic, event, payload]: PhxMsg) {
           agent_name: AGENT_NAME,
           role: AGENT_ROLE,
           machine: AGENT_MACHINE,
+          capabilities: AGENT_CAPABILITIES,
         }]);
       }, 300);
       break;
@@ -459,6 +464,12 @@ async function handleTaskAssign(payload: TaskPayload) {
   // Special: [SHELL] task — run shell command directly, no OpenCode/LLM
   if (payload.instructions.trimStart().startsWith("[SHELL]")) {
     await handleShellTask(payload);
+    return;
+  }
+
+  // [ORCHESTRATE] task — AI decomposes goal and dispatches subtasks
+  if (payload.instructions.trimStart().startsWith("[ORCHESTRATE]")) {
+    await handleOrchestrateTask(payload);
     return;
   }
 
@@ -616,6 +627,85 @@ async function handleShellTask(payload: TaskPayload) {
     sys: sysInfo,
     artifacts: [],
   });
+}
+
+// ─── Orchestrate task handler ─────────────────────────────────────────────────
+
+async function handleOrchestrateTask(payload: TaskPayload) {
+  const taskId = payload.task_id ?? `task-${Date.now()}`;
+  const goal = payload.instructions.replace(/^\[ORCHESTRATE\]\s*/i, "").trim();
+
+  console.log(`\n[orchestrate] ${taskId}: ${goal.slice(0, 100)}`);
+
+  const progress = (msg: string) => {
+    sendEvent("task.progress", { task_id: taskId, message: msg, status: "running" });
+  };
+
+  try {
+    // Fetch current builders from server
+    progress("Fetching available builders...");
+    const presRes = await fetch(`${HTTP_BASE}/api/capabilities`);
+    const builders: Array<{ name: string; capabilities: string[]; role: string; os: string }> =
+      presRes.ok ? (await presRes.json() as any).builders ?? [] : [];
+
+    if (builders.length === 0) {
+      // Fallback: use presence
+      const pres = await fetch(`${HTTP_BASE}/api/presence`);
+      const data = await pres.json() as any;
+      for (const a of (data.agents ?? [])) {
+        if (a.role === "builder") {
+          builders.push({ name: a.name, capabilities: a.capabilities ?? [], role: a.role, os: a.machine });
+        }
+      }
+    }
+
+    progress(`${builders.length} builder(s) available. Decomposing goal...`);
+
+    const plan = await orchestrateGoal(goal, builders, progress);
+
+    progress(`Plan: ${plan.reasoning}. Dispatching ${plan.subtasks.length} subtask(s)...`);
+    console.log(`[orchestrate] plan: ${plan.reasoning}`);
+
+    // Dispatch subtasks
+    const dispatchedIds: string[] = [];
+    for (const subtask of plan.subtasks) {
+      const taskRes = await fetch(`${HTTP_BASE}/api/task`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          work_key: WORK_KEY,
+          instructions: subtask.instructions,
+          role: subtask.role ?? "builder",
+          to: subtask.target_agent ?? undefined,
+          depends_on: subtask.depends_on ?? [],
+        }),
+      });
+      const { task_id: dispId } = await taskRes.json() as { task_id: string };
+      dispatchedIds.push(dispId);
+      console.log(`[orchestrate] dispatched ${dispId}: ${subtask.instructions.slice(0, 60)}`);
+    }
+
+    sendEvent("task.result", {
+      task_id: taskId,
+      from: AGENT_NAME,
+      status: "done",
+      output: `Orchestrated ${plan.subtasks.length} subtasks.\nReasoning: ${plan.reasoning}\nTask IDs: ${dispatchedIds.join(", ")}`,
+      exit_code: 0,
+      artifacts: [],
+      plan: plan,
+      dispatched_tasks: dispatchedIds,
+    });
+
+  } catch (err) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    sendEvent("task.blocked", {
+      task_id: taskId,
+      from: AGENT_NAME,
+      error: errMsg,
+      status: "blocked",
+    });
+    console.error(`[orchestrate] ${taskId} failed: ${errMsg}`);
+  }
 }
 
 // ─── OpenCode subprocess runner ───────────────────────────────────────────────

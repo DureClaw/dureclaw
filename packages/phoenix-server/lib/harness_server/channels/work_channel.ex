@@ -47,11 +47,15 @@ defmodule HarnessServer.WorkChannel do
       |> assign(:role,        role)
       |> assign(:machine,     machine)
 
+    capabilities = Map.get(payload, "capabilities", [])
+    socket = assign(socket, :capabilities, capabilities)
+
     {:ok, _} =
       Presence.track(socket, agent_name, %{
         role:         role,
         machine:      machine,
         work_key:     work_key,
+        capabilities: capabilities,
         online_since: DateTime.utc_now() |> DateTime.to_iso8601()
       })
 
@@ -96,9 +100,16 @@ defmodule HarnessServer.WorkChannel do
       |> Map.put("event", event)
       |> Map.put("ts",    DateTime.utc_now() |> DateTime.to_iso8601())
 
-    # Store for REST polling (GET /api/task/:task_id)
     if task_id = Map.get(payload, "task_id") do
       StateStore.store_task_result(task_id, msg)
+      # Check if any pending tasks are now unblocked
+      if event == "task.result" do
+        unblocked = StateStore.complete_dependency(task_id)
+        for task_payload <- unblocked do
+          wk = Map.get(task_payload, "work_key", socket.assigns.work_key)
+          HarnessServer.Endpoint.broadcast("work:#{wk}", "task.assign", task_payload)
+        end
+      end
     end
 
     broadcast!(socket, event, msg)

@@ -151,6 +151,38 @@ defmodule HarnessServer.Router do
     send_json(conn, 200, %{agents: agents})
   end
 
+  # ── GET /api/capabilities ───────────────────────────────────────────────────
+  # List all online builders with their detected capabilities.
+
+  get "/api/capabilities" do
+    work_keys = StateStore.list_work_keys()
+
+    builders =
+      work_keys
+      |> Enum.flat_map(fn wk ->
+        Presence.list("work:#{wk}")
+        |> Enum.map(fn {agent_name, %{metas: [meta | _]}} ->
+          Map.merge(meta, %{name: agent_name})
+        end)
+        |> Enum.filter(fn a -> a.role == "builder" end)
+      end)
+      |> Enum.uniq_by(& &1.name)
+      |> Enum.map(fn a ->
+        caps = Map.get(a, :capabilities, [])
+        os = caps |> Enum.find("unknown", &String.starts_with?(&1, "os:")) |> String.replace_prefix("os:", "")
+        %{
+          name: a.name,
+          role: a.role,
+          machine: a.machine,
+          os: os,
+          capabilities: caps,
+          work_key: a.work_key
+        }
+      end)
+
+    send_json(conn, 200, %{builders: builders, count: length(builders)})
+  end
+
   # ── DELETE /api/presence/:agent_name ────────────────────────────────────────
   # Force-disconnect a stale agent from presence (useful for ghost cleanup).
   # Uses the socket ID convention: "agent:{agent_name}"
@@ -196,12 +228,12 @@ defmodule HarnessServer.Router do
 
   post "/api/task" do
     params = conn.body_params
-    # Prefer explicit work_key from body; fall back to latest; create if none
     wk =
       Map.get(params, "work_key") ||
       StateStore.latest_work_key() ||
       StateStore.generate_work_key()
     task_id = "http-#{System.system_time(:millisecond)}"
+    depends_on = Map.get(params, "depends_on", [])
 
     payload = %{
       "task_id"      => task_id,
@@ -209,16 +241,21 @@ defmodule HarnessServer.Router do
       "role"         => Map.get(params, "role", "builder"),
       "to"           => Map.get(params, "to"),
       "instructions" => Map.get(params, "instructions", ""),
+      "work_key"     => wk,
     }
 
-    HarnessServer.Endpoint.broadcast("work:#{wk}", "task.assign", payload)
-
-    # Also enqueue to mailbox so OpenCode plugins can poll via REST
-    if to = Map.get(params, "to") do
-      StateStore.enqueue_mailbox(to, payload)
+    if depends_on == [] do
+      # No dependencies — dispatch immediately
+      HarnessServer.Endpoint.broadcast("work:#{wk}", "task.assign", payload)
+      if to = Map.get(params, "to") do
+        StateStore.enqueue_mailbox(to, payload)
+      end
+    else
+      # Has dependencies — store as pending
+      StateStore.store_pending_task(task_id, Map.put(payload, "depends_on", depends_on))
     end
 
-    send_json(conn, 201, %{task_id: task_id, work_key: wk})
+    send_json(conn, 201, %{task_id: task_id, work_key: wk, pending: depends_on != []})
   end
 
   # ── POST /api/task/:task_id/result ──────────────────────────────────────────

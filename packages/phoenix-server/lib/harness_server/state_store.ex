@@ -28,6 +28,7 @@ defmodule HarnessServer.StateStore do
   @state_table   :harness_state
   @mailbox_table :harness_mailbox
   @task_table    :harness_tasks
+  @pending_table :harness_pending
 
   # ─── Public API ─────────────────────────────────────────────────────────────
 
@@ -86,6 +87,16 @@ defmodule HarnessServer.StateStore do
     GenServer.call(__MODULE__, {:store_task_result, task_id, result})
   end
 
+  @doc "Store a pending task with dependency list."
+  def store_pending_task(task_id, task_info) do
+    GenServer.call(__MODULE__, {:store_pending_task, task_id, task_info})
+  end
+
+  @doc "Mark a task_id as completed; return list of newly unblocked task payloads."
+  def complete_dependency(completed_id) do
+    GenServer.call(__MODULE__, {:complete_dependency, completed_id})
+  end
+
   @doc "Get all task results. Returns {:ok, results} (list) or :not_found."
   def get_task_result(task_id) do
     case :dets.lookup(@task_table, task_id) do
@@ -123,6 +134,8 @@ defmodule HarnessServer.StateStore do
       file: String.to_charlist(Path.join(data_dir, "harness_tasks.dets")),
       type: :set
     ])
+
+    :ets.new(@pending_table, [:named_table, :public, read_concurrency: true])
 
     # Rebuild daily counter from persisted work keys
     counter = rebuild_counter()
@@ -227,6 +240,34 @@ defmodule HarnessServer.StateStore do
     end
     :dets.insert(@task_table, {task_id, existing ++ [result]})
     {:reply, :ok, state}
+  end
+
+  @impl true
+  def handle_call({:store_pending_task, task_id, task_info}, _from, state) do
+    :ets.insert(@pending_table, {task_id, task_info})
+    {:reply, :ok, state}
+  end
+
+  @impl true
+  def handle_call({:complete_dependency, completed_id}, _from, state) do
+    # Scan all pending tasks; find ones whose depends_on is now satisfied
+    all_pending = :ets.tab2list(@pending_table)
+    results = Enum.flat_map(all_pending, fn {tid, info} ->
+      deps = Map.get(info, "depends_on", [])
+      if completed_id in deps do
+        new_deps = List.delete(deps, completed_id)
+        if new_deps == [] do
+          :ets.delete(@pending_table, tid)
+          [info]  # unblocked — return for dispatch
+        else
+          :ets.insert(@pending_table, {tid, Map.put(info, "depends_on", new_deps)})
+          []
+        end
+      else
+        []
+      end
+    end)
+    {:reply, results, state}
   end
 
   # ─── Private ─────────────────────────────────────────────────────────────────
