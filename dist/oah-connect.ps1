@@ -47,7 +47,7 @@ function Show-Menu($items) {
         Clear-Host
         Write-Host ""
         Write-Host "  OAH  Connect to Server" -ForegroundColor Cyan
-        Write-Host "  ──────────────────────────────────────" -ForegroundColor DarkGray
+        Write-Host "  --------------------------------------" -ForegroundColor DarkGray
         Write-Host ""
         for ($i = 0; $i -lt $items.Count; $i++) {
             if ($i -eq $idx) {
@@ -95,10 +95,21 @@ $env:STATE_SERVER = $selected.URL
 Write-Host ""
 Write-Host "  Connecting: $($selected.URL)" -ForegroundColor Cyan
 
-$exe = "$env:USERPROFILE\.oah-agent.exe"
+$exe    = "$env:USERPROFILE\.oah-agent.exe"
+$exeUrl = "https://open-agent-harness.baryon.ai/oah-agent-windows.exe"
+
 if (-not (Test-Path $exe)) {
-    Write-Host "  Downloading agent (~108MB)..." -ForegroundColor DarkGray
-    curl.exe -L --progress-bar "https://open-agent-harness.baryon.ai/oah-agent-windows.exe" -o $exe
+    Write-Host "  Downloading agent..." -ForegroundColor DarkGray
+    curl.exe -L --progress-bar $exeUrl -o $exe
+} else {
+    try {
+        $remoteSize = (Invoke-WebRequest -Uri $exeUrl -Method Head -UseBasicParsing -TimeoutSec 5).Headers.'Content-Length'
+        $localSize  = (Get-Item $exe).Length
+        if ($remoteSize -and [long]$remoteSize -ne $localSize) {
+            Write-Host "  Updating agent..." -ForegroundColor DarkGray
+            curl.exe -L --progress-bar $exeUrl -o $exe
+        }
+    } catch {}
 }
 
 & $exe
