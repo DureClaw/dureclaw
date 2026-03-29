@@ -115,4 +115,23 @@ if (-not (Test-Path $exe)) {
     } catch {}
 }
 
+# ─── OpenCode 설치 (AI 태스크 지원) ──────────────────────────────────────────
+if (-not (Get-Command opencode -ErrorAction SilentlyContinue)) {
+    if (Get-Command npm -ErrorAction SilentlyContinue) {
+        Write-Host "  OpenCode 설치 중 (npm)..." -ForegroundColor DarkGray
+        npm install -g opencode 2>&1 | Out-Null
+        if (Get-Command opencode -ErrorAction SilentlyContinue) {
+            Write-Host "  OpenCode 설치 완료 - AI 태스크 활성화" -ForegroundColor Green
+            $env:AGENT_BACKEND = "opencode"
+        } else {
+            Write-Host "  ⚠ OpenCode 설치 실패 - Shell 태스크만 가능" -ForegroundColor Yellow
+        }
+    } else {
+        Write-Host "  ⚠ npm 없음 - Shell 태스크만 가능 (Node.js 설치 권장)" -ForegroundColor Yellow
+    }
+} else {
+    $env:AGENT_BACKEND = "opencode"
+    Write-Host "  OpenCode: OK" -ForegroundColor DarkGray
+}
+
 & $exe

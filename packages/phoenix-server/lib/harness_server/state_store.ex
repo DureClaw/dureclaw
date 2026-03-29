@@ -5,7 +5,7 @@ defmodule HarnessServer.StateStore do
   Tables:
     :harness_state   — {work_key, state_map}  → DETS (disk, survives restarts)
     :harness_mailbox — {agent_name, [msgs]}   → DETS (disk, survives restarts)
-    :harness_tasks   — {task_id, result}      → ETS  (ephemeral, polling only)
+    :harness_tasks   — {task_id, [results]}   → DETS (disk, survives restarts)
 
   Work Key state shape:
     %{
@@ -83,17 +83,12 @@ defmodule HarnessServer.StateStore do
 
   @doc "Append task result (supports multiple agents responding to same task_id)."
   def store_task_result(task_id, result) do
-    existing = case :ets.lookup(@task_table, task_id) do
-      [{^task_id, results}] when is_list(results) -> results
-      [{^task_id, single}] -> [single]
-      [] -> []
-    end
-    :ets.insert(@task_table, {task_id, existing ++ [result]})
+    GenServer.call(__MODULE__, {:store_task_result, task_id, result})
   end
 
   @doc "Get all task results. Returns {:ok, results} (list) or :not_found."
   def get_task_result(task_id) do
-    case :ets.lookup(@task_table, task_id) do
+    case :dets.lookup(@task_table, task_id) do
       [{^task_id, results}] when is_list(results) -> {:ok, results}
       [] -> :not_found
     end
@@ -124,8 +119,10 @@ defmodule HarnessServer.StateStore do
       type: :set
     ])
 
-    # Task results are ephemeral (REST polling only, no need to persist)
-    :ets.new(@task_table, [:named_table, :public, read_concurrency: true])
+    {:ok, _} = :dets.open_file(@task_table, [
+      file: String.to_charlist(Path.join(data_dir, "harness_tasks.dets")),
+      type: :set
+    ])
 
     # Rebuild daily counter from persisted work keys
     counter = rebuild_counter()
@@ -140,6 +137,7 @@ defmodule HarnessServer.StateStore do
   def terminate(_reason, _state) do
     :dets.close(@state_table)
     :dets.close(@mailbox_table)
+    :dets.close(@task_table)
     :ok
   end
 
@@ -218,6 +216,17 @@ defmodule HarnessServer.StateStore do
 
     :dets.delete(@mailbox_table, agent_name)
     {:reply, msgs, state}
+  end
+
+  @impl true
+  def handle_call({:store_task_result, task_id, result}, _from, state) do
+    existing = case :dets.lookup(@task_table, task_id) do
+      [{^task_id, results}] when is_list(results) -> results
+      [{^task_id, single}] -> [single]
+      [] -> []
+    end
+    :dets.insert(@task_table, {task_id, existing ++ [result]})
+    {:reply, :ok, state}
   end
 
   # ─── Private ─────────────────────────────────────────────────────────────────

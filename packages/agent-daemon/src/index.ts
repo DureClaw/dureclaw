@@ -400,6 +400,24 @@ function handlePhxMessage([msgJoinRef, ref, topic, event, payload]: PhxMsg) {
       break;
     }
 
+    case "task.cancel": {
+      const p = payload as { task_id?: string };
+      if (p.task_id && activeTasks.has(p.task_id)) {
+        const task = activeTasks.get(p.task_id)!;
+        task.abort.abort();
+        activeTasks.delete(p.task_id);
+        console.log(`[task] ${p.task_id} cancelled`);
+        sendEvent("task.result", {
+          task_id: p.task_id,
+          from: AGENT_NAME,
+          status: "cancelled",
+          output: "Task cancelled by request",
+          exit_code: -1,
+        });
+      }
+      break;
+    }
+
     case "task.approval_requested": {
       const p = payload as { task_id?: string; from?: string };
       console.log(`\n⚠️  APPROVAL REQUESTED by ${p.from}`);

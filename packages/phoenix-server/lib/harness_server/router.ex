@@ -150,6 +150,16 @@ defmodule HarnessServer.Router do
     send_json(conn, 200, %{agents: agents})
   end
 
+  # ── DELETE /api/presence/:agent_name ────────────────────────────────────────
+  # Force-disconnect a stale agent from presence (useful for ghost cleanup).
+  # Uses the socket ID convention: "agent:{agent_name}"
+
+  delete "/api/presence/:agent_name" do
+    socket_id = "agent:#{agent_name}"
+    HarnessServer.Endpoint.broadcast(socket_id, "disconnect", %{})
+    send_json(conn, 200, %{ok: true, disconnected: agent_name})
+  end
+
   # ── GET /api/work-keys ──────────────────────────────────────────────────────
 
   get "/api/work-keys" do
@@ -227,6 +237,19 @@ defmodule HarnessServer.Router do
     if wk, do: HarnessServer.Endpoint.broadcast("work:#{wk}", "task.result", result)
 
     send_json(conn, 200, %{ok: true, task_id: task_id})
+  end
+
+  # ── POST /api/task/:task_id/cancel ──────────────────────────────────────────
+  # Cancel a running task. Body: {"work_key": "LN-..."}
+
+  post "/api/task/:task_id/cancel" do
+    wk = Map.get(conn.body_params, "work_key") || StateStore.latest_work_key()
+    if wk do
+      HarnessServer.Endpoint.broadcast("work:#{wk}", "task.cancel", %{"task_id" => task_id})
+      send_json(conn, 200, %{ok: true, task_id: task_id, work_key: wk})
+    else
+      send_json(conn, 400, %{error: "work_key required"})
+    end
   end
 
   # ── GET /api/task/:task_id ───────────────────────────────────────────────────
