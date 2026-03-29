@@ -140,25 +140,41 @@ if [[ "$USE_NODE" == "true" ]]; then
     curl -fsSL "$OAH_BASE/oah-agent.js" -o "$JS_BUNDLE"
   fi
 
-  # Node.js 설치 확인
+  # Node.js 설치 확인 (armhf는 Debian repo 직접 사용)
   if ! command -v node &>/dev/null; then
     echo "→ Node.js 설치 중..."
-    curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - 2>/dev/null \
-      || curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash - 2>/dev/null
-    sudo apt-get install -y nodejs 2>/dev/null || sudo yum install -y nodejs 2>/dev/null
+    if command -v apt-get &>/dev/null; then
+      sudo apt-get install -y nodejs
+    elif command -v yum &>/dev/null; then
+      sudo yum install -y nodejs
+    else
+      echo "ERROR: Node.js 자동 설치 실패. 수동으로 설치하세요: sudo apt install nodejs"
+      exit 1
+    fi
   fi
 
-  # ─── OpenCode ──────────────────────────────────────────────────────────────
+  # ─── OpenCode (선택) ───────────────────────────────────────────────────────
   export PATH="$HOME/.opencode/bin:$PATH"
   if ! command -v opencode &>/dev/null; then
-    echo "→ OpenCode 설치 중..."
-    curl -fsSL https://opencode.ai/install | bash
-    export PATH="$HOME/.opencode/bin:$PATH"
+    echo "→ OpenCode 설치 시도 중..."
+    if curl -fsSL https://opencode.ai/install | bash 2>/dev/null; then
+      export PATH="$HOME/.opencode/bin:$PATH"
+    else
+      echo "⚠ OpenCode 설치 실패 (미지원 아키텍처). [SHELL] 태스크만 사용 가능."
+    fi
+  fi
+
+  # ZeroClaw 감지 — 설치되어 있으면 AGENT_BACKEND=zeroclaw 자동 설정
+  BACKEND="opencode"
+  if command -v zeroclaw &>/dev/null; then
+    BACKEND="zeroclaw"
+    echo "→ ZeroClaw 감지됨 — AI 백엔드로 사용"
   fi
 
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo " oah-agent  ${ROLE}@$(hostname -s 2>/dev/null || hostname)  [Node.js/32-bit]"
   echo " server  →  $PHOENIX"
+  echo " backend →  $BACKEND"
   echo " dir     →  $DIR"
   [[ -n "$WK" ]] && echo " work-key→  $WK"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -167,6 +183,7 @@ if [[ "$USE_NODE" == "true" ]]; then
     STATE_SERVER="$PHOENIX" \
     AGENT_NAME="$NAME" \
     AGENT_ROLE="$ROLE" \
+    AGENT_BACKEND="$BACKEND" \
     WORK_KEY="${WK:-}" \
     PROJECT_DIR="$DIR" \
     node "$JS_BUNDLE"

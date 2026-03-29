@@ -46,7 +46,9 @@ const AGENT_MACHINE = process.env.AGENT_MACHINE ?? hostname();
 let AGENT_ROLE = process.env.AGENT_ROLE ?? "orchestrator";
 let AGENT_NAME = process.env.AGENT_NAME ?? `${AGENT_ROLE}@${AGENT_MACHINE}`;
 const PROJECT_DIR = process.env.PROJECT_DIR ?? process.cwd();
-const OPENCODE_BIN = process.env.OPENCODE_BIN ?? "opencode";
+const OPENCODE_BIN    = process.env.OPENCODE_BIN    ?? "opencode";
+const ZEROCLAW_BIN    = process.env.ZEROCLAW_BIN    ?? "zeroclaw";
+const AGENT_BACKEND   = process.env.AGENT_BACKEND   ?? "opencode"; // "opencode" | "zeroclaw"
 
 // Normalise server URL: always keep ws:// for WS, derive http:// for REST
 const WS_BASE = STATE_SERVER_RAW.replace(/^http/, "ws").replace(/\/$/, "");
@@ -609,8 +611,12 @@ async function runOpenCode(
   const systemPrompt = buildSystemPrompt(payload);
 
   const effectiveDir = (globalThis as Record<string, unknown>)["EFFECTIVE_PROJECT_DIR"] as string ?? PROJECT_DIR;
+  const agentCmd = AGENT_BACKEND === "zeroclaw"
+    ? [ZEROCLAW_BIN, "agent", "-m", systemPrompt]
+    : [OPENCODE_BIN, "run", "--format", "default", systemPrompt];
+
   const proc = spawn({
-    cmd: [OPENCODE_BIN, "run", "--format", "default", systemPrompt],
+    cmd: agentCmd,
     cwd: effectiveDir,
     stdout: "pipe",
     stderr: "pipe",
