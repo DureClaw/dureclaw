@@ -121,17 +121,56 @@ done
 
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
 ARCH=$(uname -m)
+USE_NODE=false
+
 case "$ARCH" in
-  x86_64)          ARCH="x64" ;;
-  aarch64|arm64)   ARCH="arm64" ;;
-  armv7l|armv6l)
-    echo "ERROR: 32비트 ARM은 지원하지 않습니다. Raspberry Pi 64비트 OS를 사용하세요."
-    echo "  https://www.raspberrypi.com/software/ → Raspberry Pi OS (64-bit)"
-    exit 1 ;;
+  x86_64)        ARCH="x64" ;;
+  aarch64|arm64) ARCH="arm64" ;;
+  armv7l|armv6l) USE_NODE=true ;;
   *)
     echo "ERROR: 지원하지 않는 아키텍처: $ARCH"
     exit 1 ;;
 esac
+
+if [[ "$USE_NODE" == "true" ]]; then
+  # 32비트 ARM — Node.js + JS 번들 사용
+  JS_BUNDLE="$HOME/.oah-agent.js"
+  if [[ ! -f "$JS_BUNDLE" ]]; then
+    echo "→ 에이전트(JS) 다운로드 중..."
+    curl -fsSL "$OAH_BASE/oah-agent.js" -o "$JS_BUNDLE"
+  fi
+
+  # Node.js 설치 확인
+  if ! command -v node &>/dev/null; then
+    echo "→ Node.js 설치 중..."
+    curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - 2>/dev/null \
+      || curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash - 2>/dev/null
+    sudo apt-get install -y nodejs 2>/dev/null || sudo yum install -y nodejs 2>/dev/null
+  fi
+
+  # ─── OpenCode ──────────────────────────────────────────────────────────────
+  export PATH="$HOME/.opencode/bin:$PATH"
+  if ! command -v opencode &>/dev/null; then
+    echo "→ OpenCode 설치 중..."
+    curl -fsSL https://opencode.ai/install | bash
+    export PATH="$HOME/.opencode/bin:$PATH"
+  fi
+
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo " oah-agent  ${ROLE}@$(hostname -s 2>/dev/null || hostname)  [Node.js/32-bit]"
+  echo " server  →  $PHOENIX"
+  echo " dir     →  $DIR"
+  [[ -n "$WK" ]] && echo " work-key→  $WK"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+  exec env \
+    STATE_SERVER="$PHOENIX" \
+    AGENT_NAME="$NAME" \
+    AGENT_ROLE="$ROLE" \
+    WORK_KEY="${WK:-}" \
+    PROJECT_DIR="$DIR" \
+    node "$JS_BUNDLE"
+fi
 
 BINARY_NAME="oah-agent-${OS}-${ARCH}"
 BINARY_URL="$OAH_BASE/$BINARY_NAME"
@@ -141,7 +180,6 @@ if [[ ! -f "$EXE" ]]; then
   curl -fsSL "$BINARY_URL" -o "$EXE"
   chmod +x "$EXE"
 elif curl -sf --max-time 5 -I "$BINARY_URL" | grep -q "200"; then
-  # 원격 파일이 더 새로우면 업데이트
   REMOTE_SIZE=$(curl -sfI "$BINARY_URL" | grep -i content-length | awk '{print $2}' | tr -d '\r')
   LOCAL_SIZE=$(wc -c < "$EXE" | tr -d ' ')
   if [[ -n "$REMOTE_SIZE" && "$REMOTE_SIZE" != "$LOCAL_SIZE" ]]; then

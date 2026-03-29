@@ -31,7 +31,7 @@
  *   OPENCODE_BIN   Path to opencode binary (default: opencode)
  */
 
-import { spawn } from "bun";
+import { spawnCompat as spawn } from "./spawn-compat.ts";
 import { hostname } from "os";
 import {
   reflectiveAgent,

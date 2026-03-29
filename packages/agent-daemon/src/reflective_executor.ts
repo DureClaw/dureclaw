@@ -24,7 +24,7 @@
  */
 
 import Anthropic from "@anthropic-ai/sdk";
-import { spawn } from "bun";
+import { spawnCompat as spawn } from "./spawn-compat.ts";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
