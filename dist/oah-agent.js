@@ -10102,12 +10102,18 @@ Produce a final synthesis report that:
 }
 
 // packages/agent-daemon/src/index.ts
+if (typeof globalThis.WebSocket === "undefined") {
+  const { WebSocket: WebSocket2 } = await import("ws");
+  globalThis.WebSocket = WebSocket2;
+}
 var STATE_SERVER_RAW = process.env.STATE_SERVER ?? "ws://localhost:4000";
 var AGENT_MACHINE = process.env.AGENT_MACHINE ?? hostname();
 var AGENT_ROLE = process.env.AGENT_ROLE ?? "orchestrator";
 var AGENT_NAME = process.env.AGENT_NAME ?? `${AGENT_ROLE}@${AGENT_MACHINE}`;
 var PROJECT_DIR = process.env.PROJECT_DIR ?? process.cwd();
 var OPENCODE_BIN = process.env.OPENCODE_BIN ?? "opencode";
+var ZEROCLAW_BIN = process.env.ZEROCLAW_BIN ?? "zeroclaw";
+var AGENT_BACKEND = process.env.AGENT_BACKEND ?? "opencode";
 var WS_BASE = STATE_SERVER_RAW.replace(/^http/, "ws").replace(/\/$/, "");
 var HTTP_BASE = STATE_SERVER_RAW.replace(/^ws/, "http").replace(/\/$/, "");
 var WS_URL = `${WS_BASE}/socket/websocket?vsn=2.0.0`;
@@ -10483,8 +10489,9 @@ async function runOpenCode(taskId, payload, signal) {
   }, timeout);
   const systemPrompt = buildSystemPrompt(payload);
   const effectiveDir = globalThis["EFFECTIVE_PROJECT_DIR"] ?? PROJECT_DIR;
+  const agentCmd = AGENT_BACKEND === "zeroclaw" ? [ZEROCLAW_BIN, "agent", "-m", systemPrompt] : [OPENCODE_BIN, "run", "--format", "default", systemPrompt];
   const proc = spawnCompat({
-    cmd: [OPENCODE_BIN, "run", "--format", "default", systemPrompt],
+    cmd: agentCmd,
     cwd: effectiveDir,
     stdout: "pipe",
     stderr: "pipe",

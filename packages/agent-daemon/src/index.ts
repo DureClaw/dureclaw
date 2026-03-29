@@ -33,6 +33,12 @@
 
 import { spawnCompat as spawn } from "./spawn-compat.ts";
 import { hostname } from "os";
+
+// Node.js WebSocket polyfill (Bun has it built-in, Node.js 20 does not)
+if (typeof (globalThis as any).WebSocket === "undefined") {
+  const { WebSocket } = await import("ws");
+  (globalThis as any).WebSocket = WebSocket;
+}
 import {
   reflectiveAgent,
   autonomousPipeline,
