@@ -81,15 +81,20 @@ defmodule HarnessServer.StateStore do
     GenServer.call(__MODULE__, {:pop_mailbox, agent_name})
   end
 
-  @doc "Store task result for REST polling (ETS, ephemeral)."
+  @doc "Append task result (supports multiple agents responding to same task_id)."
   def store_task_result(task_id, result) do
-    :ets.insert(@task_table, {task_id, result})
+    existing = case :ets.lookup(@task_table, task_id) do
+      [{^task_id, results}] when is_list(results) -> results
+      [{^task_id, single}] -> [single]
+      [] -> []
+    end
+    :ets.insert(@task_table, {task_id, existing ++ [result]})
   end
 
-  @doc "Get stored task result. Returns {:ok, result} or :not_found."
+  @doc "Get all task results. Returns {:ok, results} (list) or :not_found."
   def get_task_result(task_id) do
     case :ets.lookup(@task_table, task_id) do
-      [{^task_id, result}] -> {:ok, result}
+      [{^task_id, results}] when is_list(results) -> {:ok, results}
       [] -> :not_found
     end
   end

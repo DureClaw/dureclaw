@@ -12,6 +12,111 @@ defmodule HarnessServer.Router do
   plug :match
   plug :dispatch
 
+  # ── GET /setup ──────────────────────────────────────────────────────────────
+  # One-liner agent installer. Auto-detects OS (bash vs PowerShell).
+  # Usage:
+  #   bash <(curl -fsSL http://oah.local:4000/setup)
+  #   bash <(curl -fsSL http://oah.local:4000/setup?role=executor)
+  #   iwr http://oah.local:4000/setup.ps1 | iex  (Windows)
+
+  get "/setup" do
+    role = conn.query_params["role"] || "builder"
+    server_host = get_server_host(conn)
+
+    script = """
+    #!/usr/bin/env bash
+    set -euo pipefail
+    PHOENIX="${PHOENIX:-ws://#{server_host}:4000}"
+    ROLE="${ROLE:-#{role}}"
+    curl -fsSL http://#{server_host}:4000/setup-agent.sh | PHOENIX="$PHOENIX" ROLE="$ROLE" bash
+    """
+
+    conn
+    |> put_resp_content_type("text/plain")
+    |> send_resp(200, script)
+  end
+
+  # Windows one-liner:
+  #   curl -fsSL http://SERVER:4000/go -o go.cmd && go.cmd && del go.cmd
+  get "/go" do
+    server_host = get_server_host(conn)
+    role = conn.query_params["role"] || ""
+
+    role_line = if role != "", do: "set AGENT_ROLE=#{role}\r\n", else: ""
+
+    script = "@echo off\r\n" <>
+             "set STATE_SERVER=ws://#{server_host}:4000\r\n" <>
+             role_line <>
+             "echo [oah] Downloading agent...\r\n" <>
+             "curl -fsSL \"http://#{server_host}:4000/dist/oah-agent-windows.exe\" -o \"%TEMP%\\oah-agent.exe\"\r\n" <>
+             "echo [oah] Starting...\r\n" <>
+             "\"%TEMP%\\oah-agent.exe\"\r\n"
+
+    conn
+    |> put_resp_content_type("text/plain")
+    |> send_resp(200, script)
+  end
+
+  get "/setup.ps1" do
+    role = conn.query_params["role"] || "builder"
+    server_host = get_server_host(conn)
+
+    script = """
+    $Phoenix = if ($env:PHOENIX) { $env:PHOENIX } else { "ws://#{server_host}:4000" }
+    $Role    = if ($env:ROLE)    { $env:ROLE }    else { "#{role}" }
+    Invoke-WebRequest "http://#{server_host}:4000/setup-agent.ps1" -OutFile "$env:TEMP\\oah-setup.ps1"
+    Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
+    & "$env:TEMP\\oah-setup.ps1" -Phoenix $Phoenix -Role $Role
+    """
+
+    conn
+    |> put_resp_content_type("text/plain")
+    |> send_resp(200, script)
+  end
+
+  get "/setup-agent.sh" do
+    script_path = Path.join([:code.priv_dir(:harness_server), "scripts", "setup-agent.sh"])
+
+    case File.read(script_path) do
+      {:ok, content} ->
+        conn
+        |> put_resp_content_type("text/plain")
+        |> send_resp(200, content)
+
+      {:error, _} ->
+        send_json(conn, 404, %{error: "setup-agent.sh not found"})
+    end
+  end
+
+  get "/setup-agent.ps1" do
+    script_path = Path.join([:code.priv_dir(:harness_server), "scripts", "setup-agent.ps1"])
+
+    case File.read(script_path) do
+      {:ok, content} ->
+        conn
+        |> put_resp_content_type("text/plain")
+        |> send_resp(200, content)
+
+      {:error, _} ->
+        send_json(conn, 404, %{error: "setup-agent.ps1 not found"})
+    end
+  end
+
+  get "/dist/oah-agent-windows.exe" do
+    exe_path = Path.join([:code.priv_dir(:harness_server), "dist", "oah-agent-windows.exe"])
+
+    case File.read(exe_path) do
+      {:ok, content} ->
+        conn
+        |> put_resp_header("content-disposition", "attachment; filename=\"oah-agent.exe\"")
+        |> put_resp_content_type("application/octet-stream")
+        |> send_resp(200, content)
+
+      {:error, _} ->
+        send_json(conn, 404, %{error: "binary not found — run: bun build"})
+    end
+  end
+
   # ── GET /api/health ─────────────────────────────────────────────────────────
 
   get "/api/health" do
@@ -129,8 +234,9 @@ defmodule HarnessServer.Router do
 
   get "/api/task/:task_id" do
     case StateStore.get_task_result(task_id) do
-      {:ok, result} -> send_json(conn, 200, result)
-      :not_found    -> send_json(conn, 202, %{status: "pending", task_id: task_id})
+      {:ok, [single]} -> send_json(conn, 200, single)
+      {:ok, results}  -> send_json(conn, 200, %{task_id: task_id, results: results, count: length(results)})
+      :not_found      -> send_json(conn, 202, %{status: "pending", task_id: task_id})
     end
   end
 
@@ -190,6 +296,14 @@ defmodule HarnessServer.Router do
     conn
     |> Plug.Conn.put_resp_content_type("application/json")
     |> Plug.Conn.send_resp(status, Jason.encode!(body))
+  end
+
+  defp get_server_host(conn) do
+    # Use the Host header so the script uses the same address the client connected with
+    case Plug.Conn.get_req_header(conn, "host") do
+      [host | _] -> host |> String.split(":") |> List.first()
+      [] -> "oah.local"
+    end
   end
 
   # rubric: embedded dashboard HTML served at GET /
@@ -398,6 +512,27 @@ nav{flex-shrink:0;background:var(--bg2);border-bottom:1px solid var(--border);di
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
 @keyframes slide-in{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
 .slide-in{animation:slide-in .18s ease both}
+/* file change tab */
+.fc-item{background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 14px;margin-bottom:6px;display:grid;grid-template-columns:130px 1fr;gap:4px 12px;align-items:start;font-size:11px}
+.fc-meta{display:flex;flex-direction:column;gap:3px}
+.fc-agent{color:var(--cyan);font-size:10px;font-weight:700}
+.fc-taskid{color:var(--text3);font-size:9px}
+.fc-ts{color:var(--text3);font-size:9px}
+.fc-files{display:flex;flex-direction:column;gap:3px}
+.fc-file{font-size:10px;color:var(--text2);padding:2px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;word-break:break-all}
+.fc-file::before{content:'📄 ';font-size:9px}
+/* agent chat tab */
+.chat-item{padding:8px 14px;display:flex;flex-direction:column;gap:4px;border-bottom:1px solid var(--border)}
+.chat-item:hover{background:var(--bg3)}
+.chat-header{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.chat-from{color:var(--cyan);font-weight:700;font-size:10px}
+.chat-arrow{color:var(--text3);font-size:10px}
+.chat-to{color:var(--orange);font-weight:700;font-size:10px}
+.chat-ev{font-size:8px;padding:1px 5px;border:1px solid var(--border);border-radius:2px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px}
+.chat-ev.task-assign{border-color:rgba(251,146,60,.3);color:var(--orange)}
+.chat-ev.mailbox-message,.chat-ev.mailbox-post{border-color:rgba(167,139,250,.3);color:var(--purple)}
+.chat-ts{color:var(--text3);font-size:9px;margin-left:auto}
+.chat-body{font-size:10px;color:var(--text2);line-height:1.5;word-break:break-word;max-height:100px;overflow-y:auto;padding:4px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:3px}
 @media(max-width:900px){.log-panel{display:none}.sb{width:200px}}
 </style>
 </head>
@@ -497,6 +632,8 @@ nav{flex-shrink:0;background:var(--bg2);border-bottom:1px solid var(--border);di
           <div class="tab" onclick="switchTab('tasks')">태스크 히스토리</div>
           <div class="tab" onclick="switchTab('state')">WK State 편집</div>
           <div class="tab" onclick="switchTab('agent')">에이전트 상세</div>
+          <div class="tab" onclick="switchTab('files')">파일 변경</div>
+          <div class="tab" onclick="switchTab('chat')">에이전트 대화</div>
         </div>
 
         <!-- TAB: DISPATCH -->
@@ -648,6 +785,34 @@ nav{flex-shrink:0;background:var(--bg2);border-bottom:1px solid var(--border);di
           </div>
         </div>
 
+        <!-- TAB: FILE CHANGES -->
+        <div class="tab-content" id="tab-files">
+          <div class="card">
+            <div class="card-h">
+              <span class="card-ht">파일 변경 내역</span>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="badge" id="fc-count">0</span>
+                <button class="btn btn-ghost" style="padding:2px 8px;font-size:9px" onclick="fileChanges=[];renderFileChanges()">초기화</button>
+              </div>
+            </div>
+            <div style="padding:12px" id="fc-list"><div class="empty"><div class="empty-icon">📁</div>파일 변경 없음<br/><span style="font-size:9px;color:var(--text3);margin-top:4px;display:block">에이전트가 task.result를 보낼 때 artifacts 필드가 있으면 여기에 표시됩니다</span></div></div>
+          </div>
+        </div>
+
+        <!-- TAB: AGENT CHAT -->
+        <div class="tab-content" id="tab-chat">
+          <div class="card" style="flex:1;display:flex;flex-direction:column;overflow:hidden">
+            <div class="card-h" style="flex-shrink:0">
+              <span class="card-ht">에이전트 대화</span>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="badge" id="chat-count">0</span>
+                <button class="btn btn-ghost" style="padding:2px 8px;font-size:9px" onclick="chatLog=[];renderChatLog()">초기화</button>
+              </div>
+            </div>
+            <div id="chat-list" style="overflow-y:auto;flex:1"><div class="empty"><div class="empty-icon">💬</div>대화 없음<br/><span style="font-size:9px;color:var(--text3);margin-top:4px;display:block">task.assign, mailbox.post/message 이벤트가 여기에 표시됩니다</span></div></div>
+          </div>
+        </div>
+
       </div><!-- /panels -->
 
       <!-- RIGHT: EVENT LOG -->
@@ -670,7 +835,7 @@ nav{flex-shrink:0;background:var(--bg2);border-bottom:1px solid var(--border);di
 <script>
 // ── State ───────────────────────────────────────────────────────────────────
 let selWk=null, selAgent=null, activeWkStatus='created';
-let allAgents=[], wkList=[], taskMap=new Map(), log=[];
+let allAgents=[], wkList=[], taskMap=new Map(), log=[], fileChanges=[], chatLog=[];
 let agentState={}, taskOutput={};
 let connected=false, wsRef=1, ws=null, wsHbTimer=null, wsJoinedTopics=new Set(), wsReconnectDelay=1000;
 let dispatchTargets=new Set(), logFilter=null;
@@ -687,7 +852,7 @@ const elapsed=iso=>{if(!iso)return'—';const s=Math.floor((Date.now()-new Date(
 // ── UI helpers ──────────────────────────────────────────────────────────────
 function switchTab(name){
   document.querySelectorAll('.tab').forEach((t,i)=>{
-    const names=['dispatch','tasks','state','agent'];
+    const names=['dispatch','tasks','state','agent','files','chat'];
     t.classList.toggle('active',names[i]===name);
   });
   document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
@@ -815,11 +980,16 @@ function refreshAgentDetail(name){
   const statusColor=st.status==='working'?'var(--orange)':st.status==='done'?'var(--green)':st.status==='blocked'?'var(--red)':'var(--text3)';
   const statusText=st.status==='working'?'⚡ 작업 중':st.status==='done'?'✓ 완료':st.status==='blocked'?'✗ 차단':'대기 중';
 
+  const roleOptions=ALL_ROLES.map(r=>`<option value="${r}"${r===role?' selected':''}>${r}</option>`).join('');
   id('adet-grid').innerHTML=`
     <span class="adk">머신</span><span class="adv">${e(agent.machine||'—')}</span>
     <span class="adk">Work Key</span><span class="adv c">${e(agent.work_key||'—')}</span>
     <span class="adk">온라인</span><span class="adv">${elapsed(agent.online_since)}</span>
     <span class="adk">상태</span><span class="adv" style="color:${statusColor}">${statusText}</span>
+    <span class="adk">Role</span><span class="adv" style="display:flex;gap:6px;align-items:center">
+      <select id="role-sel-${e(name)}" style="background:var(--bg3);color:var(--text);border:1px solid var(--border2);border-radius:3px;padding:2px 6px;font-family:inherit;font-size:11px;cursor:pointer">${roleOptions}</select>
+      <button onclick="setAgentRole('${e(name)}',document.getElementById('role-sel-${e(name)}').value)" style="background:var(--cyan);color:#000;border:none;border-radius:3px;padding:2px 8px;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer">변경</button>
+    </span>
     ${st.task_id?`<span class="adk">Task ID</span><span class="adv" style="font-size:10px">${e(st.task_id)}</span>`:''}
     ${st.started?`<span class="adk">시작</span><span class="adv">${fmt(st.started)}</span>`:''}
     ${st.completed?`<span class="adk">완료</span><span class="adv g">${fmt(st.completed)}</span>`:''}
@@ -841,6 +1011,25 @@ function dispatchToAgent(){
     switchTab('dispatch');
     id('dp-instr')?.focus();
   }
+}
+
+// ── Role Change ──────────────────────────────────────────────────────────────
+const ALL_ROLES=['orchestrator','planner','builder','verifier','reviewer','code-expert','mfg-expert','curriculum-expert','visual-feedback','executor','learner-simulator'];
+
+function setAgentRole(agentName, newRole){
+  if(!agentName||!newRole)return;
+  if(!ws||ws.readyState!==WebSocket.OPEN){alert('채널 미연결');return;}
+  const topic=`work:${selWk}`;
+  const msg=[null,String(++_ref),topic,'agent.setRole',{to:agentName,role:newRole}];
+  ws.send(JSON.stringify(msg));
+  // Optimistically update local state
+  const agent=allAgents.find(a=>a.name===agentName);
+  if(agent){
+    agent.role=newRole;
+    agent.name=`${newRole}@${(agentName.split('@')[1]||agentName)}`;
+    renderAgents(allAgents);
+  }
+  console.log(`[dashboard] setRole → ${agentName} = ${newRole}`);
 }
 
 // ── Mailbox ─────────────────────────────────────────────────────────────────
@@ -1090,6 +1279,65 @@ function showOutput(taskId){
 
 function clearTaskHistory(){taskMap.clear();updateTaskTable();}
 
+// ── File Changes ─────────────────────────────────────────────────────────────
+function addFileChange(agent,taskId,files,ts){
+  // Dedupe: merge files if same agent+taskId exists within last 2 seconds
+  const recent=fileChanges.find(fc=>fc.agent===agent&&fc.task_id===taskId&&(Date.now()-new Date(fc.ts))<2000);
+  if(recent){
+    files.forEach(f=>{if(!recent.files.includes(f))recent.files.push(f);});
+    renderFileChanges();return;
+  }
+  fileChanges.unshift({agent,task_id:taskId,files:Array.isArray(files)?[...files]:[files],ts});
+  if(fileChanges.length>300)fileChanges.pop();
+  renderFileChanges();
+}
+function renderFileChanges(){
+  const el=id('fc-list');if(!el)return;
+  id('fc-count').textContent=fileChanges.length;
+  if(!fileChanges.length){
+    el.innerHTML='<div class="empty"><div class="empty-icon">📁</div>파일 변경 없음<br/><span style="font-size:9px;color:var(--text3);margin-top:4px;display:block">에이전트가 task.result를 보낼 때 artifacts 필드가 있으면 여기에 표시됩니다</span></div>';
+    return;
+  }
+  el.innerHTML=fileChanges.slice(0,100).map(fc=>`
+    <div class="fc-item slide-in">
+      <div class="fc-meta">
+        <span class="fc-agent">${e(fc.agent)}</span>
+        <span class="fc-taskid" title="${e(fc.task_id||'')}">${e((fc.task_id||'').slice(0,20))}</span>
+        <span class="fc-ts">${fmt(fc.ts)}</span>
+      </div>
+      <div class="fc-files">${(fc.files||[]).map(f=>`<span class="fc-file">${e(f)}</span>`).join('')}</div>
+    </div>
+  `).join('');
+}
+
+// ── Agent Chat Log ────────────────────────────────────────────────────────────
+function addChatMsg(from,to,ev,body,ts){
+  chatLog.unshift({from,to,ev,body,ts});
+  if(chatLog.length>500)chatLog.pop();
+  renderChatLog();
+}
+function renderChatLog(){
+  const el=id('chat-list');if(!el)return;
+  id('chat-count').textContent=chatLog.length;
+  if(!chatLog.length){
+    el.innerHTML='<div class="empty"><div class="empty-icon">💬</div>대화 없음<br/><span style="font-size:9px;color:var(--text3);margin-top:4px;display:block">task.assign, mailbox.post/message 이벤트가 여기에 표시됩니다</span></div>';
+    return;
+  }
+  const evClass=ev=>ev.replace(/\./g,'-');
+  el.innerHTML=chatLog.slice(0,200).map(c=>`
+    <div class="chat-item slide-in">
+      <div class="chat-header">
+        <span class="chat-from">${e(c.from||'?')}</span>
+        <span class="chat-arrow">→</span>
+        <span class="chat-to">${e(c.to||'broadcast')}</span>
+        <span class="chat-ev ${evClass(c.ev||'')}">${e(c.ev||'?')}</span>
+        <span class="chat-ts">${fmt(c.ts)}</span>
+      </div>
+      <div class="chat-body">${e((c.body||'').slice(0,400))}</div>
+    </div>
+  `).join('');
+}
+
 // ── Event Log ────────────────────────────────────────────────────────────────
 function addLog(ev,msg,agentName){
   const t=new Date().toLocaleTimeString('ko',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
@@ -1176,6 +1424,8 @@ function connectWs(){
         const to=payload?.to||'broadcast';
         const instr=(payload?.instructions||'').slice(0,80);
         msg=`→ ${to}: ${instr}`;
+        // log to agent chat
+        addChatMsg(from||payload?.from||'http@controller',to,'task.assign',payload?.instructions||'',payload?.ts||new Date().toISOString());
         if(to){
           agentState[to]=agentState[to]||{};
           Object.assign(agentState[to],{task_id:taskId,instructions:payload?.instructions||'',status:'working',started:new Date().toISOString(),completed:null,exit_code:null});
@@ -1188,6 +1438,9 @@ function connectWs(){
         const agentFrom=payload?.from||'?';
         const exitCode=payload?.exit_code??'?';
         msg=`${agentFrom}: exit=${exitCode} — ${taskId}`;
+        // Extract file artifacts
+        const arts=payload?.artifacts;
+        if(arts&&arts.length>0){addFileChange(agentFrom,taskId,arts,payload?.ts||new Date().toISOString());}
         if(agentFrom&&agentState[agentFrom]){
           Object.assign(agentState[agentFrom],{status:exitCode===0||exitCode==='0'?'done':'error',exit_code:exitCode,completed:new Date().toISOString()});
           taskOutput[agentFrom]='';
@@ -1204,8 +1457,20 @@ function connectWs(){
           taskOutput[from]=tail;
           const outEl=id('adet-live-out');
           if(outEl&&selAgent===from){outEl.textContent=tail;outEl.scrollTop=outEl.scrollHeight;}
+          // Parse ARTIFACT: lines from output_tail
+          const artLines=tail.split('\n').filter(l=>/^ARTIFACT:\s+\S/.test(l.trim()));
+          if(artLines.length){
+            const files=artLines.map(l=>l.replace(/^ARTIFACT:\s+/,'').trim());
+            addFileChange(from,taskId||payload?.task_id||'?',files,payload?.ts||new Date().toISOString());
+          }
         }
         msg=`${from||'?'}: ${payload?.message||'working...'}`;
+      } else if(ev==='mailbox.message'||ev==='mailbox.post'){
+        const mfrom=payload?.from||'?';
+        const mto=payload?.to||'—';
+        const content=payload?.content||payload?.message||payload?.instructions||payload?.text||JSON.stringify(payload).slice(0,200);
+        msg=`${mfrom} → ${mto}: ${String(content).slice(0,60)}`;
+        addChatMsg(mfrom,mto,ev,String(content),payload?.ts||new Date().toISOString());
       } else if(ev==='task.blocked'){
         const agentFrom=payload?.from||'?';
         msg=`${agentFrom}: ${payload?.error||payload?.reason||taskId}`;

@@ -33,13 +33,18 @@
 
 import { spawn } from "bun";
 import { hostname } from "os";
+import {
+  reflectiveAgent,
+  autonomousPipeline,
+  type ProgressCallback,
+} from "./reflective_executor.ts";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
 const STATE_SERVER_RAW = process.env.STATE_SERVER ?? "ws://localhost:4000";
 const AGENT_MACHINE = process.env.AGENT_MACHINE ?? hostname();
-const AGENT_ROLE = process.env.AGENT_ROLE ?? "orchestrator";
-const AGENT_NAME = process.env.AGENT_NAME ?? `${AGENT_ROLE}@${AGENT_MACHINE}`;
+let AGENT_ROLE = process.env.AGENT_ROLE ?? "orchestrator";
+let AGENT_NAME = process.env.AGENT_NAME ?? `${AGENT_ROLE}@${AGENT_MACHINE}`;
 const PROJECT_DIR = process.env.PROJECT_DIR ?? process.cwd();
 const OPENCODE_BIN = process.env.OPENCODE_BIN ?? "opencode";
 
@@ -97,6 +102,30 @@ const activeTasks = new Map<string, { abort: AbortController }>();
 
 /** Max simultaneous OpenCode subprocesses per daemon. */
 const MAX_CONCURRENT_TASKS = 2;
+
+/**
+ * Phase orchestration state (for orchestrator role).
+ * Tracks Phase 1 task.result collection before dispatching Phase 2.
+ */
+interface PhaseOrchState {
+  phase: 1 | 2;
+  phase1TaskIds: Set<string>;
+  phase1Results: Map<string, { role: string; output: string }>;
+  phase2TaskIds: Set<string>;
+  iteration: number;
+  maxIterations: number;
+  goal: string;
+  repoPath: string;
+}
+
+const phaseOrch: PhaseOrchState | null = null;
+let _phaseOrch: PhaseOrchState | null = phaseOrch;
+
+/** Analysis roles for the 6-agent Phase 1/2 pipeline */
+const ANALYSIS_ROLES = {
+  phase1: ["code-expert", "mfg-expert", "curriculum-expert"],
+  phase2: ["visual-feedback", "executor", "learner-simulator"],
+} as const;
 
 /**
  * Results queued while WS was disconnected.
@@ -320,12 +349,45 @@ function handlePhxMessage([msgJoinRef, ref, topic, event, payload]: PhxMsg) {
       break;
     }
 
+    // Role change: dashboard sends agent.setRole targeted at this agent
+    case "agent.setRole": {
+      const p = payload as { to?: string; role?: string };
+      if (p.to && p.to !== AGENT_NAME) break; // not for us
+      if (!p.role) break;
+      const oldRole = AGENT_ROLE;
+      AGENT_ROLE = p.role;
+      AGENT_NAME = `${AGENT_ROLE}@${AGENT_MACHINE}`;
+      console.log(`[daemon] role changed: ${oldRole} → ${AGENT_ROLE} (rejoining...)`);
+      // Leave and rejoin with new role
+      const topic = `work:${WORK_KEY}`;
+      sendRaw([joinRef, nextRef(), topic, "phx_leave", {}]);
+      isJoined = false;
+      setTimeout(() => {
+        joinRef = nextRef();
+        sendRaw([joinRef, joinRef, topic, "phx_join", {
+          agent_name: AGENT_NAME,
+          role: AGENT_ROLE,
+          machine: AGENT_MACHINE,
+        }]);
+      }, 300);
+      break;
+    }
+
     // Task events — only handle if targeted at us or broadcast
     case "task.assign": {
       const p = payload as unknown as TaskPayload;
       const to = p.to;
       if (!to || to === AGENT_NAME || to === "broadcast") {
         handleTaskAssign(p);
+      }
+      break;
+    }
+
+    // Phase orchestration: collect Phase 1 results before dispatching Phase 2
+    case "task.result": {
+      const p = payload as { task_id?: string; role?: string; output?: string; status?: string };
+      if (_phaseOrch && p.task_id) {
+        handlePhaseResult(p.task_id, p.role ?? "unknown", p.output ?? "");
       }
       break;
     }
@@ -365,6 +427,46 @@ async function handleTaskAssign(payload: TaskPayload) {
   // Role check
   if (payload.role && payload.role !== AGENT_ROLE) {
     console.log(`[task] ${taskId} is for role '${payload.role}', I'm '${AGENT_ROLE}' — ignoring`);
+    return;
+  }
+
+  // Special: [SHELL] task — run shell command directly, no OpenCode/LLM
+  if (payload.instructions.trimStart().startsWith("[SHELL]")) {
+    await handleShellTask(payload);
+    return;
+  }
+
+  // Special: analyze_pipeline task (orchestrator only)
+  const instrLower = payload.instructions.toLowerCase();
+  if (AGENT_ROLE === "orchestrator" && instrLower.startsWith("[analyze_pipeline]")) {
+    await handleAnalyzePipeline(payload);
+    return;
+  }
+
+  // Analysis roles: use reflectiveAgent (auto-picks claude-cli / SDK / OpenAI)
+  const analysisRoles = [...ANALYSIS_ROLES.phase1, ...ANALYSIS_ROLES.phase2] as string[];
+  if (analysisRoles.includes(AGENT_ROLE)) {
+    const onProgress: ProgressCallback = (msg, tail) => {
+      sendEvent("task.progress", { task_id: taskId, to: payload.from, message: msg, output_tail: tail });
+    };
+
+    const result = await reflectiveAgent(
+      payload.instructions,
+      AGENT_ROLE,
+      payload.context ?? {},
+      onProgress,
+    );
+
+    sendEvent("task.result", {
+      task_id: taskId,
+      to: payload.from,
+      role: AGENT_ROLE,
+      status: result.solved ? "done" : (result.escalated ? "escalate" : "blocked"),
+      output: result.output.slice(-2000),
+      exit_code: result.solved ? 0 : 1,
+      artifacts: [],
+      token_count: result.tokenCount,
+    });
     return;
   }
 
@@ -422,6 +524,68 @@ async function handleTaskAssign(payload: TaskPayload) {
 
     console.error(`[task] ${taskId} blocked: ${errMsg}`);
   }
+}
+
+// ─── Shell task handler ───────────────────────────────────────────────────────
+
+async function handleShellTask(payload: TaskPayload) {
+  const taskId = payload.task_id ?? `task-${Date.now()}`;
+  // Extract command after [SHELL] prefix
+  const cmd = payload.instructions.replace(/^\[SHELL\]\s*/i, "").trim();
+
+  console.log(`[shell] ${taskId}: ${cmd.slice(0, 80)}`);
+
+  let output = "";
+  let exitCode = 0;
+
+  try {
+    const proc = spawn({
+      cmd: ["sh", "-c", cmd],
+      cwd: PROJECT_DIR,
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+
+    const decoder = new TextDecoder();
+    const readStream = async (stream: ReadableStream<Uint8Array>) => {
+      const reader = stream.getReader();
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          output += decoder.decode(value);
+        }
+      } catch { /* closed */ }
+    };
+
+    await Promise.all([readStream(proc.stdout), readStream(proc.stderr)]);
+    exitCode = await proc.exited;
+  } catch (err) {
+    output = err instanceof Error ? err.message : String(err);
+    exitCode = 1;
+  }
+
+  // Inject system info automatically
+  const sysInfo = {
+    machine: AGENT_MACHINE,
+    agent: AGENT_NAME,
+    role: AGENT_ROLE,
+    cwd: PROJECT_DIR,
+    user: process.env.USER ?? process.env.USERNAME ?? "unknown",
+    os: process.platform,
+  };
+
+  sendEvent("task.result", {
+    task_id: taskId,
+    to: payload.from ?? "http@controller",
+    from: AGENT_NAME,
+    role: AGENT_ROLE,
+    status: exitCode === 0 ? "done" : "blocked",
+    output: output.trim(),
+    exit_code: exitCode,
+    sys: sysInfo,
+    artifacts: [],
+  });
 }
 
 // ─── OpenCode subprocess runner ───────────────────────────────────────────────
@@ -517,11 +681,20 @@ async function runOpenCode(
 
 function buildSystemPrompt(payload: TaskPayload): string {
   const roleDescriptions: Record<string, string> = {
+    // Core workflow agents
     orchestrator: "You are the Orchestrator. You coordinate tasks, break down goals, and delegate to specialists. You do NOT write code directly.",
     planner: "You are the Planner. You analyze requirements, identify risks, and create detailed task plans. Output plans as TASKS.md format.",
     builder: "You are the Builder. You write and modify code. You have full filesystem access. Focus on implementation.",
     verifier: "You are the Verifier. You run tests, linters, and type checkers. Report results clearly. Do NOT modify production code.",
     reviewer: "You are the Reviewer. You read code and provide feedback. You do NOT modify files. Output review as structured markdown.",
+    // Phase 1 analysis agents
+    "code-expert": "You are the Code Expert. Analyze repository structure, ML components, notebook quality, and agenda alignment. Use Qdrant RAG (collection: code_cells) for semantic search instead of loading full files. Output report as .opencode/reports/phase1_code_expert_<ts>.md",
+    "mfg-expert": "You are the Manufacturing AI Expert. Evaluate manufacturing domain applicability, standards compliance (ISO 9001, IEC 62443), and edge deployment readiness. Query Qdrant (collection: mfg_standards) for domain knowledge. Output report as .opencode/reports/phase1_mfg_expert_<ts>.md",
+    "curriculum-expert": "You are the Curriculum Expert. Assess learning objectives, Bloom's taxonomy coverage, prerequisite sequencing, and pedagogical quality vs reference curricula. Query Qdrant (collections: bloom_taxonomy, curriculum_refs). Output report as .opencode/reports/phase1_curriculum_expert_<ts>.md",
+    // Phase 2 evaluation agents
+    "visual-feedback": "You are the Visual Feedback Agent. Evaluate notebook visual quality, accessibility, figure labeling, and colorblind safety. Use Phase 1 context to prioritize which notebooks to assess. Output report as .opencode/reports/phase2_visual_feedback_<ts>.md",
+    "executor": "You are the Executor. Run Jupyter notebooks, verify cell outputs, check model convergence, and identify runtime errors. Use jupyter nbconvert for execution. Output report as .opencode/reports/phase2_executor_<ts>.md",
+    "learner-simulator": "You are the Learner Simulator. Think like an intermediate Python developer with no ML background. Identify confusion points, missing prerequisites, jargon, and predicted drop-off points. Query Qdrant (collection: misconception_db). Output report as .opencode/reports/phase2_learner_simulator_<ts>.md",
   };
 
   const roleDesc = roleDescriptions[AGENT_ROLE] ?? `You are a ${AGENT_ROLE} agent.`;
@@ -546,6 +719,244 @@ function buildSystemPrompt(payload: TaskPayload): string {
     payload.instructions,
     contextStr,
   ].join("\n");
+}
+
+// ─── Phase Orchestration (orchestrator-only) ─────────────────────────────────
+
+/**
+ * Dispatch Phase 1 analysis agents (code-expert, mfg-expert, curriculum-expert)
+ * simultaneously via Phoenix Channel task.assign.
+ *
+ * Alternatively, if ANTHROPIC_API_KEY is set, run inline via Claude SDK
+ * when all agents are on the same machine (local mode).
+ */
+async function dispatchPhase1(goal: string, repoPath: string, maxIterations = 3) {
+  const useInlineSDK = !!process.env.ANTHROPIC_API_KEY && process.env.PHASE_INLINE !== "false";
+
+  if (useInlineSDK) {
+    // Inline mode: Claude SDK runs agents in-process (single machine)
+    console.log(`[phase] running Phase 1 + 2 inline via Claude SDK`);
+    const onProgress: ProgressCallback = (msg, tail) => {
+      sendEvent("task.progress", { message: msg, output_tail: tail.slice(-200) });
+    };
+
+    try {
+      const result = await autonomousPipeline(goal, { repo_path: repoPath }, onProgress, maxIterations);
+
+      // Store synthesis in state
+      await fetch(`${HTTP_BASE}/api/state/${WORK_KEY}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pipeline_result: {
+            synthesis: result.synthesis,
+            success: result.success,
+            total_tokens: result.totalTokens,
+            iterations: result.iterations,
+          },
+          status: result.success ? "done" : "escalate",
+        }),
+      });
+
+      sendEvent("task.result", {
+        task_id: `pipeline-${Date.now()}`,
+        status: result.success ? "done" : "escalate",
+        output: result.synthesis.slice(-2000),
+        artifacts: [],
+        phase1_count: result.phase1.length,
+        phase2_count: result.phase2.length,
+        total_tokens: result.totalTokens,
+      });
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.error(`[phase] pipeline error: ${errMsg}`);
+      sendEvent("task.blocked", { error: errMsg, task_id: `pipeline-${Date.now()}` });
+    }
+    return;
+  }
+
+  // Distributed mode: dispatch via Phoenix Channel to remote agents
+  console.log(`[phase] dispatching Phase 1 agents via Phoenix Channel`);
+  const timestamp = Date.now();
+
+  _phaseOrch = {
+    phase: 1,
+    phase1TaskIds: new Set(),
+    phase1Results: new Map(),
+    phase2TaskIds: new Set(),
+    iteration: 1,
+    maxIterations,
+    goal,
+    repoPath,
+  };
+
+  for (const role of ANALYSIS_ROLES.phase1) {
+    const taskId = `phase1-${role}-${timestamp}`;
+    _phaseOrch.phase1TaskIds.add(taskId);
+
+    sendEvent("task.assign", {
+      task_id: taskId,
+      role,
+      to: `${role}@broadcast`, // any agent with this role
+      from: AGENT_NAME,
+      instructions: [
+        `[PHASE 1 ANALYSIS] Goal: ${goal}`,
+        `Repository: ${repoPath}`,
+        `Your role: ${role}`,
+        `Work Key: ${WORK_KEY}`,
+        `State Server: ${HTTP_BASE}`,
+        ``,
+        `Perform your specialized analysis and output a structured report.`,
+        `Report: .opencode/reports/phase1_${role.replace("-", "_")}_${timestamp}.md`,
+        ``,
+        `Use [SOLVED] when complete, [BLOCKED: reason] if stuck.`,
+      ].join("\n"),
+      context: { repo_path: repoPath, goal, phase: 1, iteration: 1 },
+      timeout_ms: 600_000, // 10min per analysis agent
+    });
+
+    console.log(`[phase1] dispatched ${role} (task: ${taskId})`);
+  }
+}
+
+/**
+ * Called when a task.result arrives for a Phase 1 agent.
+ * When all 3 Phase 1 results are collected, dispatches Phase 2.
+ */
+function handlePhaseResult(taskId: string, role: string, output: string) {
+  if (!_phaseOrch) return;
+
+  if (_phaseOrch.phase === 1 && _phaseOrch.phase1TaskIds.has(taskId)) {
+    _phaseOrch.phase1Results.set(role, { role, output });
+    console.log(`[phase1] received result from ${role} (${_phaseOrch.phase1Results.size}/${_phaseOrch.phase1TaskIds.size})`);
+
+    // Store phase1 result in shared state
+    const phase1Partial: Record<string, string> = {};
+    _phaseOrch.phase1Results.forEach((v, k) => { phase1Partial[k] = v.output.slice(0, 3000); });
+    fetch(`${HTTP_BASE}/api/state/${WORK_KEY}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phase1_results: phase1Partial }),
+    }).catch(e => console.error(`[phase] state update failed: ${e}`));
+
+    // All Phase 1 results collected → dispatch Phase 2
+    if (_phaseOrch.phase1Results.size >= _phaseOrch.phase1TaskIds.size) {
+      console.log(`[phase1] all results received — dispatching Phase 2`);
+      _phaseOrch.phase = 2;
+      dispatchPhase2();
+    }
+  } else if (_phaseOrch.phase === 2 && _phaseOrch.phase2TaskIds.has(taskId)) {
+    console.log(`[phase2] received result from ${role}`);
+    _phaseOrch.phase2TaskIds.delete(taskId);
+
+    if (_phaseOrch.phase2TaskIds.size === 0) {
+      console.log(`[phase2] all results received — pipeline iteration ${_phaseOrch.iteration} complete`);
+      // Future: check if iteration needed, or synthesize
+      synthesizePipelineResults();
+    }
+  }
+}
+
+/**
+ * Dispatch Phase 2 evaluation agents with Phase 1 context.
+ */
+function dispatchPhase2() {
+  if (!_phaseOrch) return;
+
+  const timestamp = Date.now();
+  const phase1Context: Record<string, string> = {};
+  _phaseOrch.phase1Results.forEach((v, k) => { phase1Context[k] = v.output.slice(0, 3000); });
+
+  for (const role of ANALYSIS_ROLES.phase2) {
+    const taskId = `phase2-${role}-${timestamp}`;
+    _phaseOrch.phase2TaskIds.add(taskId);
+
+    sendEvent("task.assign", {
+      task_id: taskId,
+      role,
+      to: `${role}@broadcast`,
+      from: AGENT_NAME,
+      instructions: [
+        `[PHASE 2 EVALUATION] Goal: ${_phaseOrch.goal}`,
+        `Repository: ${_phaseOrch.repoPath}`,
+        `Your role: ${role}`,
+        `Iteration: ${_phaseOrch.iteration}/${_phaseOrch.maxIterations}`,
+        ``,
+        `Phase 1 results are available in your context. Use them to guide your evaluation.`,
+        `Report: .opencode/reports/phase2_${role.replace("-", "_")}_${timestamp}.md`,
+        ``,
+        `Use [SOLVED] when complete, [BLOCKED: reason] if stuck.`,
+      ].join("\n"),
+      context: {
+        repo_path: _phaseOrch.repoPath,
+        goal: _phaseOrch.goal,
+        phase: 2,
+        iteration: _phaseOrch.iteration,
+        phase1_results: phase1Context,
+      },
+      timeout_ms: 600_000,
+    });
+
+    console.log(`[phase2] dispatched ${role} (task: ${taskId})`);
+  }
+}
+
+/**
+ * Synthesize final pipeline results using reflective agent (inline).
+ * Only called in distributed mode when all Phase 2 results are received.
+ */
+async function synthesizePipelineResults() {
+  if (!_phaseOrch) return;
+
+  console.log(`[pipeline] synthesizing results`);
+  sendEvent("task.progress", { message: "Synthesizing pipeline results...", status: "running" });
+
+  const phase1Summary = Array.from(_phaseOrch.phase1Results.values())
+    .map(r => `## ${r.role}\n${r.output.slice(0, 2000)}`)
+    .join("\n\n");
+
+  const synthesisTask = `Synthesize analysis pipeline results for: ${_phaseOrch.goal}\n\n${phase1Summary}`;
+
+  if (process.env.ANTHROPIC_API_KEY) {
+    const onProgress: ProgressCallback = (msg, tail) => {
+      sendEvent("task.progress", { message: msg, output_tail: tail.slice(-200) });
+    };
+
+    const result = await reflectiveAgent(synthesisTask, "orchestrator", {}, onProgress, 3);
+
+    sendEvent("task.result", {
+      task_id: `synthesis-${Date.now()}`,
+      status: result.solved ? "done" : "escalate",
+      output: result.output,
+      escalated: result.escalated,
+      total_tokens: result.tokenCount,
+    });
+  } else {
+    // No SDK — emit collected Phase 1 results as final output
+    sendEvent("task.result", {
+      task_id: `synthesis-${Date.now()}`,
+      status: "done",
+      output: `Phase 1+2 pipeline complete. Results stored in state.phase1_results.`,
+    });
+  }
+
+  _phaseOrch = null;
+}
+
+/**
+ * Start a 6-agent analysis pipeline (orchestrator only).
+ * Called when a task.assign has type="analyze_pipeline".
+ */
+async function handleAnalyzePipeline(payload: TaskPayload) {
+  const ctx = payload.context as { repo_path?: string; max_iterations?: number } | undefined;
+  const repoPath = ctx?.repo_path ?? PROJECT_DIR;
+  const maxIterations = ctx?.max_iterations ?? 3;
+
+  console.log(`\n[pipeline] starting 6-agent analysis`);
+  console.log(`[pipeline] goal: ${payload.instructions.slice(0, 80)}`);
+  console.log(`[pipeline] repo: ${repoPath}, iterations: ${maxIterations}`);
+
+  await dispatchPhase1(payload.instructions, repoPath, maxIterations);
 }
 
 // ─── Graceful shutdown ────────────────────────────────────────────────────────

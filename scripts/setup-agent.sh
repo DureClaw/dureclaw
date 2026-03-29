@@ -19,19 +19,11 @@ OAH_DIR="${OPEN_AGENT_DIR:-$HOME/.open-agent-harness}"
 
 # ─── 인수 파싱 (포지셔널 우선, 환경변수 fallback) ─────────────────────────────
 
-PHOENIX="${1:-${PHOENIX:-}}"
+PHOENIX="${1:-${PHOENIX:-ws://oah.local:4000}}"
 ROLE="${2:-${ROLE:-builder}}"
 WK="${3:-${WK:-}}"
 DIR="${4:-${DIR:-$(pwd)}}"
 NAME="${NAME:-${ROLE}@$(hostname -s 2>/dev/null || hostname)}"
-
-if [[ -z "$PHOENIX" ]]; then
-  echo "사용법: oah-agent <phoenix-url> [role] [work-key] [dir]"
-  echo "  예시: oah-agent ws://100.64.0.1:4000 builder"
-  echo ""
-  echo "환경변수: PHOENIX=ws://... ROLE=builder [WK=LN-...] [DIR=/path] oah-agent"
-  exit 1
-fi
 
 HTTP_BASE="${PHOENIX/ws:/http:}"
 HTTP_BASE="${HTTP_BASE/wss:/https:}"
@@ -74,8 +66,12 @@ fi
 for i in 1 2 3 4 5; do
   if curl -sf "$HTTP_BASE/api/health" > /dev/null 2>&1; then break; fi
   if [[ $i -eq 5 ]]; then
-    echo "❌ Phoenix 서버 연결 실패: $HTTP_BASE"
-    echo "   서버가 실행 중인지, Tailscale이 연결됐는지 확인하세요."
+    echo "FAILED: Phoenix server unreachable: $HTTP_BASE"
+    echo ""
+    echo "oah.local 이 안 된다면 서버 IP 로 직접 지정하세요:"
+    echo "  PHOENIX=ws://<서버IP>:4000 bash <(curl -fsSL https://open-agent-harness.baryon.ai/setup-agent.sh)"
+    echo ""
+    echo "서버 IP 확인 방법 (서버 Mac 에서): ipconfig getifaddr en0"
     exit 1
   fi
   echo "→ Phoenix 서버 대기 중... ($i/5)"
