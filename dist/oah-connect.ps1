@@ -95,8 +95,10 @@ $env:STATE_SERVER = $selected.URL
 Write-Host ""
 Write-Host "  Connecting: $($selected.URL)" -ForegroundColor Cyan
 
-$exe    = "$env:USERPROFILE\.oah-agent.exe"
-$exeUrl = "https://open-agent-harness.baryon.ai/oah-agent-windows.exe"
+$exe       = "$env:USERPROFILE\.oah-agent.exe"
+$baseUrl   = "https://open-agent-harness.baryon.ai/oah-agent-windows.exe"
+$ncDate    = (Get-Date -Format "yyyyMMdd")
+$exeUrl    = "${baseUrl}?nc=${ncDate}"   # CDN 캐시 우회 (날짜별 fresh)
 
 if (-not (Test-Path $exe)) {
     Write-Host "  Downloading agent..." -ForegroundColor DarkGray
