@@ -10,7 +10,9 @@
     "dev": "bun run --watch src/index.ts",
     "start": "bun run src/index.ts"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0"
+  },
   "devDependencies": {
     "bun-types": "^1.3.10"
   }
