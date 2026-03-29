@@ -14479,8 +14479,10 @@ async function handleShellTask(payload) {
   let output = "";
   let exitCode = 0;
   try {
+    const isWindows = process.platform === "win32";
+    const shellCmd = isWindows ? ["cmd.exe", "/c", cmd] : ["sh", "-c", cmd];
     const proc = spawnCompat({
-      cmd: ["sh", "-c", cmd],
+      cmd: shellCmd,
       cwd: PROJECT_DIR,
       stdout: "pipe",
       stderr: "pipe"
