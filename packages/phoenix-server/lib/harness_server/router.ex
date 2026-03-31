@@ -102,6 +102,20 @@ defmodule HarnessServer.Router do
     end
   end
 
+  get "/install" do
+    script_path = Path.join([:code.priv_dir(:harness_server), "scripts", "install.sh"])
+
+    case File.read(script_path) do
+      {:ok, content} ->
+        conn
+        |> put_resp_content_type("text/plain")
+        |> send_resp(200, content)
+
+      {:error, _} ->
+        send_json(conn, 404, %{error: "install.sh not found"})
+    end
+  end
+
   get "/oah" do
     script_path = Path.join([:code.priv_dir(:harness_server), "scripts", "oah"])
 

@@ -69,11 +69,142 @@ _is_running() {
 
 _require_config() {
   if [[ -z "$PHOENIX" ]]; then
-    echo "오류: PHOENIX 서버가 설정되지 않았습니다."
-    echo "  setup-agent.sh 를 먼저 실행하거나:"
-    echo "  echo 'PHOENIX=ws://oah.local:4000' >> $OAH_CONFIG"
+    _first_run_wizard
+  fi
+}
+
+# ─── First-run 설정 마법사 ────────────────────────────────────────────────────
+
+_ts_online_peers_oah() {
+  local ts
+  ts=$(command -v tailscale 2>/dev/null) || return 1
+  "$ts" status --json 2>/dev/null \
+    | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+for v in (data.get('Peer') or {}).values():
+    if v.get('Online'):
+        ips = v.get('TailscaleIPs', [])
+        ip = ips[0] if ips else ''
+        print(v.get('HostName','?') + '  [' + ip + ']|ws://' + ip + ':4000')
+" 2>/dev/null
+}
+
+_ts_tui_oah() {
+  local IFS=$'\n'
+  local lines=()
+  while read -r line; do lines+=("$line"); done < <(_ts_online_peers_oah)
+  [[ ${#lines[@]} -eq 0 ]] && return 1
+
+  local idx=0
+  tput civis 2>/dev/null
+  trap 'tput cnorm 2>/dev/null' EXIT INT
+
+  while true; do
+    tput clear 2>/dev/null || clear
+    echo ""
+    echo "  OAH  서버 선택"
+    echo "  ──────────────────────────────────────"
+    echo ""
+    for i in "${!lines[@]}"; do
+      local label="${lines[$i]%%|*}"
+      if [[ $i -eq $idx ]]; then
+        printf "  \033[1;32m> %s\033[0m\n" "$label"
+      else
+        printf "    %s\n" "$label"
+      fi
+    done
+    echo ""
+    echo "  [↑/↓] 선택   [Enter] 연결   [q] 직접입력"
+
+    local key
+    IFS= read -rsn1 key
+    case "$key" in
+      $'\x1b')
+        IFS= read -rsn2 -t 0.1 key
+        case "$key" in
+          '[A') [[ $idx -gt 0 ]] && ((idx--)) ;;
+          '[B') [[ $idx -lt $((${#lines[@]}-1)) ]] && ((idx++)) ;;
+        esac ;;
+      '') # Enter
+        tput cnorm 2>/dev/null
+        PHOENIX="${lines[$idx]#*|}"
+        return 0 ;;
+      q|Q)
+        tput cnorm 2>/dev/null
+        return 2 ;;
+    esac
+  done
+}
+
+_first_run_wizard() {
+  echo ""
+  echo "  ╔══════════════════════════════════════╗"
+  echo "  ║   OAH — 첫 번째 실행 설정           ║"
+  echo "  ╚══════════════════════════════════════╝"
+  echo ""
+
+  # 서버 자동 탐색
+  if curl -sf --max-time 3 "http://oah.local:4000/api/health" > /dev/null 2>&1; then
+    PHOENIX="ws://oah.local:4000"
+    echo "  ✅ oah.local 서버 발견: $PHOENIX"
+  elif command -v tailscale &>/dev/null; then
+    echo "  Tailscale 피어에서 OAH 서버 탐색 중..."
+    if _ts_tui_oah; then
+      echo "  ✅ 선택: $PHOENIX"
+    else
+      echo ""
+      printf "  서버 WebSocket 주소 입력 (예: ws://192.168.1.10:4000): "
+      read -r PHOENIX
+    fi
+  else
+    echo ""
+    printf "  서버 WebSocket 주소 입력 (예: ws://192.168.1.10:4000): "
+    read -r PHOENIX
+  fi
+
+  if [[ -z "$PHOENIX" ]]; then
+    echo "  오류: 서버 주소가 필요합니다."
     exit 1
   fi
+
+  # ROLE 선택
+  echo ""
+  echo "  역할 선택:"
+  echo "    1) builder      (기본 — 코드 작성/실행)"
+  echo "    2) orchestrator (태스크 분배)"
+  echo "    3) executor     (명령어 실행 전용)"
+  echo "    4) analyzer     (코드 분석 전용)"
+  printf "  역할 [1]: "
+  read -r role_input
+  case "${role_input:-1}" in
+    2|orchestrator) ROLE="orchestrator" ;;
+    3|executor)     ROLE="executor" ;;
+    4|analyzer)     ROLE="analyzer" ;;
+    *)              ROLE="builder" ;;
+  esac
+
+  # DIR
+  printf "  프로젝트 디렉토리 [%s]: " "$(pwd)"
+  read -r dir_input
+  DIR="${dir_input:-$(pwd)}"
+
+  NAME="${ROLE}@$(hostname -s 2>/dev/null || hostname)"
+
+  # 저장
+  mkdir -p "$OAH_DIR"
+  cat > "$OAH_CONFIG" <<CFG
+PHOENIX=$PHOENIX
+ROLE=$ROLE
+BACKEND=auto
+DIR=$DIR
+WK=
+NAME=$NAME
+CFG
+
+  echo ""
+  echo "  ✅ 설정 저장됨: $OAH_CONFIG"
+  echo ""
 }
 
 _server_status() {
