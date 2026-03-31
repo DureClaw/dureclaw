@@ -136,6 +136,28 @@ case "$ARCH" in
     exit 1 ;;
 esac
 
+# ─── oah CLI 설치 함수 ────────────────────────────────────────────────────────
+
+_install_oah_cli() {
+  local cli_dir="$HOME/.local/bin"
+  mkdir -p "$cli_dir"
+  # oah CLI 스크립트 다운로드
+  curl -fsSL "$OAH_BASE/oah" -o "$cli_dir/oah" 2>/dev/null \
+    || curl -fsSL "$OAH_BASE/scripts/oah" -o "$cli_dir/oah" 2>/dev/null \
+    || true
+  chmod +x "$cli_dir/oah" 2>/dev/null || true
+  # PATH에 없으면 안내
+  if ! command -v oah &>/dev/null 2>&1; then
+    # .bashrc/.zshrc 에 PATH 추가
+    for rc in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile"; do
+      if [[ -f "$rc" ]] && ! grep -q ".local/bin" "$rc" 2>/dev/null; then
+        echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$rc"
+      fi
+    done
+    export PATH="$HOME/.local/bin:$PATH"
+  fi
+}
+
 if [[ "$USE_NODE" == "true" ]]; then
   # 32비트 ARM — Node.js + JS 번들 사용
   JS_BUNDLE="$HOME/.oah-agent.js"
@@ -219,28 +241,6 @@ CFG
     PROJECT_DIR="$DIR" \
     node "$JS_BUNDLE"
 fi
-
-# ─── oah CLI 설치 함수 ────────────────────────────────────────────────────────
-
-_install_oah_cli() {
-  local cli_dir="$HOME/.local/bin"
-  mkdir -p "$cli_dir"
-  # oah CLI 스크립트 다운로드
-  curl -fsSL "$OAH_BASE/oah" -o "$cli_dir/oah" 2>/dev/null \
-    || curl -fsSL "$OAH_BASE/scripts/oah" -o "$cli_dir/oah" 2>/dev/null \
-    || true
-  chmod +x "$cli_dir/oah" 2>/dev/null || true
-  # PATH에 없으면 안내
-  if ! command -v oah &>/dev/null 2>&1; then
-    # .bashrc/.zshrc 에 PATH 추가
-    for rc in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile"; do
-      if [[ -f "$rc" ]] && ! grep -q ".local/bin" "$rc" 2>/dev/null; then
-        echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$rc"
-      fi
-    done
-    export PATH="$HOME/.local/bin:$PATH"
-  fi
-}
 
 BINARY_NAME="oah-agent-${OS}-${ARCH}"
 BINARY_URL="$OAH_BASE/$BINARY_NAME"
