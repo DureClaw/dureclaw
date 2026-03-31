@@ -231,6 +231,13 @@ CFG
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo " 명령어:  oah status | oah start | oah service install"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+  if ! command -v oah &>/dev/null 2>&1; then
+    echo " ⚠  oah 명령어를 사용하려면 PATH를 적용하세요:"
+    echo "      export PATH=\"\$HOME/.local/bin:\$PATH\""
+    echo "    또는 새 터미널을 여세요."
+    echo ""
+  fi
 
   exec env \
     STATE_SERVER="$PHOENIX" \
@@ -304,6 +311,13 @@ echo " dir     →  $DIR"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo " 명령어:  oah status | oah start | oah service install"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+if ! command -v oah &>/dev/null 2>&1; then
+  echo " ⚠  oah 명령어를 사용하려면 PATH를 적용하세요:"
+  echo "      export PATH=\"\$HOME/.local/bin:\$PATH\""
+  echo "    또는 새 터미널을 여세요."
+  echo ""
+fi
 
 exec env \
   STATE_SERVER="$PHOENIX" \

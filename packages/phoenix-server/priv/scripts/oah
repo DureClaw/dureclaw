@@ -349,6 +349,11 @@ cmd_logs() {
 }
 
 cmd_config() {
+  local sub="${1:-}"
+  if [[ "$sub" == "set" ]]; then
+    cmd_config_set "${2:-}"
+    return
+  fi
   echo ""
   echo "  설정 파일: $OAH_CONFIG"
   echo "  ──────────────────────────────────────"
@@ -357,9 +362,300 @@ cmd_config() {
       echo "  $line"
     done < "$OAH_CONFIG"
   else
-    echo "  (없음 — setup-agent.sh 를 실행하세요)"
+    echo "  (없음 — oah init 을 실행하세요)"
   fi
   echo ""
+  echo "  변경: oah config set PHOENIX=ws://... | oah config set ROLE=builder"
+  echo ""
+}
+
+cmd_init() {
+  echo ""
+  echo "  기존 설정을 초기화하고 재설정합니다."
+  if [[ -f "$OAH_CONFIG" ]]; then
+    echo "  현재 설정:"
+    while IFS= read -r line; do
+      [[ "$line" =~ ^[A-Z] ]] && echo "    $line"
+    done < "$OAH_CONFIG"
+    echo ""
+    printf "  계속하시겠습니까? [y/N]: "
+    read -r confirm
+    [[ ! "${confirm,,}" =~ ^y ]] && echo "  취소됨." && return
+    rm -f "$OAH_CONFIG"
+  fi
+  # 설정을 초기화 후 first-run 마법사 재실행
+  PHOENIX=""
+  _first_run_wizard
+  echo "  oah 를 실행하려면: oah start"
+}
+
+cmd_doctor() {
+  local ok=true
+  echo ""
+  echo "  oah doctor — 시스템 진단"
+  echo "  ──────────────────────────────────────"
+
+  # 1. 설정 파일
+  if [[ -f "$OAH_CONFIG" ]]; then
+    echo "  [✅] 설정 파일   $OAH_CONFIG"
+  else
+    echo "  [✗ ] 설정 파일   없음 — oah init 실행 필요"
+    ok=false
+  fi
+
+  # 2. 서버 연결
+  if [[ -z "$PHOENIX" ]]; then
+    echo "  [✗ ] 서버        PHOENIX 미설정"
+    ok=false
+  else
+    local http="${PHOENIX/ws:/http:}"; http="${http/wss:/https:}"
+    if curl -sf --max-time 5 "$http/api/health" > /dev/null 2>&1; then
+      local ver
+      ver=$(curl -sf --max-time 5 "$http/api/health" | python3 -c "import sys,json; print(json.load(sys.stdin).get('version','?'))" 2>/dev/null || echo "?")
+      echo "  [✅] 서버 연결   $PHOENIX  (v$ver)"
+    else
+      echo "  [✗ ] 서버 연결   $PHOENIX — 응답 없음"
+      ok=false
+    fi
+  fi
+
+  # 3. 에이전트 바이너리
+  if _is_arm32; then
+    if [[ -f "$HOME/.oah-agent.js" ]]; then
+      local sz; sz=$(du -sh "$HOME/.oah-agent.js" | cut -f1)
+      echo "  [✅] 바이너리    ~/.oah-agent.js  ($sz)"
+    else
+      echo "  [✗ ] 바이너리    ~/.oah-agent.js 없음"
+      ok=false
+    fi
+  else
+    if [[ -f "$HOME/.oah-agent" ]]; then
+      local sz; sz=$(du -sh "$HOME/.oah-agent" | cut -f1)
+      echo "  [✅] 바이너리    ~/.oah-agent  ($sz)"
+    else
+      echo "  [✗ ] 바이너리    ~/.oah-agent 없음"
+      ok=false
+    fi
+  fi
+
+  # 4. AI 백엔드
+  echo ""
+  echo "  AI 백엔드 탐지:"
+  local found_any=false
+  for backend in claude opencode gemini codex aider zeroclaw; do
+    local bin_name="$backend"
+    [[ "$backend" == "claude" ]] && bin_name="claude"
+    if command -v "$bin_name" &>/dev/null; then
+      local ver_out
+      ver_out=$("$bin_name" --version 2>/dev/null | head -1 || echo "")
+      echo "  [✅] $backend   $(command -v "$bin_name")  $ver_out"
+      found_any=true
+    else
+      echo "  [ ] $backend   (없음)"
+    fi
+  done
+  if ! $found_any; then
+    echo "  ⚠  AI 백엔드를 찾지 못했습니다. [SHELL] 태스크만 실행 가능."
+  fi
+
+  # 5. Node.js (armhf)
+  if _is_arm32; then
+    echo ""
+    if command -v node &>/dev/null; then
+      local nv; nv=$(node --version 2>/dev/null || echo "?")
+      echo "  [✅] Node.js     $nv"
+    else
+      echo "  [✗ ] Node.js     미설치 — sudo apt install nodejs"
+      ok=false
+    fi
+  fi
+
+  # 6. oah CLI PATH
+  echo ""
+  if command -v oah &>/dev/null; then
+    echo "  [✅] oah PATH    $(command -v oah)"
+  else
+    echo "  [✗ ] oah PATH    ~/.local/bin 이 PATH에 없음"
+    echo "         → export PATH=\"\$HOME/.local/bin:\$PATH\""
+    ok=false
+  fi
+
+  # 7. 프로세스 상태
+  echo ""
+  if _is_running; then
+    echo "  [✅] 프로세스    실행 중  (PID $(cat "$OAH_PID"))"
+  else
+    echo "  [ ] 프로세스    중지됨"
+  fi
+
+  echo ""
+  echo "  ──────────────────────────────────────"
+  if $ok; then
+    echo "  ✅ 모든 항목 정상"
+  else
+    echo "  ⚠  일부 항목 수정 필요 (위 [✗] 항목 확인)"
+  fi
+  echo ""
+}
+
+cmd_kill() {
+  echo ""
+  local stopped=false
+
+  # 백그라운드 프로세스 종료
+  if _is_running; then
+    local pid; pid=$(cat "$OAH_PID")
+    kill -9 "$pid" 2>/dev/null && rm -f "$OAH_PID"
+    echo "  ✅ 에이전트 강제 종료  (PID $pid)"
+    stopped=true
+  fi
+
+  # systemd 서비스 강제 종료
+  if command -v systemctl &>/dev/null && systemctl --user is-active oah-agent &>/dev/null; then
+    systemctl --user kill -s SIGKILL oah-agent 2>/dev/null || true
+    echo "  ✅ systemd 서비스 강제 종료"
+    stopped=true
+  fi
+
+  # 잔여 프로세스 탐색
+  local stale_pids
+  stale_pids=$(pgrep -f "oah-agent\|node.*oah-agent.js" 2>/dev/null || true)
+  if [[ -n "$stale_pids" ]]; then
+    echo "$stale_pids" | xargs kill -9 2>/dev/null || true
+    echo "  ✅ 잔여 프로세스 종료: $stale_pids"
+    stopped=true
+  fi
+
+  $stopped || echo "  실행 중인 oah-agent 없음"
+  echo ""
+}
+
+cmd_completions() {
+  local shell="${1:-bash}"
+  case "$shell" in
+    bash)
+      cat <<'BASH'
+# oah bash completion
+# 사용: source <(oah completions bash)
+#   또는: oah completions bash >> ~/.bashrc
+
+_oah_completions() {
+  local cur prev words
+  COMPREPLY=()
+  cur="${COMP_WORDS[COMP_CWORD]}"
+  prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+  local commands="status start stop restart logs config update init doctor kill service completions help"
+  local service_cmds="install remove start stop restart status logs"
+
+  case "$prev" in
+    oah)
+      COMPREPLY=( $(compgen -W "$commands" -- "$cur") )
+      ;;
+    service)
+      COMPREPLY=( $(compgen -W "$service_cmds" -- "$cur") )
+      ;;
+    completions)
+      COMPREPLY=( $(compgen -W "bash zsh" -- "$cur") )
+      ;;
+    config)
+      COMPREPLY=( $(compgen -W "set" -- "$cur") )
+      ;;
+    logs)
+      COMPREPLY=( $(compgen -W "10 50 100 200" -- "$cur") )
+      ;;
+  esac
+}
+complete -F _oah_completions oah
+BASH
+      ;;
+    zsh)
+      cat <<'ZSH'
+# oah zsh completion
+# 사용: source <(oah completions zsh)
+#   또는: oah completions zsh >> ~/.zshrc
+
+_oah() {
+  local -a commands
+  commands=(
+    'status:상태 확인 (프로세스, 서버, 서비스)'
+    'start:백그라운드 실행'
+    'stop:중지'
+    'restart:재시작'
+    'logs:로그 보기'
+    'config:설정 출력/변경'
+    'update:최신 버전 업데이트'
+    'init:설정 재마법사'
+    'doctor:시스템 진단'
+    'kill:강제 종료'
+    'service:OS 서비스 관리'
+    'completions:셸 자동완성 스크립트'
+    'help:도움말'
+  )
+
+  local -a service_cmds
+  service_cmds=(
+    'install:서비스 등록' 'remove:서비스 제거'
+    'start:서비스 시작' 'stop:서비스 중지'
+    'restart:서비스 재시작' 'status:서비스 상태'
+    'logs:서비스 로그'
+  )
+
+  _arguments \
+    '1: :->command' \
+    '*: :->args'
+
+  case $state in
+    command) _describe 'oah commands' commands ;;
+    args)
+      case $words[2] in
+        service)   _describe 'service subcommands' service_cmds ;;
+        completions) _values 'shell' bash zsh ;;
+      esac
+      ;;
+  esac
+}
+compdef _oah oah
+ZSH
+      ;;
+    *)
+      echo "지원하는 셸: bash, zsh"
+      echo "사용: oah completions bash | oah completions zsh"
+      ;;
+  esac
+}
+
+cmd_config_set() {
+  local kv="${1:-}"
+  if [[ -z "$kv" || ! "$kv" =~ ^[A-Z_]+=.* ]]; then
+    echo "사용: oah config set KEY=VALUE"
+    echo "키:   PHOENIX  ROLE  BACKEND  DIR  WK  NAME"
+    echo "예:   oah config set PHOENIX=ws://192.168.1.10:4000"
+    return 1
+  fi
+  local key="${kv%%=*}"
+  local val="${kv#*=}"
+  mkdir -p "$OAH_DIR"
+  if [[ -f "$OAH_CONFIG" ]]; then
+    # 기존 키 교체 또는 추가
+    local tmpfile; tmpfile=$(mktemp)
+    local found=false
+    while IFS= read -r line; do
+      if [[ "$line" =~ ^${key}= ]]; then
+        echo "${key}=${val}" >> "$tmpfile"
+        found=true
+      else
+        echo "$line" >> "$tmpfile"
+      fi
+    done < "$OAH_CONFIG"
+    $found || echo "${key}=${val}" >> "$tmpfile"
+    mv "$tmpfile" "$OAH_CONFIG"
+  else
+    echo "${key}=${val}" > "$OAH_CONFIG"
+  fi
+  echo "✅ $key = $val"
+  # 현재 세션에도 반영
+  export "$key"="$val"
 }
 
 cmd_update() {
@@ -566,28 +862,36 @@ cmd_help() {
   oah — Open Agent Harness CLI
 
   기본 명령어:
-    oah                    포그라운드 실행 (인터랙티브)
+    oah                    포그라운드 실행 (설정 없으면 마법사 실행)
     oah start              백그라운드 실행
     oah stop               중지
     oah restart            재시작
     oah status             상태 확인 (프로세스, 서버 연결, 서비스)
-    oah logs [n]           로그 보기 (기본 50줄, -f 실시간)
-    oah update             최신 버전으로 업데이트
+    oah logs [n]           로그 보기 (기본 50줄, 실시간)
+    oah kill               실행 중 에이전트 강제 종료
+
+  설정 관리:
+    oah init               설정 재마법사 (서버/역할 변경)
     oah config             현재 설정 출력
+    oah config set K=V     설정 값 변경 (예: PHOENIX=ws://...:4000)
+    oah update             최신 버전으로 업데이트
+
+  진단:
+    oah doctor             전체 시스템 진단 (서버·백엔드·바이너리·PATH)
 
   서비스 관리:
     oah service install    systemd(Linux/Pi) / launchd(macOS) 서비스 등록
     oah service remove     서비스 제거
-    oah service start      서비스 시작
-    oah service stop       서비스 중지
-    oah service restart    서비스 재시작
-    oah service status     서비스 상태 확인
-    oah service logs       서비스 로그 (journalctl)
+    oah service start/stop/restart/status/logs
+
+  셸 자동완성:
+    source <(oah completions bash)   # bash
+    source <(oah completions zsh)    # zsh
 
   설정 파일: ~/.oah/config
     PHOENIX=ws://oah.local:4000
-    ROLE=builder
-    BACKEND=auto
+    ROLE=builder          # builder | orchestrator | executor | analyzer
+    BACKEND=auto          # auto | claude | opencode | gemini | zeroclaw
     DIR=/home/user/projects
 
 HELP
@@ -609,16 +913,20 @@ CMD="${1:-run}"
 shift || true
 
 case "$CMD" in
-  status)          cmd_status "$@" ;;
-  start)           cmd_start "$@" ;;
-  stop)            cmd_stop "$@" ;;
-  restart)         cmd_restart "$@" ;;
-  logs)            cmd_logs "$@" ;;
-  config)          cmd_config "$@" ;;
-  update)          cmd_update "$@" ;;
-  service)         cmd_service "$CMD" "$@" ;;
-  help|--help|-h)  cmd_help ;;
-  run|"")          cmd_run ;;
+  status)               cmd_status "$@" ;;
+  start)                cmd_start "$@" ;;
+  stop)                 cmd_stop "$@" ;;
+  restart)              cmd_restart "$@" ;;
+  logs)                 cmd_logs "$@" ;;
+  config)               cmd_config "$@" ;;
+  update)               cmd_update "$@" ;;
+  init|setup|onboard)   cmd_init ;;
+  doctor|check|diag)    cmd_doctor ;;
+  kill|estop|force-stop) cmd_kill ;;
+  completions|completion) cmd_completions "${1:-bash}" ;;
+  service)              cmd_service "$CMD" "$@" ;;
+  help|--help|-h)       cmd_help ;;
+  run|"")               cmd_run ;;
   *)
     echo "알 수 없는 명령어: $CMD"
     echo "  oah help 로 사용법을 확인하세요."
