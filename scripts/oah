@@ -1,0 +1,495 @@
+#!/usr/bin/env bash
+# oah — Open Agent Harness CLI
+#
+# 설치: setup-agent.sh 실행 시 자동으로 ~/.local/bin/oah 에 설치됨
+#
+# 사용법:
+#   oah                    # 포그라운드 실행 (기본)
+#   oah start              # 백그라운드 실행
+#   oah stop               # 중지
+#   oah restart            # 재시작
+#   oah status             # 상태 확인
+#   oah logs               # 로그 보기
+#   oah update             # 에이전트 최신 버전으로 업데이트
+#   oah config             # 현재 설정 출력
+#   oah service install    # systemd/launchd 서비스 등록
+#   oah service remove     # 서비스 해제
+#   oah service start      # 서비스 시작
+#   oah service stop       # 서비스 중지
+#   oah service restart    # 서비스 재시작
+#   oah service status     # 서비스 상태
+#   oah service logs       # 서비스 로그
+
+set -euo pipefail
+
+# ─── 경로 ─────────────────────────────────────────────────────────────────────
+
+OAH_DIR="$HOME/.oah"
+OAH_CONFIG="$OAH_DIR/config"
+OAH_PID="$OAH_DIR/oah.pid"
+OAH_LOG="$OAH_DIR/oah.log"
+OAH_BASE="https://open-agent-harness.baryon.ai"
+
+mkdir -p "$OAH_DIR"
+
+# ─── 설정 로드 ────────────────────────────────────────────────────────────────
+
+# defaults
+PHOENIX=""
+ROLE="builder"
+WK=""
+DIR="$HOME"
+NAME=""
+BACKEND="auto"
+
+[[ -f "$OAH_CONFIG" ]] && source "$OAH_CONFIG"
+
+NAME="${NAME:-${ROLE}@$(hostname -s 2>/dev/null || hostname)}"
+
+# ─── 헬퍼 ─────────────────────────────────────────────────────────────────────
+
+_arch() { uname -m; }
+
+_is_arm32() {
+  local a; a=$(_arch)
+  [[ "$a" == armv7l || "$a" == armv6l ]]
+}
+
+_exe_cmd() {
+  if _is_arm32; then
+    echo "node $HOME/.oah-agent.js"
+  else
+    echo "$HOME/.oah-agent"
+  fi
+}
+
+_is_running() {
+  [[ -f "$OAH_PID" ]] && kill -0 "$(cat "$OAH_PID")" 2>/dev/null
+}
+
+_require_config() {
+  if [[ -z "$PHOENIX" ]]; then
+    echo "오류: PHOENIX 서버가 설정되지 않았습니다."
+    echo "  setup-agent.sh 를 먼저 실행하거나:"
+    echo "  echo 'PHOENIX=ws://oah.local:4000' >> $OAH_CONFIG"
+    exit 1
+  fi
+}
+
+_server_status() {
+  local http="${PHOENIX/ws:/http:}"
+  http="${http/wss:/https:}"
+  if curl -sf --max-time 3 "$http/api/health" 2>/dev/null; then
+    return 0
+  fi
+  return 1
+}
+
+_print_banner() {
+  local node_label=""
+  _is_arm32 && node_label="  [Node.js/32-bit]" || node_label=""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo " oah-agent  $NAME$node_label"
+  echo " server  →  $PHOENIX"
+  echo " backend →  $BACKEND"
+  echo " dir     →  $DIR"
+  [[ -n "$WK" ]] && echo " work-key→  $WK"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+}
+
+_run_env() {
+  env \
+    STATE_SERVER="$PHOENIX" \
+    AGENT_NAME="$NAME" \
+    AGENT_ROLE="$ROLE" \
+    AGENT_BACKEND="$BACKEND" \
+    WORK_KEY="${WK:-}" \
+    PROJECT_DIR="$DIR" \
+    "$@"
+}
+
+# ─── 명령어 ───────────────────────────────────────────────────────────────────
+
+cmd_status() {
+  echo ""
+  echo "  oah-agent 상태"
+  echo "  ──────────────────────────────────────"
+
+  # 프로세스 상태
+  if _is_running; then
+    local pid; pid=$(cat "$OAH_PID")
+    echo "  프로세스  ✅ 실행 중  (PID $pid)"
+  else
+    echo "  프로세스  ○ 중지됨"
+  fi
+
+  # 설정
+  echo "  서버      ${PHOENIX:-"(미설정)"}"
+  echo "  역할      $ROLE"
+  echo "  백엔드    $BACKEND"
+  echo "  디렉토리  $DIR"
+  [[ -n "$WK" ]] && echo "  Work Key  $WK"
+
+  # 서버 연결
+  echo ""
+  if [[ -n "$PHOENIX" ]]; then
+    if _server_status > /dev/null 2>&1; then
+      local health; health=$(_server_status 2>/dev/null)
+      local ver; ver=$(echo "$health" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('version','?'))" 2>/dev/null || echo "?")
+      local wks; wks=$(echo "$health" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('work_keys',0))" 2>/dev/null || echo "?")
+      echo "  서버 연결 ✅ 온라인  (v$ver, WK=${wks}개)"
+    else
+      echo "  서버 연결 ✗ 오프라인"
+    fi
+  else
+    echo "  서버 연결 — (서버 미설정)"
+  fi
+
+  # 서비스 상태
+  echo ""
+  local svc_status="없음"
+  if [[ "$(uname)" == "Darwin" ]]; then
+    local plist="$HOME/Library/LaunchAgents/ai.baryon.oah-agent.plist"
+    [[ -f "$plist" ]] && svc_status="launchd 등록됨"
+  else
+    local unit="$HOME/.config/systemd/user/oah-agent.service"
+    if [[ -f "$unit" ]]; then
+      if systemctl --user is-active oah-agent &>/dev/null; then
+        svc_status="systemd ✅ active"
+      else
+        svc_status="systemd ○ inactive"
+      fi
+    fi
+  fi
+  echo "  서비스    $svc_status"
+  echo ""
+}
+
+cmd_start() {
+  _require_config
+  if _is_running; then
+    local pid; pid=$(cat "$OAH_PID")
+    echo "이미 실행 중입니다. (PID $pid)"
+    return
+  fi
+
+  _print_banner
+  local exe_cmd; exe_cmd=$(_exe_cmd)
+
+  # shellcheck disable=SC2086
+  _run_env nohup $exe_cmd >> "$OAH_LOG" 2>&1 &
+  echo $! > "$OAH_PID"
+  sleep 1
+
+  if _is_running; then
+    echo "✅ 시작됨  (PID $(cat "$OAH_PID"))"
+    echo "   로그: oah logs"
+  else
+    echo "✗ 시작 실패. 로그 확인:"
+    tail -20 "$OAH_LOG"
+    exit 1
+  fi
+}
+
+cmd_stop() {
+  if ! _is_running; then
+    echo "실행 중이지 않습니다."
+    rm -f "$OAH_PID"
+    return
+  fi
+  local pid; pid=$(cat "$OAH_PID")
+  kill "$pid" 2>/dev/null && rm -f "$OAH_PID"
+  echo "✅ 중지됨  (PID $pid)"
+}
+
+cmd_restart() {
+  cmd_stop || true
+  sleep 1
+  cmd_start
+}
+
+cmd_logs() {
+  local n="${2:-50}"
+  if [[ ! -f "$OAH_LOG" ]]; then
+    echo "로그 파일 없음: $OAH_LOG"
+    return
+  fi
+  tail -f -n "$n" "$OAH_LOG"
+}
+
+cmd_config() {
+  echo ""
+  echo "  설정 파일: $OAH_CONFIG"
+  echo "  ──────────────────────────────────────"
+  if [[ -f "$OAH_CONFIG" ]]; then
+    while IFS= read -r line; do
+      echo "  $line"
+    done < "$OAH_CONFIG"
+  else
+    echo "  (없음 — setup-agent.sh 를 실행하세요)"
+  fi
+  echo ""
+}
+
+cmd_update() {
+  echo "→ 최신 에이전트 다운로드 중..."
+  local nc; nc=$(date +%Y%m%d%H%M)
+  if _is_arm32; then
+    curl -fsSL "$OAH_BASE/oah-agent.js?nc=$nc" -o "$HOME/.oah-agent.js"
+    echo "✅ ~/.oah-agent.js 업데이트 완료"
+  else
+    local os arch binary_name
+    os=$(uname -s | tr '[:upper:]' '[:lower:]')
+    arch=$(uname -m)
+    [[ "$arch" == "x86_64" ]] && arch="x64"
+    [[ "$arch" == "aarch64" || "$arch" == "arm64" ]] && arch="arm64"
+    binary_name="oah-agent-${os}-${arch}"
+    curl -fsSL "$OAH_BASE/$binary_name?nc=$nc" -o "$HOME/.oah-agent"
+    chmod +x "$HOME/.oah-agent"
+    echo "✅ ~/.oah-agent 업데이트 완료"
+  fi
+  if _is_running; then
+    echo "→ 재시작 중..."
+    cmd_restart
+  fi
+}
+
+# ─── Service 관리 ─────────────────────────────────────────────────────────────
+
+_service_name="oah-agent"
+
+_install_systemd() {
+  local unit_dir="$HOME/.config/systemd/user"
+  local unit_file="$unit_dir/$_service_name.service"
+  mkdir -p "$unit_dir"
+
+  local exe_cmd; exe_cmd=$(_exe_cmd)
+  # exe_cmd 는 "node /path/to/file.js" 혹은 "/path/to/binary" 형태
+  local exec_start="$HOME/.oah-agent"
+  _is_arm32 && exec_start="/usr/bin/env node $HOME/.oah-agent.js"
+
+  cat > "$unit_file" <<UNIT
+[Unit]
+Description=OAH Agent Daemon (open-agent-harness)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=$exec_start
+Restart=on-failure
+RestartSec=10
+StandardOutput=append:$OAH_LOG
+StandardError=append:$OAH_LOG
+Environment="STATE_SERVER=$PHOENIX"
+Environment="AGENT_NAME=$NAME"
+Environment="AGENT_ROLE=$ROLE"
+Environment="AGENT_BACKEND=$BACKEND"
+Environment="WORK_KEY=${WK:-}"
+Environment="PROJECT_DIR=$DIR"
+Environment="PATH=$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin"
+
+[Install]
+WantedBy=default.target
+UNIT
+
+  systemctl --user daemon-reload
+  systemctl --user enable "$_service_name"
+  systemctl --user start "$_service_name"
+  echo "✅ systemd 서비스 설치 완료"
+  echo "   oah service status  — 상태 확인"
+  echo "   oah service logs    — 로그 보기"
+  echo "   oah service stop    — 중지"
+}
+
+_install_launchd() {
+  local plist_dir="$HOME/Library/LaunchAgents"
+  local plist="$plist_dir/ai.baryon.$_service_name.plist"
+  mkdir -p "$plist_dir"
+
+  local exec_start="$HOME/.oah-agent"
+
+  cat > "$plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>             <string>ai.baryon.oah-agent</string>
+  <key>ProgramArguments</key>  <array><string>$exec_start</string></array>
+  <key>RunAtLoad</key>         <true/>
+  <key>KeepAlive</key>         <true/>
+  <key>StandardOutPath</key>   <string>$OAH_LOG</string>
+  <key>StandardErrorPath</key> <string>$OAH_LOG</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>STATE_SERVER</key>    <string>$PHOENIX</string>
+    <key>AGENT_NAME</key>      <string>$NAME</string>
+    <key>AGENT_ROLE</key>      <string>$ROLE</string>
+    <key>AGENT_BACKEND</key>   <string>$BACKEND</string>
+    <key>WORK_KEY</key>        <string>${WK:-}</string>
+    <key>PROJECT_DIR</key>     <string>$DIR</string>
+    <key>PATH</key>            <string>$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin</string>
+  </dict>
+</dict>
+</plist>
+PLIST
+
+  launchctl load "$plist" 2>/dev/null || launchctl bootstrap gui/"$(id -u)" "$plist" 2>/dev/null || true
+  echo "✅ launchd 서비스 설치 완료"
+  echo "   oah service status  — 상태 확인"
+}
+
+cmd_service() {
+  _require_config
+  local sub="${2:-help}"
+
+  case "$sub" in
+    install)
+      echo "→ 서비스 설치 중..."
+      if [[ "$(uname)" == "Darwin" ]]; then
+        _install_launchd
+      elif command -v systemctl &>/dev/null; then
+        _install_systemd
+      else
+        echo "오류: systemd / launchd 를 찾을 수 없습니다."
+        exit 1
+      fi
+      ;;
+
+    remove|uninstall)
+      if [[ "$(uname)" == "Darwin" ]]; then
+        local plist="$HOME/Library/LaunchAgents/ai.baryon.$_service_name.plist"
+        launchctl unload "$plist" 2>/dev/null || true
+        rm -f "$plist"
+        echo "✅ launchd 서비스 제거 완료"
+      else
+        systemctl --user stop "$_service_name" 2>/dev/null || true
+        systemctl --user disable "$_service_name" 2>/dev/null || true
+        rm -f "$HOME/.config/systemd/user/$_service_name.service"
+        systemctl --user daemon-reload
+        echo "✅ systemd 서비스 제거 완료"
+      fi
+      ;;
+
+    start)
+      if [[ "$(uname)" == "Darwin" ]]; then
+        launchctl start "ai.baryon.$_service_name" 2>/dev/null || true
+      else
+        systemctl --user start "$_service_name"
+      fi
+      echo "✅ 서비스 시작됨"
+      ;;
+
+    stop)
+      if [[ "$(uname)" == "Darwin" ]]; then
+        launchctl stop "ai.baryon.$_service_name" 2>/dev/null || true
+      else
+        systemctl --user stop "$_service_name"
+      fi
+      echo "✅ 서비스 중지됨"
+      ;;
+
+    restart)
+      if [[ "$(uname)" == "Darwin" ]]; then
+        launchctl stop "ai.baryon.$_service_name" 2>/dev/null || true
+        sleep 1
+        launchctl start "ai.baryon.$_service_name" 2>/dev/null || true
+      else
+        systemctl --user restart "$_service_name"
+      fi
+      echo "✅ 서비스 재시작됨"
+      ;;
+
+    status)
+      if [[ "$(uname)" == "Darwin" ]]; then
+        local plist="$HOME/Library/LaunchAgents/ai.baryon.$_service_name.plist"
+        if [[ -f "$plist" ]]; then
+          echo "launchd 서비스: 등록됨"
+          launchctl list "ai.baryon.$_service_name" 2>/dev/null || echo "(중지됨)"
+        else
+          echo "launchd 서비스: 미등록"
+        fi
+      else
+        systemctl --user status "$_service_name" 2>/dev/null || echo "(서비스 없음)"
+      fi
+      ;;
+
+    logs)
+      if command -v journalctl &>/dev/null; then
+        journalctl --user -u "$_service_name" -f --no-pager -n 50
+      else
+        tail -f "$OAH_LOG"
+      fi
+      ;;
+
+    *)
+      echo "사용법: oah service [install|remove|start|stop|restart|status|logs]"
+      ;;
+  esac
+}
+
+cmd_help() {
+  cat <<'HELP'
+
+  oah — Open Agent Harness CLI
+
+  기본 명령어:
+    oah                    포그라운드 실행 (인터랙티브)
+    oah start              백그라운드 실행
+    oah stop               중지
+    oah restart            재시작
+    oah status             상태 확인 (프로세스, 서버 연결, 서비스)
+    oah logs [n]           로그 보기 (기본 50줄, -f 실시간)
+    oah update             최신 버전으로 업데이트
+    oah config             현재 설정 출력
+
+  서비스 관리:
+    oah service install    systemd(Linux/Pi) / launchd(macOS) 서비스 등록
+    oah service remove     서비스 제거
+    oah service start      서비스 시작
+    oah service stop       서비스 중지
+    oah service restart    서비스 재시작
+    oah service status     서비스 상태 확인
+    oah service logs       서비스 로그 (journalctl)
+
+  설정 파일: ~/.oah/config
+    PHOENIX=ws://oah.local:4000
+    ROLE=builder
+    BACKEND=auto
+    DIR=/home/user/projects
+
+HELP
+}
+
+# ─── 포그라운드 실행 ──────────────────────────────────────────────────────────
+
+cmd_run() {
+  _require_config
+  _print_banner
+  local exe_cmd; exe_cmd=$(_exe_cmd)
+  # shellcheck disable=SC2086
+  exec _run_env $exe_cmd
+}
+
+# ─── 메인 ─────────────────────────────────────────────────────────────────────
+
+CMD="${1:-run}"
+shift || true
+
+case "$CMD" in
+  status)          cmd_status "$@" ;;
+  start)           cmd_start "$@" ;;
+  stop)            cmd_stop "$@" ;;
+  restart)         cmd_restart "$@" ;;
+  logs)            cmd_logs "$@" ;;
+  config)          cmd_config "$@" ;;
+  update)          cmd_update "$@" ;;
+  service)         cmd_service "$CMD" "$@" ;;
+  help|--help|-h)  cmd_help ;;
+  run|"")          cmd_run ;;
+  *)
+    echo "알 수 없는 명령어: $CMD"
+    echo "  oah help 로 사용법을 확인하세요."
+    exit 1 ;;
+esac

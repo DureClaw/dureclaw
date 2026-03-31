@@ -102,6 +102,20 @@ defmodule HarnessServer.Router do
     end
   end
 
+  get "/oah" do
+    script_path = Path.join([:code.priv_dir(:harness_server), "scripts", "oah"])
+
+    case File.read(script_path) do
+      {:ok, content} ->
+        conn
+        |> put_resp_content_type("text/plain")
+        |> send_resp(200, content)
+
+      {:error, _} ->
+        send_json(conn, 404, %{error: "oah CLI script not found"})
+    end
+  end
+
   get "/dist/oah-agent-windows.exe" do
     exe_path = Path.join([:code.priv_dir(:harness_server), "dist", "oah-agent-windows.exe"])
 
