@@ -28,6 +28,7 @@ OAH_DIR="$HOME/.oah"
 OAH_CONFIG="$OAH_DIR/config"
 OAH_PID="$OAH_DIR/oah.pid"
 OAH_LOG="$OAH_DIR/oah.log"
+OAH_SOUL="$OAH_DIR/soul.md"
 OAH_BASE="https://open-agent-harness.baryon.ai"
 
 mkdir -p "$OAH_DIR"
@@ -658,6 +659,139 @@ cmd_config_set() {
   export "$key"="$val"
 }
 
+cmd_soul() {
+  local sub="${1:-show}"
+  case "$sub" in
+    show|cat)
+      echo ""
+      if [[ -f "$OAH_SOUL" ]]; then
+        cat "$OAH_SOUL"
+      else
+        echo "  soul 파일 없음. 생성: oah soul init"
+      fi
+      echo ""
+      ;;
+
+    edit)
+      ${EDITOR:-vi} "$OAH_SOUL"
+      ;;
+
+    path)
+      echo "$OAH_SOUL"
+      ;;
+
+    init|generate)
+      echo ""
+      echo "  Agent Soul 생성 중..."
+      echo ""
+
+      # ── 하드웨어 정보 수집 ──
+      local hostname; hostname=$(hostname -s 2>/dev/null || hostname)
+      local os_name os_ver cpu ram gpu disk
+      os_name=$(uname -s)
+      if [[ "$os_name" == "Darwin" ]]; then
+        os_ver=$(sw_vers -productVersion 2>/dev/null || echo "macOS")
+        cpu=$(sysctl -n machdep.cpu.brand_string 2>/dev/null || echo "unknown")
+        ram_bytes=$(sysctl -n hw.memsize 2>/dev/null || echo "0")
+        ram="$((ram_bytes / 1073741824)) GB"
+        # Apple GPU 감지
+        if [[ "$cpu" == *"Apple"* ]]; then
+          gpu="$cpu GPU (Metal)"
+        else
+          gpu=$(system_profiler SPDisplaysDataType 2>/dev/null | grep "Chipset" | head -1 | awk -F: '{print $2}' | xargs)
+        fi
+      elif [[ "$os_name" == "Linux" ]]; then
+        os_ver=$(. /etc/os-release 2>/dev/null && echo "$PRETTY_NAME" || uname -r)
+        cpu=$(grep -m1 "model name" /proc/cpuinfo 2>/dev/null | awk -F: '{print $2}' | xargs || echo "unknown")
+        ram_kb=$(grep MemTotal /proc/meminfo 2>/dev/null | awk '{print $2}' || echo "0")
+        ram="$((ram_kb / 1048576)) GB"
+        gpu=""
+        # NVIDIA
+        command -v nvidia-smi &>/dev/null && gpu=$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1) || true
+        # Raspberry Pi
+        [[ -f /proc/device-tree/model ]] && cpu="$(cat /proc/device-tree/model 2>/dev/null | tr -d '\0')" || true
+      fi
+      disk=$(df -h / 2>/dev/null | tail -1 | awk '{print $2 " total, " $4 " free"}')
+      local arch; arch=$(uname -m)
+
+      # ── AI 백엔드 ──
+      local backends=()
+      for b in claude opencode gemini codex aider zeroclaw; do
+        command -v "$b" &>/dev/null && backends+=("$b")
+      done
+      local backends_str; backends_str=$(IFS=", "; echo "${backends[*]:-없음}")
+
+      # ── 개발 도구 ──
+      local tools=()
+      for t in git gh node bun python3 docker make cargo go; do
+        command -v "$t" &>/dev/null && tools+=("$t")
+      done
+      local tools_str; tools_str=$(IFS=", "; echo "${tools[*]:-없음}")
+
+      # ── ROLE / WK ──
+      [[ -f "$OAH_CONFIG" ]] && source "$OAH_CONFIG" 2>/dev/null || true
+      local role_val="${ROLE:-builder}"
+      local phoenix_val="${PHOENIX:-}"
+
+      # ── soul.md 작성 ──
+      mkdir -p "$OAH_DIR"
+      cat > "$OAH_SOUL" <<SOUL
+---
+agent: ${role_val}@${hostname}
+machine: ${hostname}
+role: ${role_val}
+updated: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+---
+
+# Agent Soul — ${hostname}
+
+## Identity
+- **Name**: ${role_val}@${hostname}
+- **Hostname**: ${hostname}
+- **OS**: ${os_name} ${os_ver}
+- **Arch**: ${arch}
+- **CPU**: ${cpu}
+- **RAM**: ${ram}
+- **GPU**: ${gpu:-없음}
+- **Disk**: ${disk}
+
+## Role & Specialization
+- **Role**: ${role_val}
+- **Server**: ${phoenix_val:-미설정}
+
+이 머신의 전문 분야와 특기를 여기에 기술하세요.
+예: "Apple M4 기반 macOS 빌드 전문, Docker 이미지 빌드 및 배포 담당"
+
+## AI Backends
+${backends_str}
+
+## Available Tools
+${tools_str}
+
+## Working Style
+이 에이전트가 태스크를 처리하는 방식을 기술하세요.
+예: "코드 품질을 최우선으로 하며, 테스트 작성 후 구현하는 TDD 방식을 선호합니다."
+
+## Constraints & Notes
+- 특별한 제약이나 주의사항을 여기에 기술하세요.
+
+## Context
+현재 담당하고 있는 프로젝트나 작업 컨텍스트를 기술하세요.
+SOUL
+
+      echo "  ✅ 생성됨: $OAH_SOUL"
+      echo ""
+      echo "  내용 확인:  oah soul show"
+      echo "  편집:       oah soul edit"
+      echo ""
+      ;;
+
+    *)
+      echo "사용: oah soul [show|init|edit|path]"
+      ;;
+  esac
+}
+
 cmd_update() {
   echo "→ 최신 에이전트 다운로드 중..."
   local nc; nc=$(date +%Y%m%d%H%M)
@@ -876,6 +1010,11 @@ cmd_help() {
     oah config set K=V     설정 값 변경 (예: PHOENIX=ws://...:4000)
     oah update             최신 버전으로 업데이트
 
+  Soul (에이전트 정체성):
+    oah soul init          머신 정보 자동 스캔 → soul.md 생성
+    oah soul show          현재 soul 출력
+    oah soul edit          soul 편집 ($EDITOR)
+
   진단:
     oah doctor             전체 시스템 진단 (서버·백엔드·바이너리·PATH)
 
@@ -920,6 +1059,7 @@ case "$CMD" in
   logs)                 cmd_logs "$@" ;;
   config)               cmd_config "$@" ;;
   update)               cmd_update "$@" ;;
+  soul)                 cmd_soul "${1:-show}" ;;
   init|setup|onboard)   cmd_init ;;
   doctor|check|diag)    cmd_doctor ;;
   kill|estop|force-stop) cmd_kill ;;

@@ -861,6 +861,18 @@ function autoSelectBackend(): string {
 
 // ─── System prompt builder ────────────────────────────────────────────────────
 
+/** Load ~/.oah/soul.md if it exists — injected into every system prompt */
+function loadSoul(): string {
+  try {
+    const soulPath = `${process.env.HOME ?? "~"}/.oah/soul.md`;
+    const fs = require("fs");
+    if (fs.existsSync(soulPath)) {
+      return fs.readFileSync(soulPath, "utf8").trim();
+    }
+  } catch { /* ignore */ }
+  return "";
+}
+
 function buildSystemPrompt(payload: TaskPayload): string {
   const roleDescriptions: Record<string, string> = {
     // Core workflow agents
@@ -884,6 +896,11 @@ function buildSystemPrompt(payload: TaskPayload): string {
     ? `\n\nContext:\n${JSON.stringify(payload.context, null, 2)}`
     : "";
 
+  const soul = loadSoul();
+  const soulSection = soul
+    ? [``, `## Agent Soul (Machine Identity)`, soul, ``]
+    : [];
+
   return [
     `[MULTI-AGENT HARNESS — DISTRIBUTED MODE]`,
     `Agent: ${AGENT_NAME} | Role: ${AGENT_ROLE} | Work Key: ${WORK_KEY}`,
@@ -891,7 +908,7 @@ function buildSystemPrompt(payload: TaskPayload): string {
     `Channel: work:${WORK_KEY} @ ${HTTP_BASE}`,
     ``,
     roleDesc,
-    ``,
+    ...soulSection,
     `You are operating autonomously as part of a multi-agent team. Do NOT ask for user input.`,
     `Do NOT request approval unless the action is irreversible (deployment, deletion, public posting).`,
     `Report blockers by outputting: BLOCKED: <reason>`,
