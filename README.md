@@ -324,6 +324,19 @@ export DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..."
 
 ---
 
+## 문서
+
+| 문서 | 설명 |
+|------|------|
+| [docs/REMOTE_AGENT_OPS.md](./docs/REMOTE_AGENT_OPS.md) | **원격 에이전트 운영** — 원격지 에이전트를 실시간 진단·명령·복구하는 방법 |
+| [docs/AGENTS.md](./docs/AGENTS.md) | 에이전트 역할 정의 |
+| [docs/METHODOLOGY.md](./docs/METHODOLOGY.md) | 워크루프 방법론 |
+| [docs/GAP_ANALYSIS.md](./docs/GAP_ANALYSIS.md) | 현재 상태 및 개선 방향 |
+| [docs/INSTALL.md](./docs/INSTALL.md) | 설치 가이드 |
+| [docs/ECOSYSTEM_ANALYSIS.md](./docs/ECOSYSTEM_ANALYSIS.md) | 에코시스템 분석 (ClawFit, 경쟁 도구 비교) |
+
+---
+
 ## License
 
 MIT
