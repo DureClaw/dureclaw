@@ -1,6 +1,6 @@
 # DureClaw (두레클로)
 
-<img src="https://github.com/user-attachments/assets/b0169be5-c373-4e38-894b-7f4f1b17aa94" alt="DureClaw Logo" width="100%" />
+<img src="https://github.com/user-attachments/assets/76e1b1af-148b-4c64-b6f9-5be6b7f995d3" alt="DureClaw Logo" width="100%" />
 
 분산된 디바이스의 AI 에이전트들이 하나의 채널로 묶여 실시간 협력하는 오케스트레이션 인프라.
 Claude Code를 오케스트레이터로, 각 머신의 AI 에이전트들을 워커로 연결해 멀티머신 팀을 구성한다.
