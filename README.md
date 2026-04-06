@@ -148,16 +148,9 @@ mcp__oah__get_presence
 
 ### 사용 가능한 MCP 도구
 
-| 도구 | 설명 |
-|------|------|
-| `mcp__oah__get_presence` | 온라인 에이전트 목록 |
-| `mcp__oah__send_task` | 에이전트에게 태스크 전송 |
-| `mcp__oah__receive_task` | 태스크 수신 대기 (30초) |
-| `mcp__oah__complete_task` | 태스크 완료 보고 |
-| `mcp__oah__read_state` | Work Key 상태 조회 |
-| `mcp__oah__write_state` | Work Key 상태 업데이트 |
-| `mcp__oah__read_mailbox` | mailbox 읽기 |
-| `mcp__oah__post_message` | mailbox 메시지 전송 |
+`get_presence` · `send_task` · `receive_task` · `complete_task` · `read_state` · `write_state` · `read_mailbox` · `post_message`
+
+> 전체 도구 명세 → [docs/API_REFERENCE.md](docs/API_REFERENCE.md)
 
 ### 구성도
 
@@ -177,20 +170,9 @@ Phoenix Server              ws://host:4000
 
 ## REST API
 
-| Method | Endpoint | 설명 |
-|--------|----------|------|
-| GET | `/api/health` | 서버 상태 |
-| GET | `/api/presence` | 연결된 에이전트 목록 |
-| GET | `/api/work-keys` | Work Key 목록 |
-| GET | `/api/work-keys/latest` | 최신 Work Key |
-| POST | `/api/work-keys` | 새 Work Key 생성 |
-| GET | `/api/state/:wk` | Work Key 상태 조회 |
-| PATCH | `/api/state/:wk` | Work Key 상태 업데이트 |
-| POST | `/api/task` | 태스크 디스패치 (Phoenix broadcast) |
-| GET | `/api/task/:id` | 태스크 결과 폴링 |
-| POST | `/api/task/:id/result` | 태스크 결과 제출 |
-| GET | `/api/mailbox/:agent` | 에이전트 mailbox 읽기 |
-| POST | `/api/mailbox/:agent` | 에이전트 mailbox 메시지 전송 |
+주요 엔드포인트: `/api/health` · `/api/presence` · `/api/work-keys` · `/api/state/:wk` · `/api/task` · `/api/mailbox/:agent`
+
+> 전체 API 명세 및 Phoenix Channel 프로토콜 → [docs/API_REFERENCE.md](docs/API_REFERENCE.md)
 
 ---
 
@@ -205,7 +187,7 @@ Phoenix Server              ws://host:4000
 | macOS Apple Silicon | `✅ darwin-arm64 바이너리 다운로드 완료` → `→ 서버 시작 · ws://100.x.x.x:4000` |
 | Linux x86_64 (GPU 서버) | `✅ linux-x86_64 에이전트 설치 완료` → `✅ claude-cli 감지됨` → `→ builder@gpu-server 연결 완료` |
 | Raspberry Pi 4/5 | `✅ linux-arm64 에이전트 설치 완료` → `✅ opencode 감지됨` → `→ executor@raspberrypi 연결 완료` |
-| Raspberry Pi Zero W | `✅ JS 번들 모드 (armv6)` → `⚠ aider 경량 모드` → `→ executor@zero-w 연결 완료 (WiFi)` |
+| Raspberry Pi Zero W | `✅ Python 에이전트 모드 (armv6)` → `⚠ aider 경량 모드` → `→ executor@zero-w 연결 완료 (WiFi)` |
 | Windows (PowerShell) | `✅ opencode npm 설치 완료` → `→ builder@DESKTOP-WIN 연결 완료` |
 
 ### 에이전트 역할별
@@ -231,7 +213,7 @@ Phoenix Server              ws://host:4000
 | macOS (Intel) | x86_64 | ✅ 사전빌드 | ✅ | |
 | Linux | x86_64 | ✅ 사전빌드 | ✅ | Ubuntu/Debian/CentOS |
 | **Raspberry Pi 4/5** | **arm64** | ✅ 사전빌드 | ✅ | **executor 역할 최적** |
-| **Raspberry Pi Zero W/2W** | **armv6/arm64** | ❌ | ✅ JS 번들 | **WiFi 내장 · IoT executor** |
+| **Raspberry Pi Zero W/2W** | **armv6/arm64** | ❌ | ✅ Python | **WiFi 내장 · IoT executor** |
 | Windows 10/11 | x86_64 | 🐳 Docker | ✅ PowerShell | |
 | Docker (모든 플랫폼) | any | ✅ | — | `ghcr.io/dureclaw/dureclaw` |
 

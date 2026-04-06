@@ -40,6 +40,8 @@ jobs:
           cp scripts/setup-agent.sh  web/agent
           # dureclaw.baryon.ai/mcp     → setup-mcp.sh
           cp scripts/setup-mcp.sh    web/mcp
+          # dureclaw.baryon.ai/agent.py → rpi_agent.py (RPi Zero W)
+          cp scripts/rpi_agent.py    web/agent.py
 
       - name: Setup Pages
         uses: actions/configure-pages@v4

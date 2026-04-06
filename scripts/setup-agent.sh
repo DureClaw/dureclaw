@@ -208,11 +208,13 @@ done
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
 ARCH=$(uname -m)
 USE_NODE=false
+USE_PYTHON=false
 
 case "$ARCH" in
   x86_64)        ARCH="x64" ;;
   aarch64|arm64) ARCH="arm64" ;;
-  armv7l|armv6l) USE_NODE=true ;;
+  armv7l) USE_NODE=true ;;
+  armv6l) USE_PYTHON=true ;;
   *)
     echo "ERROR: 지원하지 않는 아키텍처: $ARCH"
     exit 1 ;;
@@ -329,6 +331,57 @@ CFG
     WORK_KEY="${WK:-}" \
     PROJECT_DIR="$DIR" \
     node "$JS_BUNDLE"
+fi
+
+if [[ "$USE_PYTHON" == "true" ]]; then
+  # Raspberry Pi Zero W (armv6l) — Python 에이전트 사용
+  echo "→ Raspberry Pi Zero W detected (armv6l) — using Python agent"
+  PY_BUNDLE="$HOME/oah-agent.py"
+  # agent.py는 GitHub Pages(dureclaw.baryon.ai)에 배포됨 (R2가 아님)
+  AGENT_URL="https://dureclaw.baryon.ai"
+  pip3 install --quiet websockets 2>/dev/null || pip install --quiet websockets 2>/dev/null || {
+    echo "ERROR: pip3 설치 실패. sudo apt install python3-pip 를 실행하세요."
+    exit 1
+  }
+  if [[ ! -f "$PY_BUNDLE" ]]; then
+    echo "→ 에이전트(Python) 다운로드 중..."
+    curl -fsSL "$AGENT_URL/agent.py" -o "$PY_BUNDLE"
+  else
+    REMOTE_SIZE=$(curl -sfI --max-time 5 "$AGENT_URL/agent.py" | grep -i content-length | awk '{print $2}' | tr -d '\r')
+    LOCAL_SIZE=$(wc -c < "$PY_BUNDLE" | tr -d ' ')
+    if [[ -n "$REMOTE_SIZE" && "$REMOTE_SIZE" != "$LOCAL_SIZE" ]]; then
+      echo "→ 에이전트(Python) 업데이트 중..."
+      curl -fsSL "$AGENT_URL/agent.py" -o "$PY_BUNDLE"
+    fi
+  fi
+
+  _install_oah_cli
+
+  cat > "$OAH_CONFIG" <<CFG
+PHOENIX=$PHOENIX
+ROLE=$ROLE
+BACKEND=${AGENT_BACKEND:-auto}
+DIR=$DIR
+WK=${WK:-}
+NAME=$NAME
+CFG
+
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo " oah-agent  ${ROLE}@$(hostname -s 2>/dev/null || hostname)  [Python/RPi Zero W]"
+  echo " server  →  $PHOENIX"
+  echo " dir     →  $DIR"
+  [[ -n "$WK" ]] && echo " work-key→  $WK"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+
+  exec env \
+    PHOENIX="$PHOENIX" \
+    ROLE="$ROLE" \
+    NAME="$NAME" \
+    WK="${WK:-}" \
+    PROJECT_DIR="$DIR" \
+    AGENT_BACKEND="${AGENT_BACKEND:-auto}" \
+    python3 "$PY_BUNDLE"
 fi
 
 BINARY_NAME="oah-agent-${OS}-${ARCH}"

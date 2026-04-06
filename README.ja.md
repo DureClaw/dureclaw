@@ -148,16 +148,9 @@ mcp__oah__get_presence
 
 ### 利用可能な MCP ツール
 
-| ツール | 説明 |
-|--------|------|
-| `mcp__oah__get_presence` | オンラインエージェント一覧 |
-| `mcp__oah__send_task` | エージェントにタスクを送信 |
-| `mcp__oah__receive_task` | タスク受信待機（30秒タイムアウト） |
-| `mcp__oah__complete_task` | タスク完了報告 |
-| `mcp__oah__read_state` | Work Key 状態取得 |
-| `mcp__oah__write_state` | Work Key 状態更新 |
-| `mcp__oah__read_mailbox` | メールボックス読み取り |
-| `mcp__oah__post_message` | メールボックスにメッセージ送信 |
+`get_presence` · `send_task` · `receive_task` · `complete_task` · `read_state` · `write_state` · `read_mailbox` · `post_message`
+
+> 完全なツール仕様 → [docs/API_REFERENCE.md](docs/API_REFERENCE.md)
 
 ### 構成図
 
@@ -177,20 +170,9 @@ Phoenix Server              ws://host:4000
 
 ## REST API
 
-| メソッド | エンドポイント | 説明 |
-|---------|-------------|------|
-| GET | `/api/health` | サーバー状態 |
-| GET | `/api/presence` | 接続中エージェント一覧 |
-| GET | `/api/work-keys` | Work Key 一覧 |
-| GET | `/api/work-keys/latest` | 最新 Work Key |
-| POST | `/api/work-keys` | 新規 Work Key 作成 |
-| GET | `/api/state/:wk` | Work Key 状態取得 |
-| PATCH | `/api/state/:wk` | Work Key 状態更新 |
-| POST | `/api/task` | タスクディスパッチ（Phoenix broadcast） |
-| GET | `/api/task/:id` | タスク結果ポーリング |
-| POST | `/api/task/:id/result` | タスク結果提出 |
-| GET | `/api/mailbox/:agent` | エージェントメールボックス読み取り |
-| POST | `/api/mailbox/:agent` | エージェントメールボックスにメッセージ送信 |
+主要エンドポイント：`/api/health` · `/api/presence` · `/api/work-keys` · `/api/state/:wk` · `/api/task` · `/api/mailbox/:agent`
+
+> 完全な API 仕様および Phoenix Channel プロトコル → [docs/API_REFERENCE.md](docs/API_REFERENCE.md)
 
 ---
 
@@ -203,7 +185,7 @@ Phoenix Server              ws://host:4000
 | macOS Apple Silicon | `✅ darwin-arm64 バイナリダウンロード完了` → `→ サーバー起動 · ws://100.x.x.x:4000` |
 | Linux x86_64（GPU サーバー） | `✅ linux-x86_64 エージェントインストール完了` → `✅ claude-cli 検出` → `→ builder@gpu-server 接続完了` |
 | Raspberry Pi 4/5 | `✅ linux-arm64 エージェントインストール完了` → `✅ opencode 検出` → `→ executor@raspberrypi 接続完了` |
-| Raspberry Pi Zero W | `✅ JS バンドルモード (armv6)` → `⚠ aider 軽量モード` → `→ executor@zero-w 接続完了 (WiFi)` |
+| Raspberry Pi Zero W | `✅ Python エージェントモード (armv6)` → `⚠ aider 軽量モード` → `→ executor@zero-w 接続完了 (WiFi)` |
 | Windows（PowerShell） | `✅ opencode npm インストール完了` → `→ builder@DESKTOP-WIN 接続完了` |
 
 ### エージェントロール
@@ -225,7 +207,7 @@ Phoenix Server              ws://host:4000
 | macOS（Intel） | x86_64 | ✅ 事前ビルド | ✅ | |
 | Linux | x86_64 | ✅ 事前ビルド | ✅ | Ubuntu/Debian/CentOS |
 | **Raspberry Pi 4/5** | **arm64** | ✅ 事前ビルド | ✅ | **executor ロールに最適** |
-| **Raspberry Pi Zero W/2W** | **armv6/arm64** | ❌ | ✅ JS バンドル | **WiFi 内蔵 · IoT executor** |
+| **Raspberry Pi Zero W/2W** | **armv6/arm64** | ❌ | ✅ Python | **WiFi 内蔵 · IoT executor** |
 | Windows 10/11 | x86_64 | 🐳 Docker | ✅ PowerShell | |
 | Docker（全プラットフォーム） | any | ✅ | — | `ghcr.io/dureclaw/dureclaw` |
 

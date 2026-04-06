@@ -148,16 +148,9 @@ mcp__oah__get_presence
 
 ### 可用 MCP 工具
 
-| 工具 | 说明 |
-|------|------|
-| `mcp__oah__get_presence` | 列出在线智能体 |
-| `mcp__oah__send_task` | 向智能体发送任务 |
-| `mcp__oah__receive_task` | 等待接收任务（30秒超时） |
-| `mcp__oah__complete_task` | 报告任务完成 |
-| `mcp__oah__read_state` | 读取 Work Key 状态 |
-| `mcp__oah__write_state` | 更新 Work Key 状态 |
-| `mcp__oah__read_mailbox` | 读取邮箱消息 |
-| `mcp__oah__post_message` | 发送邮箱消息 |
+`get_presence` · `send_task` · `receive_task` · `complete_task` · `read_state` · `write_state` · `read_mailbox` · `post_message`
+
+> 完整工具说明 → [docs/API_REFERENCE.md](docs/API_REFERENCE.md)
 
 ### 系统结构图
 
@@ -177,20 +170,9 @@ Phoenix Server              ws://host:4000
 
 ## REST API
 
-| 方法 | 端点 | 说明 |
-|------|------|------|
-| GET | `/api/health` | 服务器状态 |
-| GET | `/api/presence` | 已连接智能体列表 |
-| GET | `/api/work-keys` | Work Key 列表 |
-| GET | `/api/work-keys/latest` | 最新 Work Key |
-| POST | `/api/work-keys` | 创建新 Work Key |
-| GET | `/api/state/:wk` | 获取 Work Key 状态 |
-| PATCH | `/api/state/:wk` | 更新 Work Key 状态 |
-| POST | `/api/task` | 任务分发（Phoenix broadcast） |
-| GET | `/api/task/:id` | 轮询任务结果 |
-| POST | `/api/task/:id/result` | 提交任务结果 |
-| GET | `/api/mailbox/:agent` | 读取智能体邮箱 |
-| POST | `/api/mailbox/:agent` | 发送智能体邮箱消息 |
+主要端点：`/api/health` · `/api/presence` · `/api/work-keys` · `/api/state/:wk` · `/api/task` · `/api/mailbox/:agent`
+
+> 完整 API 规范及 Phoenix Channel 协议 → [docs/API_REFERENCE.md](docs/API_REFERENCE.md)
 
 ---
 
@@ -203,7 +185,7 @@ Phoenix Server              ws://host:4000
 | macOS Apple Silicon | `✅ darwin-arm64 二进制下载完成` → `→ 服务器启动 · ws://100.x.x.x:4000` |
 | Linux x86_64（GPU 服务器） | `✅ linux-x86_64 智能体安装完成` → `✅ 检测到 claude-cli` → `→ builder@gpu-server 连接成功` |
 | Raspberry Pi 4/5 | `✅ linux-arm64 智能体安装完成` → `✅ 检测到 opencode` → `→ executor@raspberrypi 连接成功` |
-| Raspberry Pi Zero W | `✅ JS 包模式 (armv6)` → `⚠ aider 轻量模式` → `→ executor@zero-w 连接成功 (WiFi)` |
+| Raspberry Pi Zero W | `✅ Python 智能体模式 (armv6)` → `⚠ aider 轻量模式` → `→ executor@zero-w 连接成功 (WiFi)` |
 | Windows（PowerShell） | `✅ opencode npm 安装完成` → `→ builder@DESKTOP-WIN 连接成功` |
 
 ### 智能体角色
@@ -225,7 +207,7 @@ Phoenix Server              ws://host:4000
 | macOS（Intel） | x86_64 | ✅ 预构建 | ✅ | |
 | Linux | x86_64 | ✅ 预构建 | ✅ | Ubuntu/Debian/CentOS |
 | **Raspberry Pi 4/5** | **arm64** | ✅ 预构建 | ✅ | **executor 角色最优** |
-| **Raspberry Pi Zero W/2W** | **armv6/arm64** | ❌ | ✅ JS 包 | **内置 WiFi · IoT executor** |
+| **Raspberry Pi Zero W/2W** | **armv6/arm64** | ❌ | ✅ Python | **内置 WiFi · IoT executor** |
 | Windows 10/11 | x86_64 | 🐳 Docker | ✅ PowerShell | |
 | Docker（所有平台） | any | ✅ | — | `ghcr.io/dureclaw/dureclaw` |
 

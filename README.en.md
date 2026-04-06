@@ -148,16 +148,9 @@ mcp__oah__get_presence
 
 ### Available MCP Tools
 
-| Tool | Description |
-|------|-------------|
-| `mcp__oah__get_presence` | List online agents |
-| `mcp__oah__send_task` | Send a task to an agent |
-| `mcp__oah__receive_task` | Wait for incoming task (30s timeout) |
-| `mcp__oah__complete_task` | Report task completion |
-| `mcp__oah__read_state` | Read Work Key state |
-| `mcp__oah__write_state` | Update Work Key state |
-| `mcp__oah__read_mailbox` | Read mailbox messages |
-| `mcp__oah__post_message` | Send a mailbox message |
+`get_presence` · `send_task` · `receive_task` · `complete_task` · `read_state` · `write_state` · `read_mailbox` · `post_message`
+
+> Full tool reference → [docs/API_REFERENCE.md](docs/API_REFERENCE.md)
 
 ### System Diagram
 
@@ -177,20 +170,9 @@ Phoenix Server              ws://host:4000
 
 ## REST API
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/health` | Server status |
-| GET | `/api/presence` | List connected agents |
-| GET | `/api/work-keys` | List Work Keys |
-| GET | `/api/work-keys/latest` | Latest Work Key |
-| POST | `/api/work-keys` | Create new Work Key |
-| GET | `/api/state/:wk` | Get Work Key state |
-| PATCH | `/api/state/:wk` | Update Work Key state |
-| POST | `/api/task` | Dispatch task (Phoenix broadcast) |
-| GET | `/api/task/:id` | Poll task result |
-| POST | `/api/task/:id/result` | Submit task result |
-| GET | `/api/mailbox/:agent` | Read agent mailbox |
-| POST | `/api/mailbox/:agent` | Send agent mailbox message |
+Key endpoints: `/api/health` · `/api/presence` · `/api/work-keys` · `/api/state/:wk` · `/api/task` · `/api/mailbox/:agent`
+
+> Full API reference and Phoenix Channel protocol → [docs/API_REFERENCE.md](docs/API_REFERENCE.md)
 
 ---
 
@@ -203,7 +185,7 @@ Phoenix Server              ws://host:4000
 | macOS Apple Silicon | `✅ darwin-arm64 binary downloaded` → `→ server started · ws://100.x.x.x:4000` |
 | Linux x86_64 (GPU server) | `✅ linux-x86_64 agent installed` → `✅ claude-cli detected` → `→ builder@gpu-server connected` |
 | Raspberry Pi 4/5 | `✅ linux-arm64 agent installed` → `✅ opencode detected` → `→ executor@raspberrypi connected` |
-| Raspberry Pi Zero W | `✅ JS bundle mode (armv6)` → `⚠ aider lightweight mode` → `→ executor@zero-w connected (WiFi)` |
+| Raspberry Pi Zero W | `✅ Python agent mode (armv6)` → `⚠ aider lightweight mode` → `→ executor@zero-w connected (WiFi)` |
 | Windows (PowerShell) | `✅ opencode npm installed` → `→ builder@DESKTOP-WIN connected` |
 
 ### Agent roles
@@ -229,7 +211,7 @@ Phoenix Server              ws://host:4000
 | macOS (Intel) | x86_64 | ✅ pre-built | ✅ | |
 | Linux | x86_64 | ✅ pre-built | ✅ | Ubuntu/Debian/CentOS |
 | **Raspberry Pi 4/5** | **arm64** | ✅ pre-built | ✅ | **ideal for executor role** |
-| **Raspberry Pi Zero W/2W** | **armv6/arm64** | ❌ | ✅ JS bundle | **built-in WiFi · IoT executor** |
+| **Raspberry Pi Zero W/2W** | **armv6/arm64** | ❌ | ✅ Python | **built-in WiFi · IoT executor** |
 | Windows 10/11 | x86_64 | 🐳 Docker | ✅ PowerShell | |
 | Docker (any platform) | any | ✅ | — | `ghcr.io/dureclaw/dureclaw` |
 
