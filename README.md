@@ -194,26 +194,14 @@ Phoenix Server              ws://host:4000
 
 ---
 
-## 요구사항
+## 선행 설치 조건
 
-| 컴포넌트 | 요구사항 |
-|----------|----------|
-| 오케스트레이터 (Claude Code) | Claude Code CLI, Bun ≥ 1.0 |
-| Phoenix 서버 | **Docker** (권장, Elixir 불필요) 또는 Elixir ≥ 1.14 |
-| 워커 에이전트 | Bun ≥ 1.0, AI CLI (claude / opencode / gemini 등) |
+| | 필요한 것 | 설치 |
+|--|----------|------|
+| **필수** | [Claude Code CLI](https://claude.ai/download) | 오케스트레이터 |
+| **멀티머신** | [Tailscale](https://tailscale.com/download) | 원격 머신 간 사설망 (무료, 100대) |
 
-Phoenix 서버 Docker 빠른 실행:
-
-```bash
-# 옵션 A — docker compose
-docker compose up -d
-
-# 옵션 B — docker run 직접
-docker run -d -p 4000:4000 ghcr.io/dureclaw/dureclaw:latest
-
-# 옵션 C — 자동 설치 스크립트 (Docker 우선)
-bash <(curl -fsSL https://raw.githubusercontent.com/DureClaw/dureclaw/main/scripts/setup-server.sh)
-```
+나머지(Phoenix 서버, oah-agent)는 **사전빌드 바이너리를 자동 다운로드**하므로 별도 설치가 필요 없습니다.
 
 ---
 
