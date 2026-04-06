@@ -67,34 +67,14 @@ Claude Code를 오케스트레이터로, 각 머신의 AI 에이전트들을 워
 
 ### Step 4 — 워커 에이전트 설치 (각 원격 머신)
 
-각 머신에서 **한 줄 명령어**로 oah-agent를 설치하고 서버에 연결합니다.
+**Claude Code에게 말하면 직접 안내해 줍니다.**
 
-> **Tailscale 없으면?** — 설치 스크립트가 자동으로 감지하고 설치·연결을 안내합니다.
-
-**macOS / Linux:**
-
-```bash
-PHOENIX=ws://<서버IP>:4000 ROLE=builder \
-  bash <(curl -fsSL https://raw.githubusercontent.com/DureClaw/dureclaw/main/scripts/setup-agent.sh)
+```
+"워커 추가해줘"   "tester 머신 연결하고 싶어"   "팀에 Mac Mini 추가해줘"
 ```
 
-**Windows (PowerShell):**
-
-```powershell
-$env:PHOENIX="ws://<서버IP>:4000"; $env:ROLE="builder"
-irm https://raw.githubusercontent.com/DureClaw/dureclaw/main/scripts/setup-agent.ps1 | iex
-```
-
-**역할(ROLE) 선택:**
-
-| ROLE | 설명 |
-|------|------|
-| `builder` | 코드 빌드, 파일 수정, 패키지 설치 |
-| `tester` | 테스트 실행, 검증, QA |
-| `analyst` | 코드 분석, 리포트 작성 |
-| `executor` | 셸 명령 실행, 자동화 스크립트 |
-
-서버 IP는 `/team-status` 또는 `tailscale ip -4` (서버 머신에서)로 확인하세요.
+Claude가 서버 IP를 자동으로 감지해 **바로 복사·실행 가능한 명령어**를 머신별로 알려줍니다.
+Tailscale이 없어도 설치까지 단계별로 안내합니다.
 
 ---
 
