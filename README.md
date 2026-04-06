@@ -163,55 +163,6 @@ Phoenix Server              ws://host:4000
 
 ---
 
-## 테스트 가이드
-
-**1. 서버 상태 확인**
-```bash
-curl http://localhost:4000/api/health
-# → {"ok":true}
-```
-
-**2. 에이전트 연결 확인**
-```bash
-curl http://localhost:4000/api/presence
-# → {"agents":[{"name":"builder@mac","role":"builder",...}]}
-```
-
-**3. 태스크 전송 테스트**
-```bash
-curl -s -X POST http://localhost:4000/api/task \
-  -H "Content-Type: application/json" \
-  -d '{"instructions":"[SHELL] echo hello", "to":"builder@mymachine"}' | python3 -m json.tool
-```
-
-**4. Claude Code에서 태스크 전송**
-```
-builder@mac-mini에게 test.py 만들어서 print("hello") 써달라고 태스크 보내줘
-```
-
----
-
-## Phoenix Channel 프로토콜
-
-메시지 포맷 (5-tuple):
-```json
-[join_ref, ref, topic, event, payload]
-```
-
-주요 이벤트:
-```
-phx_join          채널 참여 + presence 등록
-agent.hello       에이전트 온라인 알림
-agent.bye         에이전트 오프라인 알림
-task.assign       태스크 할당 (to 필드로 대상 지정)
-task.progress     진행 상황 스트리밍
-task.result       태스크 완료 결과
-task.blocked      태스크 실패/차단
-```
-
-WebSocket URL: `ws://host:4000/socket/websocket?vsn=2.0.0`
-Channel topic: `work:{WORK_KEY}`
-
 ---
 
 ## 요구사항
@@ -224,22 +175,11 @@ Channel topic: `work:{WORK_KEY}`
 
 ---
 
-## Discord 알림
-
-`DISCORD_WEBHOOK_URL` 환경변수 설정 시 주요 이벤트를 Discord로 전송한다.
-
-```bash
-export DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..."
-```
-
-전송 이벤트: `/workloop` 시작, completion gate 결과, 테스트/린트 결과, 워크루프 완료.
-
----
-
 ## 문서
 
 | 문서 | 설명 |
 |------|------|
+| [docs/CONTRIBUTING.md](./docs/CONTRIBUTING.md) | **개발 가이드** — 테스트, Phoenix Channel 프로토콜, PR 기여 방법 |
 | [docs/PROTOCOL.md](./docs/PROTOCOL.md) | **프로토콜 명세** — 4계층 통신 프로토콜 공식 정의 (L1 네트워크 ~ L4 팀 프로토콜) |
 | [docs/PRIVATE_NETWORK.md](./docs/PRIVATE_NETWORK.md) | **사설망 구성** — Tailscale로 원격 에이전트를 하나의 팀으로 연결하는 방법 |
 | [docs/REMOTE_AGENT_OPS.md](./docs/REMOTE_AGENT_OPS.md) | **원격 에이전트 운영** — 원격지 에이전트를 실시간 진단·명령·복구하는 방법 |
