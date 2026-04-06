@@ -1,8 +1,17 @@
 {
-  "name": "@oah/mcp",
+  "name": "@dureclaw/mcp",
   "version": "1.0.0",
   "type": "module",
-  "description": "open-agent-harness MCP server — Phoenix Channel bridge for Claude Code / OpenCode",
+  "description": "DureClaw MCP server — Phoenix Channel bridge for Claude Code distributed agent orchestration",
+  "mcpName": "io.github.dureclaw/mcp",
+  "keywords": ["mcp", "claude-code", "multi-agent", "distributed-agents", "phoenix", "dureclaw"],
+  "homepage": "https://github.com/DureClaw/dureclaw",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DureClaw/dureclaw.git"
+  },
+  "license": "MIT",
+  "author": "Seungwoo Hong (홍승우)",
   "scripts": {
     "start": "bun run src/index.ts"
   },

@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "oah": {
+      "command": "bun",
+      "args": ["run", "${MCP_PATH:-~/.oah/mcp/index.ts}"],
+      "env": {
+        "PHOENIX_URL": "${PHOENIX_URL:-ws://localhost:4000}",
+        "AGENT_NAME": "${AGENT_NAME:-orchestrator@localhost}",
+        "AGENT_ROLE": "${AGENT_ROLE:-orchestrator}"
+      }
+    }
+  }
+}

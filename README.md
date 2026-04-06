@@ -10,10 +10,15 @@
 
 [![GitHub](https://img.shields.io/badge/DureClaw-dureclaw-black?logo=github)](https://github.com/DureClaw/dureclaw)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![npm](https://img.shields.io/badge/npm-%40dureclaw%2Fmcp-red?logo=npm)](https://www.npmjs.com/package/@dureclaw/mcp)
+[![MCP Registry](https://img.shields.io/badge/MCP_Registry-io.github.dureclaw%2Fmcp-purple?logo=anthropic)](https://registry.modelcontextprotocol.io)
+[![Smithery](https://img.shields.io/badge/Smithery-dureclaw%2Fmcp-blue)](https://smithery.ai/server/@dureclaw/mcp)
 
 ---
 
 ## 설치
+
+> **마켓플레이스**: [Smithery](https://smithery.ai/server/@dureclaw/mcp) · [MCP Registry](https://registry.modelcontextprotocol.io) · [mcp.so](https://mcp.so)
 
 ### Claude Code 오케스트레이터 (MCP 플러그인)
 
