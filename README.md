@@ -3,7 +3,7 @@
 <img src="https://github.com/user-attachments/assets/b0169be5-c373-4e38-894b-7f4f1b17aa94" alt="DureClaw Logo" width="100%" />
 
 분산된 디바이스의 AI 에이전트들이 하나의 채널로 묶여 실시간 협력하는 오케스트레이션 인프라.
-로컬 단일머신(Mode A)과 분산 멀티머신(Mode B) 두 가지 모드를 지원한다.
+Claude Code를 오케스트레이터로, 각 머신의 AI 에이전트들을 워커로 연결해 멀티머신 팀을 구성한다.
 
 > *두레(dure): 조선시대 농민들이 각자의 논에서 마을 전체가 함께 경작하던 협동 시스템.*
 > *DureClaw는 그 정신을 AI 에이전트에 담는다 — 각자의 머신에서, 하나의 목표로, 하나의 크루.*
@@ -54,18 +54,7 @@ oah setup-team
 ## 아키텍처
 
 ```
-Mode A — 로컬 (단일 머신)
-─────────────────────────────────
-OpenCode (단일 세션)
-  └─ .opencode/plugins/harness.ts   (플러그인)
-  └─ .opencode/hooks/               (품질 게이트)
-  └─ .opencode/agents/              (5 에이전트 역할)
-  └─ .opencode/state/               (로컬 파일 상태)
-
-
-Mode B — 분산 (멀티 머신)
-─────────────────────────────────
-Claude Code (오케스트레이터)
+Claude Code (오케스트레이터, 맥북)
   └─ packages/oah-mcp/         MCP 서버 → Phoenix WebSocket
        send_task / receive_task / get_presence / ...
 
@@ -74,7 +63,8 @@ Phoenix Channel (메시지 버스, Elixir)
 
 oah-agent (워커, 각 머신)
   packages/agent-daemon/        WebSocket 연결 → task.assign 수신
-  → OpenCode 서브프로세스 실행  → task.result 반환
+  → AI 백엔드 실행 (claude / opencode / gemini / aider)
+  → task.result 반환
 ```
 
 ---
@@ -82,173 +72,74 @@ oah-agent (워커, 각 머신)
 ## 패키지 구조
 
 ```
-open-agent-harness/
-├── .opencode/                  Mode A 로컬 워크루프
-│   ├── agents/                 5 에이전트 (orchestrator/planner/builder/verifier/reviewer)
-│   ├── plugins/harness.ts      OpenCode 플러그인 (run_hook, read_state, write_state, post_message, read_mailbox)
-│   ├── hooks/                  품질 게이트 (00_preflight ~ 09_completion_gate)
-│   └── commands/               /workloop, /ship
+dureclaw/
+├── .claude-plugin/             Claude Code 플러그인 메타데이터
+│   ├── plugin.json
+│   └── marketplace.json
+│
+├── .claude/
+│   ├── commands/               슬래시 커맨드 (/setup-team, /team-status)
+│   ├── agents/                 에이전트 정의 (orchestrator 등)
+│   └── skills/dureclaw/        DureClaw 오케스트레이션 스킬
 │
 ├── packages/
-│   ├── phoenix-server/         Elixir/Phoenix 메시지 버스 (분산 인프라 핵심)
+│   ├── phoenix-server/         Elixir/Phoenix 메시지 버스 (핵심)
 │   ├── agent-daemon/           WebSocket 에이전트 데몬 (oah-agent)
-│   ├── oah-mcp/                Claude Code MCP 서버
+│   ├── oah-mcp/                Claude Code MCP 서버 (@dureclaw/mcp)
 │   └── ctl/                    oah-ctl 관리 CLI
 │
-├── scripts/
-│   ├── setup-server.sh         서버 설치 스크립트
-│   └── setup-agent.sh          에이전트 설치 스크립트 (oah-agent 명령어)
-│
-└── web/                        GitHub Pages (원클릭 설치)
-    ├── install.sh
-    ├── agent-daemon.ts
-    └── index.html
+└── scripts/
+    ├── setup-server.sh         Phoenix 서버 설치
+    ├── setup-agent.sh          워커 에이전트 설치 (oah 명령어)
+    ├── setup-mcp.sh            Claude Code MCP 등록
+    └── oah                     통합 CLI
 ```
 
 ---
 
-## Mode A: 로컬 워크루프
+## 사용법
 
-단일 머신, OpenCode 세션 1개에서 5 에이전트가 협력 루프를 실행한다.
-
-### 설치
-
-```bash
-# 기존 프로젝트에 harness 적용
-git clone https://github.com/baryonlabs/open-agent-harness
-bash open-agent-harness/scripts/init.sh /path/to/your-project
-cd /path/to/your-project
-opencode
-```
-
-### 사용법
+플러그인 설치 후 Claude Code에서 바로 사용합니다:
 
 ```
-# OpenCode 세션에서:
-/workloop Add pagination to the user list API
+# 팀 상태 확인
+/team-status
+
+# 멀티머신 팀 확장 (Phoenix 서버 + 워커 에이전트 자동 설정)
+/setup-team
+
+# 에이전트에게 태스크 전송
+mcp__oah__send_task(to: "builder@mac-mini", instructions: "[SHELL] make build")
+
+# 온라인 에이전트 목록
+mcp__oah__get_presence
 ```
 
-### 워크루프 흐름
+### 사용 가능한 MCP 도구
+
+| 도구 | 설명 |
+|------|------|
+| `mcp__oah__get_presence` | 온라인 에이전트 목록 |
+| `mcp__oah__send_task` | 에이전트에게 태스크 전송 |
+| `mcp__oah__receive_task` | 태스크 수신 대기 (30초) |
+| `mcp__oah__complete_task` | 태스크 완료 보고 |
+| `mcp__oah__read_state` | Work Key 상태 조회 |
+| `mcp__oah__write_state` | Work Key 상태 업데이트 |
+| `mcp__oah__read_mailbox` | mailbox 읽기 |
+| `mcp__oah__post_message` | mailbox 메시지 전송 |
+
+### 구성도
 
 ```
-/workloop 실행
-  └─ Orchestrator
-       └─ Planner      태스크 분해
-       └─ Builder       구현 (전체 파일 접근)
-       └─ Verifier      lint + test + typecheck (훅 실행)
-       └─ Reviewer      코드 리뷰 (읽기 전용)
-       └─ 09_completion_gate.sh
-            ├─ exit 0  ✅ 완료 → /ship 실행
-            ├─ exit 1  ❌ 실패 → 루프 재실행 (최대 5회)
-            └─ exit 2  ⚠️  테스트 없음 → Builder가 테스트 추가
-
-/ship feat: add pagination
-  └─ preflight + build + gate → conventional commit 제안
-```
-
-### 분산 모드로 전환
-
-`HARNESS_STATE_SERVER=ws://host:4000` 환경변수를 설정하면 `harness.ts` 플러그인이 자동으로 Phoenix REST API를 사용한다.
-
----
-
-## 빠른 설치 (Claude Code 오케스트레이터)
-
-```bash
-# 1. 저장소 클론 + MCP 등록 한방에
-git clone https://github.com/DureClaw/dureclaw
-cd dureclaw
-bash scripts/setup-mcp.sh
-```
-
-또는 저장소 클론 없이:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/DureClaw/dureclaw/main/scripts/setup-mcp.sh \
-  | PHOENIX_URL=ws://<서버IP>:4000 bash
-```
-
-Claude Code 재시작 후 바로 사용 가능. [자세한 설정](#step-3-claude-code에-oah-mcp-등록) ↓
-
----
-
-## Mode B: 분산 멀티에이전트
-
-### 전체 구성도
-
-```
-Claude Code (오케스트레이터, 맥북)
+Claude Code (오케스트레이터)
   │  MCP (oah-mcp)
   ▼
-Phoenix Server (NAS / 서버)        ws://host:4000
+Phoenix Server              ws://host:4000
   │  Phoenix Channel
-  ├──▶ oah-agent (맥북)            NAME=agent1@mac
-  ├──▶ oah-agent (GPU 서버)        NAME=builder@gpu
-  └──▶ oah-agent (다른 머신)        NAME=reviewer@nas
-          │
-          └─ OpenCode 서브프로세스 실행 → 결과 반환
-```
-
-### Step 1: Phoenix 서버 시작
-
-```bash
-# 서버 머신에서
-cd packages/phoenix-server
-mix deps.get && mix phx.server
-# → http://localhost:4000
-
-# 또는 원클릭 설치
-curl -fsSL https://baryonlabs.github.io/install.sh | ROLE=server bash
-```
-
-서버 확인:
-```bash
-curl http://localhost:4000/api/health
-# → {"ok":true,"work_keys":0}
-```
-
-### Step 2: oah-agent 시작 (각 워커 머신)
-
-```bash
-# 원클릭 설치 + 실행
-curl -fsSL https://baryonlabs.github.io/install.sh | \
-  PHOENIX=ws://host:4000 ROLE=builder bash
-
-# 또는 직접 실행
-NAME=builder@mymachine \
-ROLE=builder \
-DIR=/path/to/project \
-oah-agent ws://host:4000
-```
-
-### Step 3: Claude Code에 oah MCP 등록
-
-```bash
-oah setup-mcp
-```
-
-> `oah`가 없으면 먼저 에이전트 설치 스크립트를 실행하세요:
-> ```bash
-> curl -fsSL https://dureclaw.github.io/install.sh | ROLE=orchestrator bash
-> ```
-> 또는 저장소 클론 후: `bash scripts/setup-agent.sh`
-
-`oah setup-mcp` 실행 시:
-- Phoenix URL 자동 감지 (Tailscale IP 우선, 없으면 `localhost:4000`)
-- Agent Name 설정 (기본: `orchestrator@<hostname>`)
-- `claude mcp add oah --scope user ...` 자동 실행
-
-Claude Code 재시작 후 MCP 도구 사용 가능:
-
-```
-mcp__oah__get_presence      연결된 에이전트 목록
-mcp__oah__send_task         에이전트에게 태스크 전송 (WebSocket Push)
-mcp__oah__receive_task      태스크 수신 대기 (최대 30초)
-mcp__oah__complete_task     태스크 완료 결과 전송
-mcp__oah__read_state        Work Key 상태 조회
-mcp__oah__write_state       Work Key 상태 업데이트
-mcp__oah__read_mailbox      에이전트 mailbox 읽기
-mcp__oah__post_message      에이전트 mailbox에 메시지 전송
+  ├──▶ oah-agent (맥미니)   builder@mac-mini
+  ├──▶ oah-agent (GPU 서버) builder@gpu-server
+  └──▶ oah-agent (라즈파이)  executor@raspi
+          └─ AI 백엔드 실행 → task.result 반환
 ```
 
 ---
@@ -274,20 +165,6 @@ mcp__oah__post_message      에이전트 mailbox에 메시지 전송
 
 ## 테스트 가이드
 
-### Mode A 로컬 테스트
-
-```bash
-# 훅 개별 실행
-bash .opencode/hooks/00_preflight.sh    # 환경 확인
-bash .opencode/hooks/09_completion_gate.sh  # 완료 게이트
-python3 .opencode/hooks/08_fail_classifier.py  # 실패 분류
-
-# TypeScript 타입 체크
-bun run typecheck
-```
-
-### Mode B 분산 테스트
-
 **1. 서버 상태 확인**
 ```bash
 curl http://localhost:4000/api/health
@@ -297,44 +174,19 @@ curl http://localhost:4000/api/health
 **2. 에이전트 연결 확인**
 ```bash
 curl http://localhost:4000/api/presence
-# → {"agents":[{"name":"agent1@mac","role":"builder",...}]}
+# → {"agents":[{"name":"builder@mac","role":"builder",...}]}
 ```
 
-**3. 태스크 전송 테스트 (curl)**
+**3. 태스크 전송 테스트**
 ```bash
 curl -s -X POST http://localhost:4000/api/task \
   -H "Content-Type: application/json" \
-  -d '{"instructions":"hello.txt 만들고 Hello! 써줘. ARTIFACT: hello.txt 출력.", "to":"builder@mymachine"}' \
-  -o /tmp/task.json && cat /tmp/task.json
-# → {"task_id":"http-...","work_key":"LN-..."}
+  -d '{"instructions":"[SHELL] echo hello", "to":"builder@mymachine"}' | python3 -m json.tool
 ```
 
-**4. 결과 폴링**
-```bash
-TASK_ID=$(python3 -c "import json; print(json.load(open('/tmp/task.json'))['task_id'])")
-for i in $(seq 1 20); do
-  curl -s "http://localhost:4000/api/task/$TASK_ID" -o /tmp/result.json
-  STATUS=$(python3 -c "import json; print(json.load(open('/tmp/result.json')).get('status','done'))")
-  [ "$STATUS" != "pending" ] && python3 -m json.tool /tmp/result.json && break
-  echo "대기 중... ($i)"
-  sleep 5
-done
+**4. Claude Code에서 태스크 전송**
 ```
-
-**5. Claude Code MCP로 태스크 전송**
-
-Claude Code 세션에서:
-```
-agent1에게 test.py 파일 만들어서 print("hello") 써달라고 태스크 보내줘
-```
-
-MCP 도구를 직접 호출할 수도 있다:
-```
-mcp__oah__send_task(
-  to: "agent1@mymachine",
-  instructions: "test.py 만들고 print('hello') 써줘",
-  role: "builder"
-)
+builder@mac-mini에게 test.py 만들어서 print("hello") 써달라고 태스크 보내줘
 ```
 
 ---
@@ -362,26 +214,13 @@ Channel topic: `work:{WORK_KEY}`
 
 ---
 
-## 지원 스택 (Mode A 훅 자동 감지)
-
-| 스택 | 감지 기준 | Format | Lint | Test |
-|------|-----------|--------|------|------|
-| Bun/TS | bun.lockb | biome/prettier | eslint | bun test |
-| Node/TS | package.json | prettier | eslint | vitest/jest |
-| Python | pyproject.toml | black/ruff | ruff | pytest |
-| Go | go.mod | gofmt | golangci-lint | go test |
-| Rust | Cargo.toml | rustfmt | clippy | cargo test |
-
----
-
 ## 요구사항
 
 | 컴포넌트 | 요구사항 |
 |----------|----------|
-| Mode A | OpenCode CLI, Bun ≥ 1.0, Python 3 |
-| Mode B 서버 | Elixir ≥ 1.14, OTP ≥ 25 |
-| Mode B 에이전트 | Bun ≥ 1.0, OpenCode CLI |
-| Claude Code MCP | Claude Code CLI, Bun ≥ 1.0 |
+| 오케스트레이터 (Claude Code) | Claude Code CLI, Bun ≥ 1.0 |
+| Phoenix 서버 | Elixir ≥ 1.14, OTP ≥ 25 |
+| 워커 에이전트 | Bun ≥ 1.0, AI CLI (claude / opencode / gemini 등) |
 
 ---
 
