@@ -9,6 +9,55 @@
 > *DureClaw는 그 정신을 AI 에이전트에 담는다 — 각자의 머신에서, 하나의 목표로, 하나의 크루.*
 
 [![GitHub](https://img.shields.io/badge/DureClaw-dureclaw-black?logo=github)](https://github.com/DureClaw/dureclaw)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+
+---
+
+## 설치
+
+### Claude Code 오케스트레이터 (MCP 플러그인)
+
+<table>
+<tr>
+<td align="center" width="50%">
+
+**저장소 클론 후**
+
+```bash
+git clone https://github.com/DureClaw/dureclaw
+cd dureclaw
+oah setup-mcp
+```
+
+</td>
+<td align="center" width="50%">
+
+**원클릭 (클론 없이)**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/DureClaw/dureclaw/main/scripts/setup-mcp.sh \
+  | PHOENIX_URL=ws://<서버IP>:4000 bash
+```
+
+</td>
+</tr>
+</table>
+
+> **자동 감지**: Tailscale IP · Phoenix URL · `orchestrator@hostname` 자동 설정
+> **재시작 후 사용 가능**: `mcp__oah__send_task`, `mcp__oah__get_presence`, `mcp__oah__read_state` 등 8개 도구
+
+### 워커 에이전트 (원격 머신)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/DureClaw/dureclaw/main/scripts/setup-agent.sh \
+  | PHOENIX=ws://<서버IP>:4000 ROLE=builder bash
+```
+
+### Phoenix 서버
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/DureClaw/dureclaw/main/scripts/setup-server.sh | bash
+```
 
 ---
 
@@ -375,4 +424,6 @@ export DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..."
 
 ## License
 
-MIT
+MIT © 2025-2026 [Seungwoo Hong (홍승우)](https://github.com/hongsw)
+
+자세한 내용은 [LICENSE](./LICENSE) 파일을 참조하세요.
