@@ -63,48 +63,85 @@ curl -sf http://localhost:4000/api/work-keys/latest 2>/dev/null || echo "Work Ke
 
 ---
 
-## 팀 확장 플로우 (Phoenix 서버 + 워커 설정)
+## 팀 확장 플로우 (대화형 — Phoenix 서버 + 워커 설정)
 
-사용자가 "팀 설정", "서버 설정", "워커 추가" 등을 요청하면 아래를 순서대로 실행합니다.
+사용자가 "팀 설정", "서버 설정", "워커 추가" 등을 요청하면
+**각 단계 실행 후 사용자에게 말을 걸며** 진행합니다.
 
-### Step 1: Phoenix 서버 설치/확인
+### Step 1: Phoenix 서버 확인 및 시작
 
 ```bash
-curl -sf http://localhost:4000/api/health && echo "✅ 서버 실행 중" || (
-  echo "서버가 없습니다. 설치하시겠습니까? (설치 명령을 실행합니다)"
-  curl -fsSL https://raw.githubusercontent.com/DureClaw/dureclaw/main/scripts/setup-server.sh | bash
-)
+curl -sf http://localhost:4000/api/health && echo "RUNNING" || echo "NOT_RUNNING"
 ```
 
-### Step 2: 서버 IP 감지
+- RUNNING → "서버가 이미 실행 중이에요!" 라고 말하고 Step 2로
+- NOT_RUNNING → "서버가 없네요. 지금 설치할게요!" 라고 말하고:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/DureClaw/dureclaw/main/scripts/setup-server.sh | bash &
+sleep 8 && curl -sf http://localhost:4000/api/health && echo "OK" || echo "시작 중..."
+```
+
+### Step 2: 서버 IP 자동 감지 + 사용자에게 알림
 
 ```bash
 TS_IP=$(tailscale ip -4 2>/dev/null || echo "")
-LOCAL_IP=$(ipconfig getifaddr en0 2>/dev/null || hostname -I 2>/dev/null | awk '{print $1}' || echo "localhost")
-SERVER_IP="${TS_IP:-$LOCAL_IP}"
-echo "서버 주소: ws://$SERVER_IP:4000"
-echo "(Tailscale: ${TS_IP:-없음} / LAN: $LOCAL_IP)"
+LAN_IP=$(ipconfig getifaddr en0 2>/dev/null || hostname -I 2>/dev/null | awk '{print $1}' || echo "")
+SERVER_IP="${TS_IP:-$LAN_IP}"
+AGENT_URL="https://raw.githubusercontent.com/DureClaw/dureclaw/main/scripts/setup-agent.sh"
+echo "SERVER_IP=$SERVER_IP"
+echo "TS=$TS_IP LAN=$LAN_IP"
 ```
 
-### Step 3: 원격 머신용 워커 설치 명령 출력
+결과에 따라 사용자에게 상황 설명:
+- Tailscale IP 있음 → "Tailscale 사설망이 감지됐어요. 어떤 네트워크에서도 연결 가능합니다."
+- LAN IP만 있음 → "같은 네트워크 내에서만 연결 가능해요. 다른 네트워크 머신은 Tailscale이 필요해요."
 
-Step 2의 SERVER_IP를 사용해 각 원격 머신에서 실행할 명령을 사용자에게 안내합니다:
+### Step 3: 현재 팀 현황 파악 + 추가 여부 질문
 
-**macOS / Linux:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/DureClaw/dureclaw/main/scripts/setup-agent.sh \
-  | PHOENIX=ws://$SERVER_IP:4000 ROLE=builder bash
+curl -sf http://localhost:4000/api/presence | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+agents = data.get('agents', [])
+print(f'현재 온라인: {len(agents)}명')
+for a in agents: print(f'  {a.get(\"name\")} [{a.get(\"role\")}]')
+"
 ```
 
-**Windows (PowerShell):**
-```powershell
-$env:PHOENIX="ws://$SERVER_IP:4000"; $env:ROLE="builder"
-irm https://raw.githubusercontent.com/DureClaw/dureclaw/main/scripts/setup-agent.ps1 | iex
+현황을 알려주고 질문: "워커를 추가할 머신이 있나요? 있다면 어떤 역할이 필요한지 알려주세요."
+
+### Step 4: IP가 채워진 명령어를 바로 안내
+
+Step 2의 SERVER_IP로 실제 실행 가능한 명령어를 출력합니다:
+
+```bash
+SERVER_IP=$(tailscale ip -4 2>/dev/null || ipconfig getifaddr en0 2>/dev/null || hostname -I 2>/dev/null | awk '{print $1}' || echo "localhost")
+AGENT_URL="https://raw.githubusercontent.com/DureClaw/dureclaw/main/scripts/setup-agent.sh"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo " 워커 머신에서 복사·실행하세요"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "[ macOS / Linux — builder ]"
+echo "  PHOENIX=ws://$SERVER_IP:4000 ROLE=builder bash <(curl -fsSL $AGENT_URL)"
+echo ""
+echo "[ macOS / Linux — tester ]"
+echo "  PHOENIX=ws://$SERVER_IP:4000 ROLE=tester bash <(curl -fsSL $AGENT_URL)"
+echo ""
+echo "[ Windows PowerShell ]"
+echo "  \$env:PHOENIX='ws://$SERVER_IP:4000'; \$env:ROLE='builder'"
+echo "  irm https://raw.githubusercontent.com/DureClaw/dureclaw/main/scripts/setup-agent.ps1 | iex"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 ```
 
-역할(ROLE): `builder` / `tester` / `analyst` / `executor`
+명령어 출력 후 사용자에게:
+> "위 명령어를 워커 머신에서 실행해 보세요. 완료되면 알려주세요!"
 
-### Step 4: 완료 확인
+사용자가 역할을 지정하면 ROLE 값을 맞춰서 안내합니다.
+
+### Step 5: 연결 확인 (사용자 완료 신호 후)
+
+사용자가 완료 신호를 보내면 즉시 확인:
 
 ```bash
 curl -sf http://localhost:4000/api/presence | python3 -c "
@@ -112,9 +149,13 @@ import sys, json
 data = json.load(sys.stdin)
 agents = data.get('agents', [])
 print(f'✅ 팀 완성: {len(agents)}명 온라인')
-for a in agents: print(f'   {a.get(\"name\")} [{a.get(\"role\")}]')
+for a in agents:
+    caps = ', '.join(a.get('capabilities', []))
+    print(f'   {a.get(\"name\")} [{a.get(\"role\")}] {caps}')
 "
 ```
+
+더 추가할 머신이 있는지 물어보고, 없으면 팀 구성 완료를 알립니다.
 
 ---
 
