@@ -5,7 +5,7 @@
 Orchestration infrastructure where AI agents across distributed devices collaborate in real time through a single channel.
 Uses Claude Code as the orchestrator and connects AI agents on each machine as workers to form a multi-machine AI team.
 
-> *Dure (두레): A cooperative farming system from Joseon-era Korea, where an entire village worked together across each farmer's individual fields.*
+> *[Dure (두레)](https://en.wikipedia.org/wiki/Dure): A cooperative farming system from Joseon-era Korea, where an entire village worked together across each farmer's individual fields.*
 > *DureClaw embodies that spirit in AI agents — each on their own machine, one shared goal, one crew.*
 
 [![GitHub](https://img.shields.io/badge/DureClaw-dureclaw-black?logo=github)](https://github.com/DureClaw/dureclaw)
