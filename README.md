@@ -1,5 +1,7 @@
 # DureCrew (두레크루)
 
+<img src="https://github.com/user-attachments/assets/b0169be5-c373-4e38-894b-7f4f1b17aa94" alt="DureCrew Logo" width="100%" />
+
 분산된 디바이스의 AI 에이전트들이 하나의 채널로 묶여 실시간 협력하는 오케스트레이션 인프라.
 로컬 단일머신(Mode A)과 분산 멀티머신(Mode B) 두 가지 모드를 지원한다.
 
