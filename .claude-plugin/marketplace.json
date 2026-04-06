@@ -1,0 +1,15 @@
+{
+  "name": "dureclaw-marketplace",
+  "owner": {
+    "name": "DureClaw",
+    "url": "https://github.com/DureClaw"
+  },
+  "plugins": [
+    {
+      "name": "dureclaw",
+      "source": "./",
+      "description": "분산 AI 에이전트 오케스트레이션. Claude Code를 오케스트레이터로, 원격 머신의 에이전트들을 Phoenix Channel로 연결하는 멀티머신 팀 인프라.",
+      "version": "1.0.0"
+    }
+  ]
+}

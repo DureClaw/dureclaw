@@ -18,38 +18,42 @@
 
 ## 설치
 
-> **마켓플레이스**: [Smithery](https://smithery.ai/server/@dureclaw/mcp) · [MCP Registry](https://registry.modelcontextprotocol.io) · [mcp.so](https://mcp.so)
+### Via Marketplace
 
-### Claude Code 오케스트레이터 (MCP 플러그인)
+마켓플레이스를 추가하고 플러그인을 설치합니다:
 
-<table>
-<tr>
-<td align="center" width="50%">
+```shell
+/plugin marketplace add DureClaw/dureclaw
+```
 
-**저장소 클론 후**
+```shell
+/plugin install dureclaw@dureclaw
+```
+
+> `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` 환경변수가 필요합니다.
+
+---
+
+### Via MCP (수동 등록)
+
+**방법 1 — `oah setup-mcp` (권장)**
 
 ```bash
-git clone https://github.com/DureClaw/dureclaw
-cd dureclaw
+git clone https://github.com/DureClaw/dureclaw && cd dureclaw
 oah setup-mcp
 ```
 
-</td>
-<td align="center" width="50%">
-
-**원클릭 (클론 없이)**
+**방법 2 — curl 원클릭**
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/DureClaw/dureclaw/main/scripts/setup-mcp.sh \
   | PHOENIX_URL=ws://<서버IP>:4000 bash
 ```
 
-</td>
-</tr>
-</table>
+> Tailscale IP · Phoenix URL · `orchestrator@hostname` 자동 감지
+> 재시작 후 `mcp__oah__send_task` 등 8개 도구 사용 가능
 
-> **자동 감지**: Tailscale IP · Phoenix URL · `orchestrator@hostname` 자동 설정
-> **재시작 후 사용 가능**: `mcp__oah__send_task`, `mcp__oah__get_presence`, `mcp__oah__read_state` 등 8개 도구
+---
 
 ### 워커 에이전트 (원격 머신)
 

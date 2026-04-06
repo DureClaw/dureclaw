@@ -1,0 +1,21 @@
+{
+  "name": "dureclaw",
+  "description": "Distributed AI Agent Orchestration — Multi-machine agent team with Phoenix Channel. Connects Claude Code as orchestrator to remote workers via WebSocket. 분산 디바이스의 AI 에이전트들이 하나의 채널로 묶여 실시간 협력하는 오케스트레이션 인프라.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Seungwoo Hong (홍승우)",
+    "url": "https://github.com/hongsw"
+  },
+  "homepage": "https://github.com/DureClaw/dureclaw",
+  "repository": "https://github.com/DureClaw/dureclaw",
+  "license": "MIT",
+  "keywords": [
+    "dureclaw",
+    "multi-agent",
+    "distributed-agents",
+    "agent-orchestration",
+    "phoenix-channel",
+    "mcp",
+    "claude-code"
+  ]
+}
