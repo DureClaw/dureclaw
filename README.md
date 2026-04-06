@@ -113,6 +113,26 @@ opencode
 
 ---
 
+## 빠른 설치 (Claude Code 오케스트레이터)
+
+```bash
+# 1. 저장소 클론 + MCP 등록 한방에
+git clone https://github.com/DureClaw/dureclaw
+cd dureclaw
+bash scripts/setup-mcp.sh
+```
+
+또는 저장소 클론 없이:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/DureClaw/dureclaw/main/scripts/setup-mcp.sh \
+  | PHOENIX_URL=ws://<서버IP>:4000 bash
+```
+
+Claude Code 재시작 후 바로 사용 가능. [자세한 설정](#step-3-claude-code에-oah-mcp-등록) ↓
+
+---
+
 ## Mode B: 분산 멀티에이전트
 
 ### 전체 구성도
@@ -165,13 +185,19 @@ oah-agent ws://host:4000
 ### Step 3: Claude Code에 oah MCP 등록
 
 ```bash
-claude mcp add oah \
-  --scope user \
-  -e PHOENIX_URL=ws://localhost:4000 \
-  -e AGENT_NAME=orchestrator@mymachine \
-  -e AGENT_ROLE=orchestrator \
-  -- bun run /path/to/packages/oah-mcp/src/index.ts
+oah setup-mcp
 ```
+
+> `oah`가 없으면 먼저 에이전트 설치 스크립트를 실행하세요:
+> ```bash
+> curl -fsSL https://dureclaw.github.io/install.sh | ROLE=orchestrator bash
+> ```
+> 또는 저장소 클론 후: `bash scripts/setup-agent.sh`
+
+`oah setup-mcp` 실행 시:
+- Phoenix URL 자동 감지 (Tailscale IP 우선, 없으면 `localhost:4000`)
+- Agent Name 설정 (기본: `orchestrator@<hostname>`)
+- `claude mcp add oah --scope user ...` 자동 실행
 
 Claude Code 재시작 후 MCP 도구 사용 가능:
 

@@ -990,6 +990,97 @@ cmd_service() {
   esac
 }
 
+# ─── oah setup-mcp ────────────────────────────────────────────────────────────
+# Claude Code에 oah MCP 서버를 한 번에 등록
+
+cmd_setup_mcp() {
+  echo "━━━ DureClaw MCP 설치 ━━━━━━━━━━━━━━━━━━━━━━━━"
+
+  # 1. Claude Code 확인
+  if ! command -v claude &>/dev/null; then
+    echo "❌ 'claude' 명령어를 찾을 수 없습니다."
+    echo "   Claude Code 설치: https://claude.ai/code"
+    exit 1
+  fi
+
+  # 2. bun 확인
+  if ! command -v bun &>/dev/null; then
+    echo "❌ 'bun'을 찾을 수 없습니다. https://bun.sh 에서 설치하세요."
+    exit 1
+  fi
+
+  # 3. MCP 소스 경로 결정
+  #    a) 이 스크립트 기준 상대 경로 (로컬 클론)
+  #    b) ~/.oah/mcp/index.ts (설치된 경우)
+  local script_dir; script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  local mcp_local="$script_dir/../packages/oah-mcp/src/index.ts"
+  local mcp_installed="$OAH_DIR/mcp/index.ts"
+  local mcp_path=""
+
+  if [[ -f "$mcp_local" ]]; then
+    mcp_path="$(cd "$(dirname "$mcp_local")" && pwd)/$(basename "$mcp_local")"
+  elif [[ -f "$mcp_installed" ]]; then
+    mcp_path="$mcp_installed"
+  else
+    # 원격에서 다운로드
+    echo "📥 oah-mcp 다운로드 중..."
+    mkdir -p "$OAH_DIR/mcp"
+    curl -fsSL "https://raw.githubusercontent.com/DureClaw/dureclaw/main/packages/oah-mcp/src/index.ts" \
+      -o "$OAH_DIR/mcp/index.ts"
+    # MCP SDK 설치
+    (cd "$OAH_DIR/mcp" && echo '{"type":"module","dependencies":{"@modelcontextprotocol/sdk":"^1.10.2"}}' > package.json && bun install --silent)
+    mcp_path="$OAH_DIR/mcp/index.ts"
+  fi
+  echo "✅ MCP 소스: $mcp_path"
+
+  # 4. PHOENIX_URL 결정
+  local phoenix_url="${PHOENIX:-}"
+  if [[ -z "$phoenix_url" ]]; then
+    # Tailscale IP 자동 감지
+    local ts_ip; ts_ip=$(tailscale ip -4 2>/dev/null || echo "")
+    local default_url="${ts_ip:+ws://$ts_ip:4000}"
+    default_url="${default_url:-ws://localhost:4000}"
+    read -r -p "  Phoenix URL [$default_url]: " phoenix_url
+    phoenix_url="${phoenix_url:-$default_url}"
+  fi
+  echo "  Phoenix URL: $phoenix_url"
+
+  # 5. AGENT_NAME 결정
+  local machine; machine=$(hostname -s 2>/dev/null || hostname)
+  local default_name="orchestrator@$machine"
+  read -r -p "  Agent Name  [$default_name]: " agent_name
+  agent_name="${agent_name:-$default_name}"
+  echo "  Agent Name: $agent_name"
+
+  # 6. claude mcp add 실행
+  echo ""
+  echo "▶ Claude Code에 MCP 등록 중..."
+  claude mcp add oah \
+    --scope user \
+    -e "PHOENIX_URL=$phoenix_url" \
+    -e "AGENT_NAME=$agent_name" \
+    -e "AGENT_ROLE=orchestrator" \
+    -- bun run "$mcp_path"
+
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "✅ DureClaw MCP 등록 완료!"
+  echo ""
+  echo "  Claude Code를 재시작하면 다음 도구를 사용할 수 있습니다:"
+  echo "    mcp__oah__get_presence   — 온라인 에이전트 목록"
+  echo "    mcp__oah__send_task      — 에이전트에게 태스크 전송"
+  echo "    mcp__oah__receive_task   — 태스크 수신 대기"
+  echo "    mcp__oah__complete_task  — 태스크 완료 보고"
+  echo "    mcp__oah__read_state     — Work Key 상태 조회"
+  echo "    mcp__oah__write_state    — Work Key 상태 업데이트"
+  echo "    mcp__oah__read_mailbox   — mailbox 읽기"
+  echo "    mcp__oah__post_message   — mailbox 메시지 전송"
+  echo ""
+  echo "  등록 확인:   claude mcp list"
+  echo "  재등록:      oah setup-mcp"
+  echo "  제거:        claude mcp remove oah"
+}
+
 # ─── oah team ─────────────────────────────────────────────────────────────────
 # TeamCreate / SendMessage / TaskCreate 원스톱 CLI
 
@@ -1241,6 +1332,7 @@ case "$CMD" in
   config)               cmd_config "$@" ;;
   update)               cmd_update "$@" ;;
   team)                 cmd_team "$@" ;;
+  setup-mcp|mcp-setup)  cmd_setup_mcp ;;
   soul)                 cmd_soul "${1:-show}" ;;
   init|setup|onboard)   cmd_init ;;
   doctor|check|diag)    cmd_doctor ;;
