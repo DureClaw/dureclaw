@@ -16,7 +16,8 @@
 set -euo pipefail
 
 GITHUB_RAW="https://raw.githubusercontent.com/DureClaw/dureclaw/main"
-OAH_BASE="https://open-agent-harness.baryon.ai"
+GITHUB_RELEASE="https://github.com/DureClaw/dureclaw/releases/latest/download"
+OAH_BASE="https://open-agent-harness.baryon.ai"   # legacy fallback
 DOCKER_IMAGE="ghcr.io/dureclaw/dureclaw:latest"
 PORT="${PORT:-4000}"
 HOST="${HOST:-0.0.0.0}"
@@ -36,7 +37,8 @@ case "$ARCH" in
 esac
 
 TARBALL="oah-server-${OS}-${ARCH}.tar.gz"
-TARBALL_URL="$OAH_BASE/$TARBALL"
+TARBALL_URL="$GITHUB_RELEASE/$TARBALL"
+TARBALL_URL_LEGACY="$OAH_BASE/$TARBALL"
 EXE="$INSTALL_DIR/bin/harness_server"
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -140,25 +142,36 @@ if [[ "$USE_DOCKER" == "1" || "$USE_DOCKER" == "true" ]]; then
   _docker_run
 fi
 
-# ─── 2. 사전 빌드 바이너리 다운로드 ─────────────────────────────────────────────
+# ─── 2. 사전 빌드 바이너리 다운로드 (GitHub Releases) ───────────────────────────
 
-if curl -sf --max-time 5 -I "$TARBALL_URL" | grep -q "200"; then
+_download_binary() {
+  local URL="$1"
+  echo "→ 서버 다운로드 중... ($TARBALL)"
+  mkdir -p "$INSTALL_DIR"
+  curl -fsSL --location "$URL" | tar -xz -C "$INSTALL_DIR" --strip-components=1
+  chmod +x "$EXE"
+  echo "✅ 설치 완료"
+}
+
+# GitHub Releases 우선, 레거시 fallback
+AVAILABLE_URL=""
+if curl -sf --max-time 8 -I -L "$TARBALL_URL" 2>/dev/null | grep -q "200"; then
+  AVAILABLE_URL="$TARBALL_URL"
+elif curl -sf --max-time 5 -I "$TARBALL_URL_LEGACY" 2>/dev/null | grep -q "200"; then
+  AVAILABLE_URL="$TARBALL_URL_LEGACY"
+fi
+
+if [[ -n "$AVAILABLE_URL" ]]; then
   if [[ ! -x "$EXE" ]]; then
-    echo "→ 서버 다운로드 중... ($TARBALL)"
-    mkdir -p "$INSTALL_DIR"
-    curl -fsSL "$TARBALL_URL" | tar -xz -C "$INSTALL_DIR" --strip-components=1
-    chmod +x "$EXE"
-    echo "✅ 설치 완료"
+    _download_binary "$AVAILABLE_URL"
   else
-    REMOTE_SIZE=$(curl -sfI --max-time 5 "$TARBALL_URL" | grep -i content-length | awk '{print $2}' | tr -d '\r' || echo "")
+    REMOTE_SIZE=$(curl -sfI --max-time 5 -L "$AVAILABLE_URL" | grep -i content-length | tail -1 | awk '{print $2}' | tr -d '\r' || echo "")
     LOCAL_SIZE=$(du -sk "$INSTALL_DIR" 2>/dev/null | awk '{print $1 * 1024}' || echo "0")
     if [[ -n "$REMOTE_SIZE" && "$REMOTE_SIZE" -gt "$((LOCAL_SIZE + 2000000))" ]]; then
       echo "→ 새 버전 업데이트 중..."
-      curl -fsSL "$TARBALL_URL" | tar -xz -C "$INSTALL_DIR" --strip-components=1
-      chmod +x "$EXE"
-      echo "✅ 업데이트 완료"
+      _download_binary "$AVAILABLE_URL"
     else
-      echo "✅ 최신 버전"
+      echo "✅ 최신 버전 ($EXE)"
     fi
   fi
 

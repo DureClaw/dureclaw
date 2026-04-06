@@ -1,0 +1,117 @@
+name: Release — DureClaw Server Binary
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. v0.3.0)"
+        required: true
+
+jobs:
+  build:
+    name: Build ${{ matrix.os }} ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          # macOS arm64 (M-series)
+          - os: darwin
+            arch: arm64
+            runner: macos-14
+          # macOS x86_64
+          - os: darwin
+            arch: x86_64
+            runner: macos-13
+          # Linux x86_64
+          - os: linux
+            arch: x86_64
+            runner: ubuntu-22.04
+          # Linux arm64
+          - os: linux
+            arch: arm64
+            runner: ubuntu-22.04-arm
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: "1.17"
+          otp-version: "27"
+
+      - name: Build release
+        working-directory: packages/phoenix-server
+        env:
+          MIX_ENV: prod
+        run: |
+          mix local.hex --force
+          mix local.rebar --force
+          mix deps.get --only prod
+          mix release harness_server --overwrite
+
+      - name: Package tarball
+        working-directory: packages/phoenix-server
+        run: |
+          TARBALL="oah-server-${{ matrix.os }}-${{ matrix.arch }}.tar.gz"
+          tar -czf "$TARBALL" \
+            -C _build/prod/rel \
+            harness_server
+          echo "TARBALL=$TARBALL" >> $GITHUB_ENV
+          echo "TARBALL_PATH=packages/phoenix-server/$TARBALL" >> $GITHUB_ENV
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: oah-server-${{ matrix.os }}-${{ matrix.arch }}
+          path: ${{ env.TARBALL_PATH }}
+          retention-days: 7
+
+  release:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist/
+          merge-multiple: true
+
+      - name: List artifacts
+        run: ls -lh dist/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name || inputs.tag }}
+          name: DureClaw ${{ github.ref_name || inputs.tag }}
+          body: |
+            ## DureClaw Server — 사전빌드 바이너리
+
+            Elixir/Erlang 설치 없이 바로 실행 가능합니다.
+
+            ### 자동 설치 (권장)
+            ```bash
+            bash <(curl -fsSL https://raw.githubusercontent.com/DureClaw/dureclaw/main/scripts/setup-server.sh)
+            ```
+
+            ### 수동 설치
+            OS/아키텍처에 맞는 파일을 다운로드 후:
+            ```bash
+            tar -xzf oah-server-darwin-arm64.tar.gz
+            ./harness_server/bin/harness_server foreground
+            ```
+
+            | 파일 | 플랫폼 |
+            |------|--------|
+            | `oah-server-darwin-arm64.tar.gz` | macOS Apple Silicon (M1/M2/M3/M4) |
+            | `oah-server-darwin-x86_64.tar.gz` | macOS Intel |
+            | `oah-server-linux-x86_64.tar.gz` | Linux x86_64 |
+            | `oah-server-linux-arm64.tar.gz` | Linux arm64 (Raspberry Pi 4/5 64bit) |
+          files: dist/*.tar.gz
+          generate_release_notes: true
