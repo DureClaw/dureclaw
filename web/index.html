@@ -150,6 +150,32 @@ nav {
 .section-title { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 700; color: var(--white); letter-spacing: -0.5px; }
 .section-title em { font-style: normal; color: var(--cyan); }
 
+/* PLATFORM GRID */
+.platform-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+  margin-bottom: 80px;
+}
+.platform-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 6px; padding: 20px 22px;
+  transition: border-color 0.2s;
+}
+.platform-card:hover { border-color: var(--border2); }
+.platform-icon { font-size: 24px; margin-bottom: 10px; }
+.platform-name { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; color: var(--white); margin-bottom: 4px; }
+.platform-sub { font-size: 11px; color: var(--text3); margin-bottom: 10px; letter-spacing: 0.3px; }
+.platform-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.platform-tag {
+  font-size: 9px; letter-spacing: 1px; font-weight: 700;
+  padding: 2px 7px; border-radius: 2px;
+  background: var(--bg3); border: 1px solid var(--border); color: var(--text3);
+}
+.platform-tag.ok { background: rgba(5,150,105,0.08); border-color: rgba(5,150,105,0.25); color: var(--green); }
+.platform-tag.docker { background: rgba(2,132,199,0.08); border-color: rgba(2,132,199,0.25); color: var(--cyan); }
+.platform-tag.binary { background: rgba(234,88,12,0.08); border-color: rgba(234,88,12,0.25); color: var(--orange); }
+.platform-status { display: flex; align-items: center; gap: 6px; margin-top: 10px; font-size: 10px; color: var(--text3); }
+.platform-status .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 5px var(--green); }
+
 /* ARCH BOX */
 .arch-ascii {
   background: var(--bg2); border: 1px solid var(--border);
@@ -342,6 +368,7 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
       <a href="/" class="nav-logo">Dure<span>Claw</span></a>
       <div class="nav-links">
         <a href="#install">설치</a>
+        <a href="#platforms">지원 환경</a>
         <a href="#architecture">아키텍처</a>
         <a href="#add-agent">에이전트 추가</a>
         <a href="#events">이벤트</a>
@@ -432,11 +459,95 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
   </div>
 </section>
 
+<!-- PLATFORMS -->
+<section class="section" id="platforms">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-num">01</span>
+      <h2 class="section-title">지원 <em>환경</em></h2>
+    </div>
+    <div class="platform-grid">
+
+      <div class="platform-card">
+        <div class="platform-icon">🍎</div>
+        <div class="platform-name">macOS — Apple Silicon</div>
+        <div class="platform-sub">M1 / M2 / M3 / M4 · arm64</div>
+        <div class="platform-tags">
+          <span class="platform-tag ok">서버 ✓</span>
+          <span class="platform-tag ok">워커 ✓</span>
+          <span class="platform-tag binary">사전빌드</span>
+        </div>
+        <div class="platform-status"><span class="dot"></span>완전 지원 · 권장 환경</div>
+      </div>
+
+      <div class="platform-card">
+        <div class="platform-icon">💻</div>
+        <div class="platform-name">macOS — Intel</div>
+        <div class="platform-sub">Core i5/i7/i9 · x86_64</div>
+        <div class="platform-tags">
+          <span class="platform-tag ok">서버 ✓</span>
+          <span class="platform-tag ok">워커 ✓</span>
+          <span class="platform-tag binary">사전빌드</span>
+        </div>
+        <div class="platform-status"><span class="dot"></span>완전 지원</div>
+      </div>
+
+      <div class="platform-card">
+        <div class="platform-icon">🐧</div>
+        <div class="platform-name">Linux — x86_64</div>
+        <div class="platform-sub">Ubuntu / Debian / CentOS · amd64</div>
+        <div class="platform-tags">
+          <span class="platform-tag ok">서버 ✓</span>
+          <span class="platform-tag ok">워커 ✓</span>
+          <span class="platform-tag binary">사전빌드</span>
+          <span class="platform-tag docker">Docker</span>
+        </div>
+        <div class="platform-status"><span class="dot"></span>완전 지원 · GPU 서버 권장</div>
+      </div>
+
+      <div class="platform-card">
+        <div class="platform-icon">🫐</div>
+        <div class="platform-name">Raspberry Pi 4 / 5</div>
+        <div class="platform-sub">Linux arm64 · aarch64</div>
+        <div class="platform-tags">
+          <span class="platform-tag ok">서버 ✓</span>
+          <span class="platform-tag ok">워커 ✓</span>
+          <span class="platform-tag binary">사전빌드</span>
+        </div>
+        <div class="platform-status"><span class="dot"></span>완전 지원 · executor 역할 최적</div>
+      </div>
+
+      <div class="platform-card">
+        <div class="platform-icon">🪟</div>
+        <div class="platform-name">Windows 10 / 11</div>
+        <div class="platform-sub">PowerShell · x86_64</div>
+        <div class="platform-tags">
+          <span class="platform-tag ok">워커 ✓</span>
+          <span class="platform-tag docker">Docker</span>
+        </div>
+        <div class="platform-status"><span class="dot"></span>워커 지원 · PowerShell 설치 스크립트</div>
+      </div>
+
+      <div class="platform-card">
+        <div class="platform-icon">🐳</div>
+        <div class="platform-name">Docker</div>
+        <div class="platform-sub">모든 플랫폼 · ghcr.io/dureclaw/dureclaw</div>
+        <div class="platform-tags">
+          <span class="platform-tag ok">서버 ✓</span>
+          <span class="platform-tag docker">컨테이너</span>
+        </div>
+        <div class="platform-status"><span class="dot"></span>Elixir 없이 즉시 실행</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
 <!-- ARCHITECTURE -->
 <section class="section" id="architecture">
   <div class="container">
     <div class="section-header">
-      <span class="section-num">01</span>
+      <span class="section-num">02</span>
       <h2 class="section-title">시스템 <em>아키텍처</em></h2>
     </div>
     <div class="arch-ascii">
@@ -461,7 +572,7 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
 <section class="section" id="install">
   <div class="container">
     <div class="section-header">
-      <span class="section-num">02</span>
+      <span class="section-num">03</span>
       <h2 class="section-title">빠른 <em>시작</em></h2>
     </div>
 
@@ -530,7 +641,7 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
 <section class="section" id="add-agent">
   <div class="container">
     <div class="section-header">
-      <span class="section-num">03</span>
+      <span class="section-num">04</span>
       <h2 class="section-title">AI 팀원 <em>추가하기</em></h2>
     </div>
     <p style="color:var(--text2);font-size:13px;margin-bottom:20px;max-width:640px;">
@@ -575,7 +686,7 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
 <section class="section" id="example">
   <div class="container">
     <div class="section-header">
-      <span class="section-num">04</span>
+      <span class="section-num">05</span>
       <h2 class="section-title">활용 <em>예시</em> — fix-agent</h2>
     </div>
     <p style="color:var(--text2);font-size:13px;margin-bottom:20px;max-width:640px;">
@@ -626,7 +737,7 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
 <section class="section" id="events">
   <div class="container">
     <div class="section-header">
-      <span class="section-num">05</span>
+      <span class="section-num">06</span>
       <h2 class="section-title">채널 <em>이벤트</em></h2>
     </div>
     <div class="table-wrap">
@@ -654,7 +765,7 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
 <section class="section" id="api">
   <div class="container">
     <div class="section-header">
-      <span class="section-num">06</span>
+      <span class="section-num">07</span>
       <h2 class="section-title">REST <em>API</em></h2>
     </div>
     <div class="table-wrap">

@@ -196,6 +196,21 @@ Phoenix Server              ws://host:4000
 
 ---
 
+## 지원 환경
+
+| 플랫폼 | 아키텍처 | 서버 | 워커 | 비고 |
+|--------|----------|------|------|------|
+| macOS (Apple Silicon) | arm64 | ✅ 사전빌드 | ✅ | M1/M2/M3/M4 |
+| macOS (Intel) | x86_64 | ✅ 사전빌드 | ✅ | |
+| Linux | x86_64 | ✅ 사전빌드 | ✅ | Ubuntu/Debian/CentOS |
+| **Raspberry Pi 4/5** | **arm64** | ✅ 사전빌드 | ✅ | **executor 역할 최적** |
+| Windows 10/11 | x86_64 | 🐳 Docker | ✅ PowerShell | |
+| Docker (모든 플랫폼) | any | ✅ | — | `ghcr.io/dureclaw/dureclaw` |
+
+> **Raspberry Pi**: `PHOENIX=ws://서버IP:4000 ROLE=executor bash <(curl -fsSL https://dureclaw.baryon.ai/agent)` 한 줄로 연결.
+
+---
+
 ## 선행 설치 조건
 
 | | 필요한 것 | 설치 |

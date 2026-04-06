@@ -194,6 +194,21 @@ Phoenix Server              ws://host:4000
 
 ---
 
+## Supported Platforms
+
+| Platform | Architecture | Server | Worker | Notes |
+|----------|-------------|--------|--------|-------|
+| macOS (Apple Silicon) | arm64 | ✅ pre-built | ✅ | M1/M2/M3/M4 |
+| macOS (Intel) | x86_64 | ✅ pre-built | ✅ | |
+| Linux | x86_64 | ✅ pre-built | ✅ | Ubuntu/Debian/CentOS |
+| **Raspberry Pi 4/5** | **arm64** | ✅ pre-built | ✅ | **ideal for executor role** |
+| Windows 10/11 | x86_64 | 🐳 Docker | ✅ PowerShell | |
+| Docker (any platform) | any | ✅ | — | `ghcr.io/dureclaw/dureclaw` |
+
+> **Raspberry Pi**: Connect with a single line — `PHOENIX=ws://SERVER_IP:4000 ROLE=executor bash <(curl -fsSL https://dureclaw.baryon.ai/agent)`
+
+---
+
 ## Prerequisites
 
 | | Required | Purpose |
