@@ -1,12 +1,10 @@
-# ClawNet *(두레Claw)*
-
-> **공식명**: ClawNet &nbsp;|&nbsp; **닉네임**: 두레Claw (DureClaw)
+# DureCrew (두레크루)
 
 분산된 디바이스의 AI 에이전트들이 하나의 채널로 묶여 실시간 협력하는 오케스트레이션 인프라.
 로컬 단일머신(Mode A)과 분산 멀티머신(Mode B) 두 가지 모드를 지원한다.
 
-> *두레(두레): 조선시대 농민들이 각자의 논에서 마을 전체가 함께 경작하던 협동 시스템.*
-> *ClawNet은 그 정신을 AI 에이전트에 담는다 — 각자의 머신에서, 하나의 목표로.*
+> *두레(dure): 조선시대 농민들이 각자의 논에서 마을 전체가 함께 경작하던 협동 시스템.*
+> *DureCrew는 그 정신을 AI 에이전트에 담는다 — 각자의 머신에서, 하나의 목표로, 하나의 크루.*
 
 [![GitHub](https://img.shields.io/badge/repo-open--agent--harness-blue)](https://github.com/baryonlabs/open-agent-harness)
 
