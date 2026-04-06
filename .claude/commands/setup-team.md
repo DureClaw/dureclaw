@@ -1,57 +1,29 @@
-DureClaw 멀티머신 팀을 자동으로 설정합니다. 아래 순서대로 실행하세요.
+DureClaw 멀티머신 팀을 지금 바로 설정합니다. 아래 단계를 순서대로 실행하세요.
 
-## Step 1 — Phoenix 서버 상태 확인
+**Step 1: Phoenix 서버 상태 확인**
 
-먼저 Phoenix 서버가 실행 중인지 확인합니다:
+다음 명령을 실행하고 결과를 확인하세요:
 
 ```bash
-curl -sf http://localhost:4000/api/health || echo "NOT_RUNNING"
+curl -sf http://localhost:4000/api/health && echo "RUNNING" || echo "NOT_RUNNING"
 ```
 
-**서버가 실행 중이면** → Step 2로 이동
-**서버가 없으면** → 아래 명령으로 설치:
+결과가 `NOT_RUNNING`이면 서버를 시작합니다:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/DureClaw/dureclaw/main/scripts/setup-server.sh | bash
 ```
 
-설치 후 서버 주소를 확인합니다 (Tailscale IP 우선):
+**Step 2: 서버 IP 확인**
 
 ```bash
-tailscale ip -4 2>/dev/null || ipconfig getifaddr en0 2>/dev/null || hostname -I | awk '{print $1}'
+TAILSCALE_IP=$(tailscale ip -4 2>/dev/null || echo "")
+LOCAL_IP=$(ipconfig getifaddr en0 2>/dev/null || hostname -I 2>/dev/null | awk '{print $1}' || echo "localhost")
+SERVER_IP="${TAILSCALE_IP:-$LOCAL_IP}"
+echo "서버 주소: ws://$SERVER_IP:4000"
 ```
 
-## Step 2 — 온라인 에이전트 현황
-
-현재 연결된 에이전트를 확인합니다:
-
-```bash
-curl -sf http://localhost:4000/api/presence | python3 -m json.tool
-```
-
-## Step 3 — 워커 에이전트 연결
-
-원격 머신(맥미니, GPU 서버, 라즈파이 등)에서 실행할 명령을 출력합니다.
-
-`<서버IP>`를 Step 1에서 확인한 실제 IP로 바꿔서 각 머신에 전달하세요:
-
-**macOS / Linux:**
-```bash
-curl -fsSL https://raw.githubusercontent.com/DureClaw/dureclaw/main/scripts/setup-agent.sh \
-  | PHOENIX=ws://<서버IP>:4000 ROLE=builder bash
-```
-
-**Windows (PowerShell):**
-```powershell
-$env:PHOENIX="ws://<서버IP>:4000"; $env:ROLE="builder"
-irm https://raw.githubusercontent.com/DureClaw/dureclaw/main/scripts/setup-agent.ps1 | iex
-```
-
-역할(ROLE)은 상황에 맞게 변경하세요: `builder` / `tester` / `analyst` / `executor`
-
-## Step 4 — 팀 확인
-
-에이전트들이 연결되면 팀 상태를 확인합니다:
+**Step 3: 현재 온라인 에이전트 확인**
 
 ```bash
 curl -sf http://localhost:4000/api/presence | python3 -c "
@@ -60,8 +32,30 @@ data = json.load(sys.stdin)
 agents = data.get('agents', [])
 print(f'온라인 에이전트: {len(agents)}명')
 for a in agents:
-    print(f'  - {a.get(\"name\")} ({a.get(\"role\")})')
+    print(f'  ✅ {a.get(\"name\")} [{a.get(\"role\")}]')
+if not agents:
+    print('  (없음 — 아래 명령으로 워커를 연결하세요)')
 "
 ```
 
-모든 에이전트가 연결되면 `mcp__oah__send_task` 로 태스크를 보낼 수 있습니다.
+**Step 4: 워커 에이전트 연결 명령 출력**
+
+Step 2에서 확인한 SERVER_IP를 사용해 각 원격 머신에서 실행할 명령을 출력합니다:
+
+```bash
+SERVER_IP=$(tailscale ip -4 2>/dev/null || ipconfig getifaddr en0 2>/dev/null || echo "localhost")
+echo ""
+echo "━━━ 원격 머신에서 실행할 명령 ━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "macOS / Linux:"
+echo "  curl -fsSL https://raw.githubusercontent.com/DureClaw/dureclaw/main/scripts/setup-agent.sh \\"
+echo "    | PHOENIX=ws://$SERVER_IP:4000 ROLE=builder bash"
+echo ""
+echo "Windows (PowerShell):"
+echo "  \$env:PHOENIX='ws://$SERVER_IP:4000'; \$env:ROLE='builder'"
+echo "  irm https://raw.githubusercontent.com/DureClaw/dureclaw/main/scripts/setup-agent.ps1 | iex"
+echo ""
+echo "역할 변경: ROLE=builder / tester / analyst / executor"
+```
+
+모든 단계가 완료되면 `/team-status`로 팀 상태를 확인하세요.
