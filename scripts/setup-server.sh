@@ -98,17 +98,35 @@ mkdir -p "$DATA_DIR"
 
 # ─── 3. 접속 주소 안내 ────────────────────────────────────────────────────────
 
+# Tailscale: IP + DNS 호스트명 모두 수집
 TAILSCALE_IP=$(tailscale ip -4 2>/dev/null || echo "")
-LAN_IP=$(ipconfig getifaddr en0 2>/dev/null || \
-         hostname -I 2>/dev/null | awk '{print $1}' || echo "")
+TAILSCALE_HOST=$(tailscale status --json 2>/dev/null \
+  | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('Self',{}).get('DNSName','').rstrip('.'))" 2>/dev/null || echo "")
+LAN_IP=$(ipconfig getifaddr en0 2>/dev/null \
+  || hostname -I 2>/dev/null | awk '{print $1}' || echo "")
 
 echo ""
+if [[ -n "$TAILSCALE_IP" ]]; then
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo " ★ Tailscale 사설망 감지 — 원격 에이전트 연결 주소:"
+echo ""
+[[ -n "$TAILSCALE_HOST" ]] && \
+echo "   PHOENIX=ws://$TAILSCALE_HOST:$PORT \\"
+echo "   PHOENIX=ws://$TAILSCALE_IP:$PORT \\"
+echo "     bash <(curl -fsSL $OAH_BASE/setup-agent.sh)"
+echo ""
+echo " → Tailscale 없는 머신은 먼저: https://tailscale.com/download"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+else
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo " 서버 시작! 에이전트 접속 명령:"
-[[ -n "$TAILSCALE_IP" ]] && echo "  [Tailscale]  PHOENIX=ws://$TAILSCALE_IP:$PORT bash <(curl -fsSL $OAH_BASE/setup-agent.sh)"
-[[ -n "$LAN_IP"       ]] && echo "  [LAN]        PHOENIX=ws://$LAN_IP:$PORT bash <(curl -fsSL $OAH_BASE/setup-agent.sh)"
-echo "  [로컬]       PHOENIX=ws://127.0.0.1:$PORT bash <(curl -fsSL $OAH_BASE/setup-agent.sh)"
+[[ -n "$LAN_IP" ]] && \
+echo "  [LAN]   PHOENIX=ws://$LAN_IP:$PORT bash <(curl -fsSL $OAH_BASE/setup-agent.sh)"
+echo "  [로컬]  PHOENIX=ws://127.0.0.1:$PORT bash <(curl -fsSL $OAH_BASE/setup-agent.sh)"
+echo ""
+echo " 원격 연결을 원하면: https://tailscale.com (무료, 100대)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+fi
 echo ""
 
 # ─── 4. 서버 실행 (foreground) ────────────────────────────────────────────────

@@ -334,6 +334,7 @@ export DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..."
 
 | 문서 | 설명 |
 |------|------|
+| [docs/PRIVATE_NETWORK.md](./docs/PRIVATE_NETWORK.md) | **사설망 구성** — Tailscale로 원격 에이전트를 하나의 팀으로 연결하는 방법 |
 | [docs/REMOTE_AGENT_OPS.md](./docs/REMOTE_AGENT_OPS.md) | **원격 에이전트 운영** — 원격지 에이전트를 실시간 진단·명령·복구하는 방법 |
 | [docs/AGENTS.md](./docs/AGENTS.md) | 에이전트 역할 정의 |
 | [docs/METHODOLOGY.md](./docs/METHODOLOGY.md) | 워크루프 방법론 |
