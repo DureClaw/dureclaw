@@ -85,6 +85,69 @@ _ts_tui() {
   done
 }
 
+# ─── Tailscale 자동 설치 ──────────────────────────────────────────────────────
+
+_AGENT_OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+
+_install_tailscale_agent() {
+  if [[ "$_AGENT_OS" == "darwin" ]]; then
+    if command -v brew &>/dev/null; then
+      echo "→ brew로 Tailscale 설치 중..."
+      brew install --cask tailscale
+      open -a Tailscale 2>/dev/null || true
+      echo ""
+      echo " ★ 메뉴바의 Tailscale 아이콘을 클릭해 로그인하세요."
+      echo "   로그인 완료 후 Enter를 누르세요..."
+      read -r
+    else
+      open "https://apps.apple.com/app/tailscale/id1475387142" 2>/dev/null || true
+      echo " → Mac App Store에서 Tailscale 설치 후 로그인 완료 시 Enter..."
+      read -r
+    fi
+  else
+    # Linux: 공식 설치 스크립트 (Debian/Ubuntu/Fedora/CentOS/Arch 등 자동 감지)
+    echo "→ Tailscale 설치 중..."
+    curl -fsSL https://tailscale.com/install.sh | sh
+    echo "→ Tailscale 연결 중 (브라우저에서 인증하세요)..."
+    if command -v sudo &>/dev/null; then
+      sudo tailscale up
+    else
+      tailscale up
+    fi
+  fi
+}
+
+_ensure_tailscale_agent() {
+  # 이미 연결됨?
+  if command -v tailscale &>/dev/null; then
+    local ts_ip
+    ts_ip=$(tailscale ip -4 2>/dev/null || echo "")
+    [[ -n "$ts_ip" ]] && { echo "✅ Tailscale: $ts_ip"; return 0; }
+  fi
+
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo " Tailscale 미연결 — 서버에 원격 접속하려면 필요합니다"
+  echo " (서버와 같은 LAN이면 PHOENIX=ws://<IP>:4000 으로 건너뛰기 가능)"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+
+  if [[ ! -t 0 ]]; then
+    echo "⚠ 비대화형 환경 — Tailscale 설치를 건너뜁니다."
+    return 0
+  fi
+
+  read -rp " 지금 Tailscale을 설치·연결하시겠습니까? [Y/n] " yn
+  [[ "${yn:-Y}" =~ ^[Nn] ]] && { echo " → 건너뜁니다."; return 0; }
+
+  _install_tailscale_agent
+
+  local ts_ip
+  ts_ip=$(tailscale ip -4 2>/dev/null || echo "")
+  [[ -n "$ts_ip" ]] && echo "✅ Tailscale 연결 완료: $ts_ip" \
+                     || echo "⚠ IP 미할당 — 인증 후 자동 할당됩니다."
+}
+
 # ─── 서버 자동 탐색 ───────────────────────────────────────────────────────────
 
 PHOENIX="${1:-${PHOENIX:-}}"
@@ -93,16 +156,35 @@ if [[ -z "$PHOENIX" ]]; then
   if curl -sf --max-time 3 "http://oah.local:4000/api/health" > /dev/null 2>&1; then
     PHOENIX="ws://oah.local:4000"
     echo "→ oah.local 연결됨"
-  elif command -v tailscale &>/dev/null; then
+  elif command -v tailscale &>/dev/null && tailscale ip -4 &>/dev/null 2>&1; then
+    # Tailscale 있고 연결됨 → TUI로 서버 선택
     if ! _ts_tui; then
       echo "서버를 찾을 수 없습니다. 직접 지정:"
       echo "  PHOENIX=ws://<서버IP>:4000 bash <(curl -fsSL $OAH_BASE/setup-agent.sh)"
       exit 1
     fi
   else
-    echo "FAILED: oah.local 연결 실패, Tailscale 도 없습니다."
-    echo "  PHOENIX=ws://<서버IP>:4000 bash <(curl -fsSL $OAH_BASE/setup-agent.sh)"
-    exit 1
+    # Tailscale 없거나 미연결 → 자동 설치 유도
+    _ensure_tailscale_agent
+
+    # 설치 후 재시도
+    if command -v tailscale &>/dev/null && tailscale ip -4 &>/dev/null 2>&1; then
+      _ts_tui || true
+    fi
+
+    # 그래도 PHOENIX 없으면 수동 입력
+    if [[ -z "$PHOENIX" ]]; then
+      if [[ -t 0 ]]; then
+        echo ""
+        echo "서버 주소를 입력하세요 (예: ws://100.64.0.1:4000 또는 ws://192.168.1.10:4000):"
+        read -rp "> " PHOENIX
+      fi
+      [[ -z "$PHOENIX" ]] && {
+        echo "FAILED: PHOENIX 주소가 필요합니다."
+        echo "  PHOENIX=ws://<서버IP>:4000 bash <(curl -fsSL $OAH_BASE/setup-agent.sh)"
+        exit 1
+      }
+    fi
   fi
 fi
 

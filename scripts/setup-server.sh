@@ -46,6 +46,84 @@ echo " DureClaw Phoenix Server"
 echo " Port    : $PORT"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
+# ─── Tailscale 자동 설치 ──────────────────────────────────────────────────────
+
+_install_tailscale() {
+  if [[ "$OS" == "darwin" ]]; then
+    if command -v brew &>/dev/null; then
+      echo "→ brew로 Tailscale 설치 중..."
+      brew install --cask tailscale
+      open -a Tailscale 2>/dev/null || true
+      echo ""
+      echo " ★ 메뉴바의 Tailscale 아이콘을 클릭해 로그인하세요."
+      echo "   로그인 완료 후 Enter를 누르세요..."
+      read -r
+    else
+      echo " → Mac App Store에서 Tailscale을 설치하세요:"
+      echo "   https://apps.apple.com/app/tailscale/id1475387142"
+      open "https://apps.apple.com/app/tailscale/id1475387142" 2>/dev/null || true
+      echo ""
+      echo "   설치 및 로그인 완료 후 Enter를 누르세요..."
+      read -r
+    fi
+  else
+    # Linux: 공식 설치 스크립트 (Ubuntu/Debian/Fedora/CentOS/Arch 등 지원)
+    echo "→ Tailscale 설치 중... (sudo 권한 필요)"
+    curl -fsSL https://tailscale.com/install.sh | sh
+    echo ""
+    echo "→ Tailscale 연결 중 (브라우저에서 인증하세요)..."
+    if command -v sudo &>/dev/null; then
+      sudo tailscale up
+    else
+      tailscale up
+    fi
+  fi
+}
+
+_ensure_tailscale() {
+  # 이미 연결되어 있으면 패스
+  if command -v tailscale &>/dev/null; then
+    local ts_ip
+    ts_ip=$(tailscale ip -4 2>/dev/null || echo "")
+    if [[ -n "$ts_ip" ]]; then
+      echo "✅ Tailscale 연결됨: $ts_ip"
+      return 0
+    fi
+  fi
+
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo " Tailscale 미연결"
+  echo " 원격 머신에서 에이전트를 연결하려면 Tailscale이 필요합니다."
+  echo " (같은 LAN 내에서만 사용하면 건너뛸 수 있습니다)"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+
+  # 비대화형 환경(CI, pipe) 이면 자동 건너뜀
+  if [[ ! -t 0 ]]; then
+    echo "⚠ 비대화형 환경 — Tailscale 설치를 건너뜁니다."
+    return 0
+  fi
+
+  read -rp " 지금 Tailscale을 설치·연결하시겠습니까? [Y/n] " yn
+  [[ "${yn:-Y}" =~ ^[Nn] ]] && {
+    echo " → Tailscale 없이 계속합니다. (LAN 주소로만 연결 가능)"
+    return 0
+  }
+
+  _install_tailscale
+
+  local ts_ip
+  ts_ip=$(tailscale ip -4 2>/dev/null || echo "")
+  if [[ -n "$ts_ip" ]]; then
+    echo "✅ Tailscale 연결 완료: $ts_ip"
+  else
+    echo "⚠ Tailscale IP를 아직 가져올 수 없습니다. 인증 후 자동으로 할당됩니다."
+  fi
+}
+
+_ensure_tailscale
+
 # ─── 주소 안내 헬퍼 ───────────────────────────────────────────────────────────
 
 _print_connect_info() {
