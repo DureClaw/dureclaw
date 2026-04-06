@@ -18,9 +18,7 @@
 
 ## 설치
 
-### Via Marketplace
-
-마켓플레이스를 추가하고 플러그인을 설치합니다:
+### Step 1 — Claude Code에 플러그인 추가 (필수)
 
 ```shell
 /plugin marketplace add DureClaw/dureclaw
@@ -30,43 +28,32 @@
 /plugin install dureclaw@dureclaw
 ```
 
-> `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` 환경변수가 필요합니다.
+> 수동 등록: `oah setup-mcp` 또는 `curl -fsSL .../scripts/setup-mcp.sh | bash`
+
+**여기까지만 해도 바로 사용 가능합니다.** Claude Code가 오케스트레이터 역할을 하며, 로컬에서 태스크를 직접 실행할 수 있습니다.
 
 ---
 
-### Via MCP (수동 등록)
+### Step 2 — Phoenix 서버 (선택, 원격 팀 구성 시)
 
-**방법 1 — `oah setup-mcp` (권장)**
-
-```bash
-git clone https://github.com/DureClaw/dureclaw && cd dureclaw
-oah setup-mcp
-```
-
-**방법 2 — curl 원클릭**
+다른 머신에 작업을 분산시키려면 메시지 버스 서버가 필요합니다:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/DureClaw/dureclaw/main/scripts/setup-mcp.sh \
-  | PHOENIX_URL=ws://<서버IP>:4000 bash
+curl -fsSL https://raw.githubusercontent.com/DureClaw/dureclaw/main/scripts/setup-server.sh | bash
 ```
-
-> Tailscale IP · Phoenix URL · `orchestrator@hostname` 자동 감지
-> 재시작 후 `mcp__oah__send_task` 등 8개 도구 사용 가능
 
 ---
 
-### 워커 에이전트 (원격 머신)
+### Step 3 — 워커 에이전트 (선택, 원격 머신에만)
+
+GPU 서버, 맥미니 등 **다른 머신**에서 태스크를 실행시키려면:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/DureClaw/dureclaw/main/scripts/setup-agent.sh \
   | PHOENIX=ws://<서버IP>:4000 ROLE=builder bash
 ```
 
-### Phoenix 서버
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/DureClaw/dureclaw/main/scripts/setup-server.sh | bash
-```
+> Step 2, 3은 멀티머신 분산 처리가 필요할 때만 설치하세요.
 
 ---
 
