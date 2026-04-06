@@ -40,8 +40,18 @@ jobs:
           cp scripts/setup-agent.sh  web/agent
           # dureclaw.baryon.ai/mcp     → setup-mcp.sh
           cp scripts/setup-mcp.sh    web/mcp
-          # dureclaw.baryon.ai/agent.py → rpi_agent.py (RPi Zero W)
-          cp scripts/rpi_agent.py    web/agent.py
+
+      - name: Upload build artifacts to R2
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_R2_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          npm install -g wrangler@latest --silent
+          # open-agent-harness.baryon.ai/agent.py → rpi_agent.py (RPi Zero W armv6l)
+          wrangler r2 object put open-agent-harness/agent.py \
+            --file scripts/rpi_agent.py \
+            --content-type "text/x-python" \
+            --remote
 
       - name: Setup Pages
         uses: actions/configure-pages@v4

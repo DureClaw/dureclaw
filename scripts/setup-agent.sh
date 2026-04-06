@@ -337,8 +337,7 @@ if [[ "$USE_PYTHON" == "true" ]]; then
   # Raspberry Pi Zero W (armv6l) — Python 에이전트 사용
   echo "→ Raspberry Pi Zero W detected (armv6l) — using Python agent"
   PY_BUNDLE="$HOME/oah-agent.py"
-  # agent.py는 GitHub Pages(dureclaw.baryon.ai)에 배포됨 (R2가 아님)
-  AGENT_URL="https://dureclaw.baryon.ai"
+  AGENT_URL="$OAH_BASE"
   pip3 install --quiet websockets 2>/dev/null || pip install --quiet websockets 2>/dev/null || {
     echo "ERROR: pip3 설치 실패. sudo apt install python3-pip 를 실행하세요."
     exit 1
