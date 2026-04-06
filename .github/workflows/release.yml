@@ -7,24 +7,26 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag (e.g. v0.3.0)"
+        description: "Release tag (e.g. v0.3.1)"
         required: true
 
 jobs:
   build:
     name: Build ${{ matrix.os }} ${{ matrix.arch }}
     runs-on: ${{ matrix.runner }}
+    continue-on-error: true   # 일부 플랫폼 실패해도 Release는 진행
     strategy:
+      fail-fast: false
       matrix:
         include:
           # macOS arm64 (M-series)
           - os: darwin
             arch: arm64
             runner: macos-14
-          # macOS x86_64
+          # macOS x86_64 (Intel) — macos-13 대신 macos-12 사용
           - os: darwin
             arch: x86_64
-            runner: macos-13
+            runner: macos-12
           # Linux x86_64
           - os: linux
             arch: x86_64
@@ -60,7 +62,6 @@ jobs:
           tar -czf "$TARBALL" \
             -C _build/prod/rel \
             harness_server
-          echo "TARBALL=$TARBALL" >> $GITHUB_ENV
           echo "TARBALL_PATH=packages/phoenix-server/$TARBALL" >> $GITHUB_ENV
 
       - name: Upload artifact
@@ -74,6 +75,7 @@ jobs:
     name: Publish GitHub Release
     needs: build
     runs-on: ubuntu-latest
+    if: always()   # build 일부 실패해도 실행
 
     steps:
       - name: Download all artifacts
@@ -83,7 +85,7 @@ jobs:
           merge-multiple: true
 
       - name: List artifacts
-        run: ls -lh dist/
+        run: ls -lh dist/ || echo "(no artifacts)"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -115,3 +117,4 @@ jobs:
             | `oah-server-linux-arm64.tar.gz` | Linux arm64 (Raspberry Pi 4/5 64bit) |
           files: dist/*.tar.gz
           generate_release_notes: true
+          fail_on_unmatched_files: false
