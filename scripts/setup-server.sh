@@ -2,7 +2,7 @@
 # setup-server.sh — DureClaw Phoenix 서버 1줄 설치 + 시작
 #
 # 원라인 설치 (Elixir 불필요 — Docker 또는 사전빌드 바이너리 사용):
-#   bash <(curl -fsSL https://raw.githubusercontent.com/DureClaw/dureclaw/main/scripts/setup-server.sh)
+#   bash <(curl -fsSL https://dureclaw.baryon.ai/server)
 #
 # 환경변수:
 #   PORT             리슨 포트 (기본: 4000)

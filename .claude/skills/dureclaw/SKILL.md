@@ -78,7 +78,7 @@ curl -sf http://localhost:4000/api/health && echo "RUNNING" || echo "NOT_RUNNING
 - NOT_RUNNING → "서버가 없네요. 지금 설치할게요!" 라고 말하고:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/DureClaw/dureclaw/main/scripts/setup-server.sh | bash &
+curl -fsSL https://dureclaw.baryon.ai/server | bash &
 sleep 8 && curl -sf http://localhost:4000/api/health && echo "OK" || echo "시작 중..."
 ```
 
@@ -88,7 +88,7 @@ sleep 8 && curl -sf http://localhost:4000/api/health && echo "OK" || echo "시�
 TS_IP=$(tailscale ip -4 2>/dev/null || echo "")
 LAN_IP=$(ipconfig getifaddr en0 2>/dev/null || hostname -I 2>/dev/null | awk '{print $1}' || echo "")
 SERVER_IP="${TS_IP:-$LAN_IP}"
-AGENT_URL="https://raw.githubusercontent.com/DureClaw/dureclaw/main/scripts/setup-agent.sh"
+AGENT_URL="https://dureclaw.baryon.ai/agent"
 echo "SERVER_IP=$SERVER_IP"
 echo "TS=$TS_IP LAN=$LAN_IP"
 ```
@@ -117,7 +117,7 @@ Step 2의 SERVER_IP로 실제 실행 가능한 명령어를 출력합니다:
 
 ```bash
 SERVER_IP=$(tailscale ip -4 2>/dev/null || ipconfig getifaddr en0 2>/dev/null || hostname -I 2>/dev/null | awk '{print $1}' || echo "localhost")
-AGENT_URL="https://raw.githubusercontent.com/DureClaw/dureclaw/main/scripts/setup-agent.sh"
+AGENT_URL="https://dureclaw.baryon.ai/agent"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo " 워커 머신에서 복사·실행하세요"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

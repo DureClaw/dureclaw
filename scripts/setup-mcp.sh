@@ -3,7 +3,7 @@
 #
 # 사용법:
 #   # 원클릭 (저장소 클론 없이)
-#   curl -fsSL https://raw.githubusercontent.com/DureClaw/dureclaw/main/scripts/setup-mcp.sh \
+#   curl -fsSL https://dureclaw.baryon.ai/mcp \
 #     | PHOENIX_URL=ws://host:4000 bash
 #
 #   # 로컬 클론 후

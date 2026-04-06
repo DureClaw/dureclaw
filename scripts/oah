@@ -1033,14 +1033,14 @@ cmd_setup_team() {
         bash "$server_script"
       else
         echo "  📥 setup-server.sh 다운로드 중..."
-        curl -fsSL "https://raw.githubusercontent.com/DureClaw/dureclaw/main/scripts/setup-server.sh" | bash
+        curl -fsSL "https://dureclaw.baryon.ai/server" | bash
       fi
     else
       echo ""
       echo "  ℹ 서버를 나중에 설치하려면:"
       echo "    bash scripts/setup-server.sh"
       echo "  또는:"
-      echo "    curl -fsSL https://raw.githubusercontent.com/DureClaw/dureclaw/main/scripts/setup-server.sh | bash"
+      echo "    curl -fsSL https://dureclaw.baryon.ai/server | bash"
       echo ""
     fi
 
@@ -1088,7 +1088,7 @@ cmd_setup_team() {
     if [[ -f "$agent_script" ]]; then
       PHOENIX="$ws_url" ROLE="$local_role" bash "$agent_script"
     else
-      curl -fsSL "https://raw.githubusercontent.com/DureClaw/dureclaw/main/scripts/setup-agent.sh" \
+      curl -fsSL "https://dureclaw.baryon.ai/agent" \
         | PHOENIX="$ws_url" ROLE="$local_role" bash
     fi
   fi

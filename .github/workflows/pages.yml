@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "web/**"
+      - "scripts/**"
   workflow_dispatch:
 
 permissions:
@@ -30,6 +31,15 @@ jobs:
         run: |
           cp packages/agent-daemon/src/index.ts web/agent-daemon.ts
           cp packages/ctl/src/index.ts web/ctl.ts
+
+      - name: Publish scripts as short URLs
+        run: |
+          # dureclaw.baryon.ai/server  → setup-server.sh
+          cp scripts/setup-server.sh web/server
+          # dureclaw.baryon.ai/agent   → setup-agent.sh
+          cp scripts/setup-agent.sh  web/agent
+          # dureclaw.baryon.ai/mcp     → setup-mcp.sh
+          cp scripts/setup-mcp.sh    web/mcp
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
