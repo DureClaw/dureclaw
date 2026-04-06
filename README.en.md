@@ -14,7 +14,7 @@ Uses Claude Code as the orchestrator and connects AI agents on each machine as w
 [![MCP Registry](https://img.shields.io/badge/MCP_Registry-io.github.dureclaw%2Fmcp-purple?logo=anthropic)](https://registry.modelcontextprotocol.io)
 [![Smithery](https://img.shields.io/badge/Smithery-dureclaw%2Fmcp-blue)](https://smithery.ai/server/@dureclaw/mcp)
 
-🌐 **[한국어](./README.md)** | **English**
+🌐 **[한국어](./README.md)** | **English** | **[中文](./README.zh.md)** | **[日本語](./README.ja.md)**
 
 ---
 
