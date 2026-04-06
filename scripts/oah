@@ -1118,7 +1118,7 @@ for t in d.get('pending_tasks', []):
       local wait_flag=false
       [[ "${1:-}" == "--wait" ]] && wait_flag=true
 
-      local url="$http_base/api/task-result/$task_id"
+      local url="$http_base/api/task/$task_id"
       if $wait_flag; then
         echo "⏳ $task_id 완료 대기 중..."
         for i in $(seq 1 60); do
@@ -1128,17 +1128,19 @@ import sys,json
 d=json.load(sys.stdin)
 rs=d.get('results',[])
 print(rs[-1].get('status','pending') if rs else 'pending')" 2>/dev/null || echo "pending")
-          [[ "$status" != "pending" ]] && { echo ""; curl -sf "$url" | python3 -c "
+          [[ "$status" != "pending" ]] && { echo ""; echo "$r" | python3 -c "
 import sys,json
 for r in json.load(sys.stdin).get('results',[]): print(json.dumps(r,ensure_ascii=False,indent=2))"; break; }
           printf "\r  %ds..." "$((i*5))"
           sleep 5
         done
       else
-        curl -sf "$url" | python3 -c "
+        local r; r=$(curl -sf "$url" 2>/dev/null || echo "{}")
+        echo "$r" | python3 -c "
 import sys,json
-rs=json.load(sys.stdin).get('results',[])
-if not rs: print('결과 없음 (아직 실행 중)')
+d=json.load(sys.stdin)
+rs=d.get('results',[])
+if not rs: print('결과 없음 (아직 실행 중 또는 존재하지 않는 task_id)')
 else:
     for r in rs: print(json.dumps(r,ensure_ascii=False,indent=2))"
       fi
@@ -1149,8 +1151,10 @@ else:
       curl -sf "$http_base/api/presence" | python3 -c "
 import sys,json
 data=json.load(sys.stdin)
-for name,info in data.get('agents',{}).items():
-    print(f\"  {name} [{info.get('role','?')}] @ {info.get('machine','?')} wk={info.get('work_key','?')}\")
+agents=data.get('agents',[])
+if not agents: print('  (온라인 에이전트 없음)')
+for a in agents:
+    print(f\"  {a.get('name','?')} [{a.get('role','?')}] @ {a.get('machine','?')} wk={a.get('work_key','?')}\")
 " 2>/dev/null || echo "  (응답 없음)"
       ;;
 
