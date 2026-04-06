@@ -194,6 +194,33 @@ Phoenix Server              ws://host:4000
 
 ---
 
+## Screenshots
+
+### Install & connect by platform
+
+| Platform | Install output |
+|----------|---------------|
+| macOS Apple Silicon | `✅ darwin-arm64 binary downloaded` → `→ server started · ws://100.x.x.x:4000` |
+| Linux x86_64 (GPU server) | `✅ linux-x86_64 agent installed` → `✅ claude-cli detected` → `→ builder@gpu-server connected` |
+| Raspberry Pi 4/5 | `✅ linux-arm64 agent installed` → `✅ opencode detected` → `→ executor@raspberrypi connected` |
+| Raspberry Pi Zero W | `✅ JS bundle mode (armv6)` → `⚠ aider lightweight mode` → `→ executor@zero-w connected (WiFi)` |
+| Windows (PowerShell) | `✅ opencode npm installed` → `→ builder@DESKTOP-WIN connected` |
+
+### Agent roles
+
+| Role | AI backends | Example task |
+|------|------------|-------------|
+| `builder` | claude-cli / opencode / codex | `[SHELL] make build` → code writing & build |
+| `tester` | claude-cli / aider | `[SHELL] pytest tests/` → test execution & verification |
+| `analyst` | claude-cli / gemini | code analysis, review, bug detection |
+| `executor` | aider / opencode | lightweight command execution · ideal for RPi Zero W |
+
+### Dashboard
+
+> Real-time agent status and task monitoring: `http://SERVER_IP:4000/`
+
+---
+
 ## Supported Platforms
 
 | Platform | Architecture | Server | Worker | Notes |

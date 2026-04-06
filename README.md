@@ -196,6 +196,33 @@ Phoenix Server              ws://host:4000
 
 ---
 
+## 스크린샷
+
+### 플랫폼별 설치 & 연결
+
+| 플랫폼 | 설치 출력 |
+|--------|----------|
+| macOS Apple Silicon | `✅ darwin-arm64 바이너리 다운로드 완료` → `→ 서버 시작 · ws://100.x.x.x:4000` |
+| Linux x86_64 (GPU 서버) | `✅ linux-x86_64 에이전트 설치 완료` → `✅ claude-cli 감지됨` → `→ builder@gpu-server 연결 완료` |
+| Raspberry Pi 4/5 | `✅ linux-arm64 에이전트 설치 완료` → `✅ opencode 감지됨` → `→ executor@raspberrypi 연결 완료` |
+| Raspberry Pi Zero W | `✅ JS 번들 모드 (armv6)` → `⚠ aider 경량 모드` → `→ executor@zero-w 연결 완료 (WiFi)` |
+| Windows (PowerShell) | `✅ opencode npm 설치 완료` → `→ builder@DESKTOP-WIN 연결 완료` |
+
+### 에이전트 역할별
+
+| Role | AI 백엔드 | 실행 예시 |
+|------|----------|---------|
+| `builder` | claude-cli / opencode / codex | `[SHELL] make build` → 코드 작성·빌드 |
+| `tester` | claude-cli / aider | `[SHELL] pytest tests/` → 테스트 실행·검증 |
+| `analyst` | claude-cli / gemini | 코드 분석·리뷰·버그 탐지 |
+| `executor` | aider / opencode | 경량 명령 실행 · RPi Zero W 최적 |
+
+### 대시보드
+
+> 실시간 에이전트 현황 및 태스크 모니터링: `http://서버IP:4000/`
+
+---
+
 ## 지원 환경
 
 | 플랫폼 | 아키텍처 | 서버 | 워커 | 비고 |
