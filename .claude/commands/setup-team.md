@@ -8,10 +8,14 @@ DureClaw 멀티머신 팀을 지금 바로 설정합니다. 아래 단계를 순
 curl -sf http://localhost:4000/api/health && echo "RUNNING" || echo "NOT_RUNNING"
 ```
 
-결과가 `NOT_RUNNING`이면 서버를 시작합니다:
+결과가 `NOT_RUNNING`이면 서버를 시작합니다 (Elixir 불필요 — Docker 또는 사전빌드 바이너리):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/DureClaw/dureclaw/main/scripts/setup-server.sh | bash
+# Docker가 있으면 자동으로 Docker 사용 (권장)
+curl -fsSL https://raw.githubusercontent.com/DureClaw/dureclaw/main/scripts/setup-server.sh | bash &
+
+# 또는 docker compose 직접
+# docker compose up -d
 ```
 
 **Step 2: 서버 IP 확인**

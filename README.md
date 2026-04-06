@@ -36,21 +36,30 @@ Claude Code를 오케스트레이터로, 각 머신의 AI 에이전트들을 워
 
 ### Step 2+3 — 멀티머신 팀 확장 (선택)
 
-다른 머신에 작업을 분산시키려면 **Claude Code CLI 안에서** 실행합니다:
+다른 머신에 작업을 분산시키려면 **Claude Code CLI 안에서** 명령어 또는 자연어로 실행합니다:
 
 ```
 /setup-team
 ```
 
+또는 **자연어로도 동일하게 실행** 가능합니다:
+
+```
+"팀 설정해줘"   "워커 추가해줘"   "setup team"
+```
+
 자동으로 실행되는 순서:
-1. Phoenix 서버 상태 확인 → 없으면 설치
+1. Phoenix 서버 상태 확인 → 없으면 설치 (**Elixir 불필요 — Docker 또는 사전빌드 바이너리**)
 2. 서버 IP 감지 (Tailscale 우선)
 3. 현재 온라인 에이전트 목록 출력
 4. 원격 머신용 워커 설치 명령 출력 (macOS/Linux/Windows)
 
 ```
-/team-status   ← 팀 현황 확인
+/team-status   ← 팀 현황 확인 (또는 "팀 상태 알려줘", "온라인 에이전트 몇 명이야")
 ```
+
+> Phoenix 서버는 **Docker만 있으면 Elixir 없이 바로 실행**됩니다.
+> `USE_DOCKER=1 bash <(curl -fsSL .../setup-server.sh)` 또는 `docker compose up`
 
 > 멀티머신 분산 처리가 필요할 때만 실행하세요.
 
@@ -175,8 +184,21 @@ Phoenix Server              ws://host:4000
 | 컴포넌트 | 요구사항 |
 |----------|----------|
 | 오케스트레이터 (Claude Code) | Claude Code CLI, Bun ≥ 1.0 |
-| Phoenix 서버 | Elixir ≥ 1.14, OTP ≥ 25 |
+| Phoenix 서버 | **Docker** (권장, Elixir 불필요) 또는 Elixir ≥ 1.14 |
 | 워커 에이전트 | Bun ≥ 1.0, AI CLI (claude / opencode / gemini 등) |
+
+Phoenix 서버 Docker 빠른 실행:
+
+```bash
+# 옵션 A — docker compose
+docker compose up -d
+
+# 옵션 B — docker run 직접
+docker run -d -p 4000:4000 ghcr.io/dureclaw/dureclaw:latest
+
+# 옵션 C — 자동 설치 스크립트 (Docker 우선)
+bash <(curl -fsSL https://raw.githubusercontent.com/DureClaw/dureclaw/main/scripts/setup-server.sh)
+```
 
 ---
 
@@ -193,6 +215,20 @@ Phoenix Server              ws://host:4000
 | [docs/GAP_ANALYSIS.md](./docs/GAP_ANALYSIS.md) | 현재 상태 및 개선 방향 |
 | [docs/INSTALL.md](./docs/INSTALL.md) | 설치 가이드 |
 | [docs/ECOSYSTEM_ANALYSIS.md](./docs/ECOSYSTEM_ANALYSIS.md) | 에코시스템 분석 (ClawFit, 경쟁 도구 비교) |
+
+---
+
+## 활용사례
+
+| 예제 | 설명 |
+|------|------|
+| [fix-agent](./examples/fix-agent/) | 여러 AI 에이전트가 협력해 레포지토리 버그를 자동 분석·수정·PR 생성 |
+
+```
+Claude Code → analyzer-agent (버그 탐지)
+           → fixer-agent    (코드 수정)
+           → tester-agent   (검증 + PR 생성)
+```
 
 ---
 
