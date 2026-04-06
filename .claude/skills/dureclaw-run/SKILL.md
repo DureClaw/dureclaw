@@ -1,7 +1,7 @@
 ---
-name: durecrew-run
+name: dureclaw-run
 description: |
-  DureCrew 팀을 실제로 실행하는 오케스트레이션 스킬.
+  DureClaw 팀을 실제로 실행하는 오케스트레이션 스킬.
   network-scout → team-builder → task-dispatcher → result-watcher
   4개 에이전트가 파이프라인으로 협력하여 목표를 달성합니다.
 
@@ -13,13 +13,13 @@ description: |
 triggers:
   - "팀으로 구현"
   - "에이전트 팀으로"
-  - "durecrew run"
+  - "dureclaw run"
   - "원격 에이전트와"
   - "분산 실행"
 model: opus
 ---
 
-# DureCrew Run — 팀 실행 오케스트레이션
+# DureClaw Run — 팀 실행 오케스트레이션
 
 ## 입력 파싱
 

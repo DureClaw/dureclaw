@@ -1,14 +1,14 @@
-# DureCrew — CLAUDE.md
+# DureClaw — CLAUDE.md
 
 Claude Code가 이 프로젝트에서 작업할 때 참고하는 레지스트리입니다.
 
-## DureCrew Registry
+## DureClaw Registry
 
 ### 팀 구성 (2026-04-06)
 
 **스킬**:
-- `/durecrew` — 팀 설계 메타스킬 (Phase 0-7)
-- `/durecrew-run` — 실제 팀 실행 오케스트레이션
+- `/dureclaw` — 팀 설계 메타스킬 (Phase 0-7)
+- `/dureclaw-run` — 실제 팀 실행 오케스트레이션
 
 **에이전트 팀**:
 | 에이전트 | 역할 |
@@ -41,7 +41,7 @@ orchestrator
 |------|------|
 | 2026-04-06 | 초기 팀 구성 (5 에이전트, 2 스킬) |
 | 2026-04-06 | Tailscale 사설망 통합 |
-| 2026-04-06 | DureCrew skill (harness 패턴) 추가 |
+| 2026-04-06 | DureClaw skill (harness 패턴) 추가 |
 
 ## 프로젝트 규칙
 

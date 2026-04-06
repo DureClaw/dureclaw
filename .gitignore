@@ -24,3 +24,4 @@ dist/oah-agent-windows.upx
 oah-agent.js
 qdrant_storage/
 .wrangler/
+packages/phoenix-server/priv/dist/

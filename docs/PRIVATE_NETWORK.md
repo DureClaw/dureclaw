@@ -1,4 +1,4 @@
-# DureCrew Private Network — Tailscale 사설망 구성
+# DureClaw Private Network — Tailscale 사설망 구성
 
 인터넷 어디에 있어도 에이전트들을 하나의 팀으로 연결하는 방법입니다.
 

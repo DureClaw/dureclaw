@@ -69,7 +69,7 @@ curl -s http://localhost:4000/api/state/$WK
 ## 출력 형식
 
 ```markdown
-## DureCrew 실행 결과
+## DureClaw 실행 결과
 
 **Work Key**: LN-YYYYMMDD-XXX
 **총 소요 시간**: N초

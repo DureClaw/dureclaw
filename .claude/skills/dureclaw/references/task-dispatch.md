@@ -1,6 +1,6 @@
 # TaskCreate / SendMessage / TeamCreate API 레퍼런스
 
-DureCrew의 세 가지 핵심 오퍼레이션 상세 명세입니다.
+DureClaw의 세 가지 핵심 오퍼레이션 상세 명세입니다.
 
 ---
 

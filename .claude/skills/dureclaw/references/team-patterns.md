@@ -1,4 +1,4 @@
-# DureCrew 팀 아키텍처 패턴
+# DureClaw 팀 아키텍처 패턴
 
 로컬 + 원격 에이전트를 조합한 6가지 협업 패턴입니다.
 
@@ -145,7 +145,7 @@ top-orchestrator (로컬)
 
 **적합한 상황**: 대규모 프로젝트, 팀 안의 팀
 
-**DureCrew 구현**:
+**DureClaw 구현**:
 - 각 sub-orchestrator는 자체 Work Key를 가질 수 있음
 - top-orchestrator가 WK 간 결과를 통합
 - 또는 하나의 WK에서 모든 계층이 소통

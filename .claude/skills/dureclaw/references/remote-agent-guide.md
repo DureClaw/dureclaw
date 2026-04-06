@@ -1,6 +1,6 @@
-# Remote Agent Guide — DureCrew
+# Remote Agent Guide — DureClaw
 
-원격 에이전트를 DureCrew 팀에 연결하고 운영하는 방법입니다.
+원격 에이전트를 DureClaw 팀에 연결하고 운영하는 방법입니다.
 
 ## 원격 에이전트 아키텍처
 
@@ -8,7 +8,7 @@
 로컬 머신 (오케스트레이터)          원격 머신들
 ┌─────────────────────┐            ┌──────────────────┐
 │ Claude Code         │            │ Mac Mini M4      │
-│ + DureCrew 스킬     │            │ agent-daemon.js  │
+│ + DureClaw 스킬     │            │ agent-daemon.js  │
 │                     │◄──WS──────►│ role: builder    │
 │ Phoenix Server      │            └──────────────────┘
 │ :4000               │            ┌──────────────────┐

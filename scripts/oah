@@ -1003,7 +1003,7 @@ cmd_team() {
 
     create)
       # oah team create "목표 설명" [--pattern pipeline|fan-out|supervisor]
-      local goal="${1:-DureCrew team task}"; shift || true
+      local goal="${1:-DureClaw team task}"; shift || true
       local pattern="fan-out"
       while [[ $# -gt 0 ]]; do
         case "$1" in --pattern) pattern="$2"; shift 2 ;; *) shift ;; esac

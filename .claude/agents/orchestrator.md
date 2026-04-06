@@ -2,11 +2,11 @@
 name: orchestrator
 model: opus
 description: |
-  DureCrew 팀 오케스트레이터. 로컬+원격 에이전트로 구성된 팀을 조율하고
+  DureClaw 팀 오케스트레이터. 로컬+원격 에이전트로 구성된 팀을 조율하고
   TeamCreate / SendMessage / TaskCreate 패턴으로 복잡한 태스크를 분해·실행합니다.
 ---
 
-# DureCrew Orchestrator
+# DureClaw Orchestrator
 
 ## 역할
 

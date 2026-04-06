@@ -1,4 +1,4 @@
-# DureCrew Protocol Specification v1.0
+# DureClaw Protocol Specification v1.0
 
 분산 AI 에이전트 팀이 사용하는 모든 통신 프로토콜의 공식 정의입니다.
 
@@ -93,7 +93,7 @@ ws://<host>:4000/socket/websocket?vsn=2.0.0
 형식: LN-YYYYMMDD-NNN
 예시: LN-20260406-001
 
-- LN: DureCrew 고정 접두사
+- LN: DureClaw 고정 접두사
 - YYYYMMDD: UTC 날짜
 - NNN: 당일 시퀀스 (001~999, 자동 증가)
 ```
