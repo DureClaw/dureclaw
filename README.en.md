@@ -202,6 +202,7 @@ Phoenix Server              ws://host:4000
 | macOS (Intel) | x86_64 | ✅ pre-built | ✅ | |
 | Linux | x86_64 | ✅ pre-built | ✅ | Ubuntu/Debian/CentOS |
 | **Raspberry Pi 4/5** | **arm64** | ✅ pre-built | ✅ | **ideal for executor role** |
+| **Raspberry Pi Zero W/2W** | **armv6/arm64** | ❌ | ✅ JS bundle | **built-in WiFi · IoT executor** |
 | Windows 10/11 | x86_64 | 🐳 Docker | ✅ PowerShell | |
 | Docker (any platform) | any | ✅ | — | `ghcr.io/dureclaw/dureclaw` |
 

@@ -152,7 +152,7 @@ nav {
 
 /* PLATFORM GRID */
 .platform-grid {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
   margin-bottom: 80px;
 }
 .platform-card {
@@ -334,6 +334,7 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
 
 /* RESPONSIVE */
 @media (max-width: 900px) {
+  .platform-grid { grid-template-columns: repeat(2, 1fr); }
   .what-grid { grid-template-columns: repeat(2, 1fr); }
   .steps-grid { grid-template-columns: 1fr; }
   .oneliner-row { grid-template-columns: 1fr; }
@@ -526,6 +527,17 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
           <span class="platform-tag docker">Docker</span>
         </div>
         <div class="platform-status"><span class="dot"></span>워커 지원 · PowerShell 설치 스크립트</div>
+      </div>
+
+      <div class="platform-card">
+        <div class="platform-icon">📡</div>
+        <div class="platform-name">Raspberry Pi Zero W/2W</div>
+        <div class="platform-sub">WiFi 내장 · armv6 / arm64 · 512MB RAM</div>
+        <div class="platform-tags">
+          <span class="platform-tag ok">워커 ✓</span>
+          <span class="platform-tag binary">JS 번들</span>
+        </div>
+        <div class="platform-status"><span class="dot"></span>IoT 센서 · 경량 executor · WiFi로 연결</div>
       </div>
 
       <div class="platform-card">

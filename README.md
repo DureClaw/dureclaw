@@ -204,6 +204,7 @@ Phoenix Server              ws://host:4000
 | macOS (Intel) | x86_64 | ✅ 사전빌드 | ✅ | |
 | Linux | x86_64 | ✅ 사전빌드 | ✅ | Ubuntu/Debian/CentOS |
 | **Raspberry Pi 4/5** | **arm64** | ✅ 사전빌드 | ✅ | **executor 역할 최적** |
+| **Raspberry Pi Zero W/2W** | **armv6/arm64** | ❌ | ✅ JS 번들 | **WiFi 내장 · IoT executor** |
 | Windows 10/11 | x86_64 | 🐳 Docker | ✅ PowerShell | |
 | Docker (모든 플랫폼) | any | ✅ | — | `ghcr.io/dureclaw/dureclaw` |
 
