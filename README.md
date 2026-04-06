@@ -6,7 +6,7 @@
 > *두레(dure): 조선시대 농민들이 각자의 논에서 마을 전체가 함께 경작하던 협동 시스템.*
 > *DureCrew는 그 정신을 AI 에이전트에 담는다 — 각자의 머신에서, 하나의 목표로, 하나의 크루.*
 
-[![GitHub](https://img.shields.io/badge/repo-open--agent--harness-blue)](https://github.com/baryonlabs/open-agent-harness)
+[![GitHub](https://img.shields.io/badge/DureClaw-dureclaw-black?logo=github)](https://github.com/DureClaw/dureclaw)
 
 ---
 
