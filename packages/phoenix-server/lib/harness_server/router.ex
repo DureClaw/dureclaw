@@ -366,6 +366,31 @@ defmodule HarnessServer.Router do
     send_json(conn, 200, state)
   end
 
+  # ── GET /api/team/:work_key ─────────────────────────────────────────────────
+  # Team dashboard: state + online agents + pending tasks — all in one call.
+
+  get "/api/team/:work_key" do
+    state = StateStore.get(work_key)
+
+    online_agents =
+      Presence.list("work:#{work_key}")
+      |> Enum.map(fn {name, %{metas: [meta | _]}} -> Map.merge(meta, %{name: name}) end)
+
+    pending_tasks =
+      :ets.tab2list(:harness_pending)
+      |> Enum.filter(fn {_id, info} -> Map.get(info, "work_key") == work_key end)
+      |> Enum.map(fn {id, info} -> Map.put(info, "task_id", id) end)
+
+    send_json(conn, 200, %{
+      work_key: work_key,
+      state: state,
+      online_agents: online_agents,
+      online_count: length(online_agents),
+      pending_tasks: pending_tasks,
+      pending_count: length(pending_tasks)
+    })
+  end
+
   # ── GET /api/mailbox/:agent ─────────────────────────────────────────────────
 
   get "/api/mailbox/:agent" do

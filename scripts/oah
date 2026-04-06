@@ -990,6 +990,183 @@ cmd_service() {
   esac
 }
 
+# ─── oah team ─────────────────────────────────────────────────────────────────
+# TeamCreate / SendMessage / TaskCreate 원스톱 CLI
+
+cmd_team() {
+  local http_base="${PHOENIX/ws:/http:}"
+  http_base="${http_base/wss:/https:}"
+  http_base="${http_base:-http://localhost:4000}"
+  local sub="${1:-status}"; shift || true
+
+  case "$sub" in
+
+    create)
+      # oah team create "목표 설명" [--pattern pipeline|fan-out|supervisor]
+      local goal="${1:-DureCrew team task}"; shift || true
+      local pattern="fan-out"
+      while [[ $# -gt 0 ]]; do
+        case "$1" in --pattern) pattern="$2"; shift 2 ;; *) shift ;; esac
+      done
+
+      echo "━━━ TeamCreate ━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo " 목표   : $goal"
+      echo " 패턴   : $pattern"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+      local wk
+      wk=$(curl -sf -X POST "$http_base/api/work-keys" \
+        -H "Content-Type: application/json" \
+        -d "{\"goal\":\"$goal\"}" \
+        | python3 -c "import sys,json; print(json.load(sys.stdin)['work_key'])") || {
+          echo "ERROR: Phoenix 서버에 연결할 수 없습니다 ($http_base)"
+          exit 1
+      }
+
+      curl -sf -X PATCH "$http_base/api/state/$wk" \
+        -H "Content-Type: application/json" \
+        -d "{\"status\":\"running\",\"team\":{\"pattern\":\"$pattern\"}}" > /dev/null
+
+      echo ""
+      echo " ✅ Work Key 생성: $wk"
+      echo ""
+      echo " 에이전트 연결 명령 (Tailscale 사설망):"
+      local ts_ip; ts_ip=$(tailscale ip -4 2>/dev/null || echo "")
+      local lan_ip; lan_ip=$(ipconfig getifaddr en0 2>/dev/null || hostname -I 2>/dev/null | awk '{print $1}' || echo "")
+      [[ -n "$ts_ip"  ]] && echo "   [Tailscale] WK=$wk PHOENIX=ws://$ts_ip:4000 ROLE=builder bash <(curl -fsSL $http_base/setup-agent.sh)"
+      [[ -n "$lan_ip" ]] && echo "   [LAN]       WK=$wk PHOENIX=ws://$lan_ip:4000 ROLE=builder bash <(curl -fsSL $http_base/setup-agent.sh)"
+      echo ""
+      echo " 팀 대시보드: $http_base/api/team/$wk"
+      echo " 팀 상태확인: oah team status $wk"
+      ;;
+
+    status)
+      # oah team status [work_key]
+      local wk="${1:-}"
+      if [[ -z "$wk" ]]; then
+        wk=$(curl -sf "$http_base/api/work-keys/latest" \
+          | python3 -c "import sys,json; print(json.load(sys.stdin).get('work_key',''))" 2>/dev/null || echo "")
+      fi
+      [[ -z "$wk" ]] && { echo "Work Key 없음. oah team create 로 팀을 먼저 만드세요."; exit 1; }
+
+      echo "━━━ Team Status: $wk ━━━━━━━━━━━━━━━━━━━━━━"
+      local data; data=$(curl -sf "$http_base/api/team/$wk" 2>/dev/null || echo "{}")
+      echo "$data" | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+state = d.get('state', {})
+print(f\"  목표   : {state.get('goal','?')}\")
+print(f\"  상태   : {state.get('status','?')}\")
+print(f\"  온라인 : {d.get('online_count', 0)} 에이전트\")
+for a in d.get('online_agents', []):
+    print(f\"    - {a.get('name','?')} [{a.get('role','?')}] @ {a.get('machine','?')}\")
+print(f\"  대기중 : {d.get('pending_count', 0)} 태스크\")
+for t in d.get('pending_tasks', []):
+    print(f\"    - {t.get('task_id','?')} → {t.get('to','?')}\")
+"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      ;;
+
+    send)
+      # oah team send <agent> <message> [--wk WORK_KEY]
+      local to="${1:?'수신자 에이전트 이름 필요'}"; shift
+      local msg="${1:?'메시지 내용 필요'}"; shift
+      local wk="${WK:-}"
+      while [[ $# -gt 0 ]]; do
+        case "$1" in --wk) wk="$2"; shift 2 ;; *) shift ;; esac
+      done
+      [[ -z "$wk" ]] && wk=$(curl -sf "$http_base/api/work-keys/latest" \
+        | python3 -c "import sys,json; print(json.load(sys.stdin).get('work_key',''))" 2>/dev/null || echo "")
+
+      echo "→ SendMessage: $NAME → $to"
+      local resp
+      resp=$(curl -sf -X POST "$http_base/api/mailbox/$to" \
+        -H "Content-Type: application/json" \
+        -d "{\"from\":\"$NAME\",\"type\":\"info\",\"content\":\"$msg\",\"work_key\":\"$wk\"}")
+      echo " $resp"
+      ;;
+
+    task)
+      # oah team task <agent> "<instructions>" [--wk WK] [--id TASK_ID] [--deps task1,task2]
+      local to="${1:?'에이전트 이름 필요'}"; shift
+      local instructions="${1:?'태스크 지시사항 필요'}"; shift
+      local wk="${WK:-}"; local task_id="task-$(date +%s)"; local deps="[]"
+      while [[ $# -gt 0 ]]; do
+        case "$1" in
+          --wk)   wk="$2"; shift 2 ;;
+          --id)   task_id="$2"; shift 2 ;;
+          --deps) deps="[\"${2//,/\",\"}\"]"; shift 2 ;;
+          *)      shift ;;
+        esac
+      done
+      [[ -z "$wk" ]] && wk=$(curl -sf "$http_base/api/work-keys/latest" \
+        | python3 -c "import sys,json; print(json.load(sys.stdin).get('work_key',''))" 2>/dev/null || echo "")
+
+      echo "→ TaskCreate: $task_id → $to"
+      local resp
+      resp=$(curl -sf -X POST "$http_base/api/task" \
+        -H "Content-Type: application/json" \
+        -d "{\"work_key\":\"$wk\",\"to\":\"$to\",\"task_id\":\"$task_id\",\"instructions\":\"$instructions\",\"depends_on\":$deps}")
+      echo " $resp"
+      echo ""
+      echo " 결과 확인: oah team result $task_id"
+      ;;
+
+    result)
+      # oah team result <task_id> [--wait]
+      local task_id="${1:?'task_id 필요'}"; shift
+      local wait_flag=false
+      [[ "${1:-}" == "--wait" ]] && wait_flag=true
+
+      local url="$http_base/api/task-result/$task_id"
+      if $wait_flag; then
+        echo "⏳ $task_id 완료 대기 중..."
+        for i in $(seq 1 60); do
+          local r; r=$(curl -sf "$url" 2>/dev/null || echo "{}")
+          local status; status=$(echo "$r" | python3 -c "
+import sys,json
+d=json.load(sys.stdin)
+rs=d.get('results',[])
+print(rs[-1].get('status','pending') if rs else 'pending')" 2>/dev/null || echo "pending")
+          [[ "$status" != "pending" ]] && { echo ""; curl -sf "$url" | python3 -c "
+import sys,json
+for r in json.load(sys.stdin).get('results',[]): print(json.dumps(r,ensure_ascii=False,indent=2))"; break; }
+          printf "\r  %ds..." "$((i*5))"
+          sleep 5
+        done
+      else
+        curl -sf "$url" | python3 -c "
+import sys,json
+rs=json.load(sys.stdin).get('results',[])
+if not rs: print('결과 없음 (아직 실행 중)')
+else:
+    for r in rs: print(json.dumps(r,ensure_ascii=False,indent=2))"
+      fi
+      ;;
+
+    agents|presence)
+      echo "━━━ 온라인 에이전트 ━━━━━━━━━━━━━━━━━━━━━━━━━"
+      curl -sf "$http_base/api/presence" | python3 -c "
+import sys,json
+data=json.load(sys.stdin)
+for name,info in data.get('agents',{}).items():
+    print(f\"  {name} [{info.get('role','?')}] @ {info.get('machine','?')} wk={info.get('work_key','?')}\")
+" 2>/dev/null || echo "  (응답 없음)"
+      ;;
+
+    *)
+      echo "oah team 사용법:"
+      echo "  oah team create \"목표\"      — TeamCreate: 새 팀 + Work Key 생성"
+      echo "  oah team status [WK]        — 팀 상태, 온라인 에이전트, 대기 태스크"
+      echo "  oah team agents             — 전체 온라인 에이전트 목록"
+      echo "  oah team send <to> \"메시지\" — SendMessage: 에이전트에게 메시지"
+      echo "  oah team task <to> \"지시\"   — TaskCreate: 태스크 할당"
+      echo "  oah team result <task_id>   — 태스크 결과 조회"
+      echo "  oah team result <task_id> --wait  — 완료까지 대기"
+      ;;
+  esac
+}
+
 cmd_help() {
   cat <<'HELP'
 
@@ -1059,6 +1236,7 @@ case "$CMD" in
   logs)                 cmd_logs "$@" ;;
   config)               cmd_config "$@" ;;
   update)               cmd_update "$@" ;;
+  team)                 cmd_team "$@" ;;
   soul)                 cmd_soul "${1:-show}" ;;
   init|setup|onboard)   cmd_init ;;
   doctor|check|diag)    cmd_doctor ;;
