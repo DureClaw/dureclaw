@@ -25,9 +25,9 @@ defmodule HarnessServer.StateStore do
 
   use GenServer
 
-  @state_table   :harness_state
+  @state_table :harness_state
   @mailbox_table :harness_mailbox
-  @task_table    :harness_tasks
+  @task_table :harness_tasks
   @pending_table :harness_pending
 
   # ─── Public API ─────────────────────────────────────────────────────────────
@@ -120,20 +120,23 @@ defmodule HarnessServer.StateStore do
     data_dir = System.get_env("OAH_DATA_DIR", "data")
     File.mkdir_p!(data_dir)
 
-    {:ok, _} = :dets.open_file(@state_table, [
-      file: String.to_charlist(Path.join(data_dir, "harness_state.dets")),
-      type: :set
-    ])
+    {:ok, _} =
+      :dets.open_file(@state_table,
+        file: String.to_charlist(Path.join(data_dir, "harness_state.dets")),
+        type: :set
+      )
 
-    {:ok, _} = :dets.open_file(@mailbox_table, [
-      file: String.to_charlist(Path.join(data_dir, "harness_mailbox.dets")),
-      type: :set
-    ])
+    {:ok, _} =
+      :dets.open_file(@mailbox_table,
+        file: String.to_charlist(Path.join(data_dir, "harness_mailbox.dets")),
+        type: :set
+      )
 
-    {:ok, _} = :dets.open_file(@task_table, [
-      file: String.to_charlist(Path.join(data_dir, "harness_tasks.dets")),
-      type: :set
-    ])
+    {:ok, _} =
+      :dets.open_file(@task_table,
+        file: String.to_charlist(Path.join(data_dir, "harness_tasks.dets")),
+        type: :set
+      )
 
     :ets.new(@pending_table, [:named_table, :public, read_concurrency: true])
 
@@ -161,17 +164,21 @@ defmodule HarnessServer.StateStore do
     work_key = "LN-#{today}-#{String.pad_leading("#{counter}", 3, "0")}"
     new_state = put_in(state.counter[today], counter)
 
-    :dets.insert(@state_table, {work_key, %{
-      work_key:       work_key,
-      status:         "created",
-      goal:           Map.get(meta, "goal", nil),
-      project_dir:    Map.get(meta, "project_dir", nil),
-      shared_context: Map.get(meta, "context", %{}),
-      loop_count:     0,
-      tasks:          [],
-      created_at:     DateTime.utc_now() |> DateTime.to_iso8601(),
-      updated_at:     DateTime.utc_now() |> DateTime.to_iso8601()
-    }})
+    :dets.insert(
+      @state_table,
+      {work_key,
+       %{
+         work_key: work_key,
+         status: "created",
+         goal: Map.get(meta, "goal", nil),
+         project_dir: Map.get(meta, "project_dir", nil),
+         shared_context: Map.get(meta, "context", %{}),
+         loop_count: 0,
+         tasks: [],
+         created_at: DateTime.utc_now() |> DateTime.to_iso8601(),
+         updated_at: DateTime.utc_now() |> DateTime.to_iso8601()
+       }}
+    )
 
     {:reply, work_key, new_state}
   end
@@ -179,17 +186,21 @@ defmodule HarnessServer.StateStore do
   @impl true
   def handle_call({:ensure_work_key, work_key}, _from, state) do
     unless :dets.member(@state_table, work_key) do
-      :dets.insert(@state_table, {work_key, %{
-        work_key:       work_key,
-        status:         "created",
-        goal:           nil,
-        project_dir:    nil,
-        shared_context: %{},
-        loop_count:     0,
-        tasks:          [],
-        created_at:     DateTime.utc_now() |> DateTime.to_iso8601(),
-        updated_at:     DateTime.utc_now() |> DateTime.to_iso8601()
-      }})
+      :dets.insert(
+        @state_table,
+        {work_key,
+         %{
+           work_key: work_key,
+           status: "created",
+           goal: nil,
+           project_dir: nil,
+           shared_context: %{},
+           loop_count: 0,
+           tasks: [],
+           created_at: DateTime.utc_now() |> DateTime.to_iso8601(),
+           updated_at: DateTime.utc_now() |> DateTime.to_iso8601()
+         }}
+      )
     end
 
     {:reply, :ok, state}
@@ -197,13 +208,15 @@ defmodule HarnessServer.StateStore do
 
   @impl true
   def handle_call({:update, work_key, updates}, _from, state) do
-    current = case :dets.lookup(@state_table, work_key) do
-      [{^work_key, s}] -> s
-      [] -> %{work_key: work_key, created_at: DateTime.utc_now() |> DateTime.to_iso8601()}
-    end
+    current =
+      case :dets.lookup(@state_table, work_key) do
+        [{^work_key, s}] -> s
+        [] -> %{work_key: work_key, created_at: DateTime.utc_now() |> DateTime.to_iso8601()}
+      end
 
-    updated = Map.merge(current, updates)
-              |> Map.put(:updated_at, DateTime.utc_now() |> DateTime.to_iso8601())
+    updated =
+      Map.merge(current, updates)
+      |> Map.put(:updated_at, DateTime.utc_now() |> DateTime.to_iso8601())
 
     :dets.insert(@state_table, {work_key, updated})
     {:reply, updated, state}
@@ -211,10 +224,11 @@ defmodule HarnessServer.StateStore do
 
   @impl true
   def handle_call({:enqueue_mailbox, agent_name, msg}, _from, state) do
-    msgs = case :dets.lookup(@mailbox_table, agent_name) do
-      [{^agent_name, existing}] -> existing
-      [] -> []
-    end
+    msgs =
+      case :dets.lookup(@mailbox_table, agent_name) do
+        [{^agent_name, existing}] -> existing
+        [] -> []
+      end
 
     :dets.insert(@mailbox_table, {agent_name, msgs ++ [msg]})
     {:reply, :ok, state}
@@ -222,10 +236,11 @@ defmodule HarnessServer.StateStore do
 
   @impl true
   def handle_call({:pop_mailbox, agent_name}, _from, state) do
-    msgs = case :dets.lookup(@mailbox_table, agent_name) do
-      [{^agent_name, existing}] -> existing
-      [] -> []
-    end
+    msgs =
+      case :dets.lookup(@mailbox_table, agent_name) do
+        [{^agent_name, existing}] -> existing
+        [] -> []
+      end
 
     :dets.delete(@mailbox_table, agent_name)
     {:reply, msgs, state}
@@ -233,11 +248,7 @@ defmodule HarnessServer.StateStore do
 
   @impl true
   def handle_call({:store_task_result, task_id, result}, _from, state) do
-    existing = case :dets.lookup(@task_table, task_id) do
-      [{^task_id, results}] when is_list(results) -> results
-      [{^task_id, single}] -> [single]
-      [] -> []
-    end
+    existing = fetch_existing_results(task_id)
     :dets.insert(@task_table, {task_id, existing ++ [result]})
     {:reply, :ok, state}
   end
@@ -251,22 +262,10 @@ defmodule HarnessServer.StateStore do
   @impl true
   def handle_call({:complete_dependency, completed_id}, _from, state) do
     # Scan all pending tasks; find ones whose depends_on is now satisfied
-    all_pending = :ets.tab2list(@pending_table)
-    results = Enum.flat_map(all_pending, fn {tid, info} ->
-      deps = Map.get(info, "depends_on", [])
-      if completed_id in deps do
-        new_deps = List.delete(deps, completed_id)
-        if new_deps == [] do
-          :ets.delete(@pending_table, tid)
-          [info]  # unblocked — return for dispatch
-        else
-          :ets.insert(@pending_table, {tid, Map.put(info, "depends_on", new_deps)})
-          []
-        end
-      else
-        []
-      end
-    end)
+    results =
+      :ets.tab2list(@pending_table)
+      |> Enum.flat_map(&check_pending_task(&1, completed_id))
+
     {:reply, results, state}
   end
 
@@ -275,6 +274,34 @@ defmodule HarnessServer.StateStore do
   # DETS has no tab2list — use foldl to collect all entries.
   defp dets_to_list(table) do
     :dets.foldl(fn item, acc -> [item | acc] end, [], table)
+  end
+
+  defp check_pending_task({tid, info}, completed_id) do
+    deps = Map.get(info, "depends_on", [])
+
+    if completed_id in deps do
+      resolve_dependency(tid, info, List.delete(deps, completed_id))
+    else
+      []
+    end
+  end
+
+  defp resolve_dependency(tid, info, []) do
+    :ets.delete(@pending_table, tid)
+    [info]
+  end
+
+  defp resolve_dependency(tid, info, remaining_deps) do
+    :ets.insert(@pending_table, {tid, Map.put(info, "depends_on", remaining_deps)})
+    []
+  end
+
+  defp fetch_existing_results(task_id) do
+    case :dets.lookup(@task_table, task_id) do
+      [{^task_id, results}] when is_list(results) -> results
+      [{^task_id, single}] -> [single]
+      [] -> []
+    end
   end
 
   # Rebuild the daily sequence counter from persisted work keys so that
@@ -286,6 +313,7 @@ defmodule HarnessServer.StateStore do
         ["LN", date, seq] ->
           n = String.to_integer(seq)
           Map.update(acc, date, n, &max(&1, n))
+
         _ ->
           acc
       end

@@ -6,8 +6,7 @@ config :harness_server, HarnessServer.Endpoint,
   secret_key_base: "harness_dev_secret_key_base_change_in_prod_must_be_64_chars_min",
   pubsub_server: HarnessServer.PubSub
 
-config :harness_server, HarnessServer.Presence,
-  pubsub_server: HarnessServer.PubSub
+config :harness_server, HarnessServer.Presence, pubsub_server: HarnessServer.PubSub
 
 config :harness_server,
   ecto_repos: []

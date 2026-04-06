@@ -3,7 +3,7 @@ defmodule HarnessServer.UserSocket do
 
   ## Channels
   # Matches any topic starting with "work:"
-  channel "work:*", HarnessServer.WorkChannel
+  channel("work:*", HarnessServer.WorkChannel)
 
   @impl true
   def connect(params, socket, _connect_info) do
