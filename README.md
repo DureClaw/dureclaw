@@ -34,26 +34,20 @@
 
 ---
 
-### Step 2 — Phoenix 서버 (선택, 원격 팀 구성 시)
+### Step 2+3 — 멀티머신 팀 확장 (선택)
 
-다른 머신에 작업을 분산시키려면 메시지 버스 서버가 필요합니다:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/DureClaw/dureclaw/main/scripts/setup-server.sh | bash
-```
-
----
-
-### Step 3 — 워커 에이전트 (선택, 원격 머신에만)
-
-GPU 서버, 맥미니 등 **다른 머신**에서 태스크를 실행시키려면:
+다른 머신에 작업을 분산시키려면 아래 명령 하나로 자동 설정합니다:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/DureClaw/dureclaw/main/scripts/setup-agent.sh \
-  | PHOENIX=ws://<서버IP>:4000 ROLE=builder bash
+oah setup-team
 ```
 
-> Step 2, 3은 멀티머신 분산 처리가 필요할 때만 설치하세요.
+대화형 위저드가 자동으로:
+1. Phoenix 서버 실행 여부 확인 → 없으면 설치
+2. 원격 머신용 워커 에이전트 설치 명령 출력
+3. 로컬에도 워커 추가 여부 선택
+
+> 멀티머신 분산 처리가 필요할 때만 실행하세요.
 
 ---
 
