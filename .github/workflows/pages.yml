@@ -40,6 +40,8 @@ jobs:
           cp scripts/setup-agent.sh  web/agent
           # dureclaw.baryon.ai/mcp     → setup-mcp.sh
           cp scripts/setup-mcp.sh    web/mcp
+          # dureclaw.baryon.ai/agent.ps1 → setup-agent.ps1 (Windows)
+          cp scripts/setup-agent.ps1 web/agent.ps1
 
       - name: Upload build artifacts to R2
         env:
