@@ -10,13 +10,14 @@ Phoenix 5-tuple protocol: [join_ref, ref, topic, event, payload]
   NAME          에이전트 이름 (기본: {ROLE}@{hostname})
   WK            Work Key (없으면 자동 발견)
   PROJECT_DIR   작업 디렉토리 (기본: $HOME)
-  AGENT_BACKEND AI 백엔드 강제 지정 (claude|opencode|aider|auto)
+  AGENT_BACKEND AI 백엔드 강제 지정 (claude|opencode|aider|zeroclaw|auto)
 """
 
 import asyncio
 import json
 import os
 import platform
+import re
 import signal
 import socket
 import subprocess
@@ -24,6 +25,11 @@ import sys
 import time
 from urllib.request import urlopen, Request
 from urllib.error import URLError
+
+_ANSI_ESCAPE = re.compile(r'\x1b\[[0-9;]*[a-zA-Z]|\x1b\[[0-9;]*m')
+
+def strip_ansi(text: str) -> str:
+    return _ANSI_ESCAPE.sub('', text)
 
 # ─── websockets 임포트 (pip3 install websockets) ───────────────────────────────
 try:
@@ -63,7 +69,7 @@ WK_POLL_INTERVAL = 2      # seconds
 def detect_backend() -> str:
     if AGENT_BACKEND != "auto":
         return AGENT_BACKEND
-    for cmd in ("claude", "opencode", "aider"):
+    for cmd in ("claude", "opencode", "zeroclaw", "aider"):
         try:
             subprocess.run(["which", cmd], capture_output=True, check=True)
             return cmd
@@ -316,6 +322,8 @@ class PhoenixAgent:
             elif backend == "opencode":
                 cmd_args = ["opencode", "run", "--message", instructions,
                             "--cwd", PROJECT_DIR]
+            elif backend == "zeroclaw":
+                cmd_args = ["zeroclaw", "agent", "-m", instructions]
             elif backend == "aider":
                 cmd_args = ["aider", "--message", instructions,
                             "--yes", "--no-git",
@@ -332,7 +340,8 @@ class PhoenixAgent:
             active_tasks[task_id] = proc
             stdout, _ = await proc.communicate()
             exit_code = proc.returncode or 0
-            output = stdout.decode(errors="replace").strip()
+            raw = stdout.decode(errors="replace").strip()
+            output = strip_ansi(raw) if backend == "zeroclaw" else raw
         except Exception as e:
             output = str(e)
             exit_code = 1
