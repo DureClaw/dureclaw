@@ -262,6 +262,96 @@ Claude Code → analyzer-agent (버그 탐지)
 
 ---
 
+## 왜 팀이 필요한가 — 이동성·권한·전용 소프트웨어의 한계를 조합으로 넘는다
+
+현실의 컴퓨터는 각자 제약이 다르다.
+
+| 제약 | 예시 | 단일 머신의 한계 |
+|-----|------|----------------|
+| **OS 전용 소프트웨어** | MS Office, Active X, iOS 빌드(Xcode) | Windows가 아니면 실행 불가 |
+| **하드웨어 접근** | GPIO, 카메라, 센서 | RPi만 물리 세계에 연결됨 |
+| **이동성** | 현장 점검, 야외 인터뷰 | 서버는 들고 나갈 수 없음 |
+| **연산 자원** | GPU 추론, 대용량 빌드 | 노트북 배터리·발열 한계 |
+| **네트워크 위치** | 로컬 WiFi, VPN, 공공망 | IP 차단·지역 제한 |
+| **권한** | sudo, Admin, 사인 인증서 | 조직 정책으로 일부 머신만 허용 |
+
+DureClaw는 이 제약들을 **팀의 역할 분담**으로 해결한다.
+
+### 실제 팀 — 5가지 아키텍처, 1초 안에 협업
+
+```
+🌍 초이동형   executor@cmini01      Raspberry Pi Zero W (손바닥 크기)
+               └─ GPIO · I2C · 카메라 · WiFi · zeroclaw AI
+               └─ 어디든 배포 가능, 배터리 구동, 물리 세계 접점
+
+💼 이동형     tester@NUCBOXG3       Windows 11 NucBox (가방 속 미니PC)
+               └─ MS Office 전체 · WSL · Claude · Active X 사이트 접근
+
+🏡 반고정형   builder@hongswui-Macmini   macOS arm64 · Apple M4
+               └─ Xcode · Swift · iOS 빌드 · Apple Silicon 네이티브
+
+              builder@macmini-intel      macOS x86_64 · i3-8100B
+               └─ Flutter · fastlane · Whisper OCR · 멀티클라우드 CLI
+               └─ AWS SAM · Azure · Heroku · Terraform · Tesseract
+
+🏠 고정형     builder@martin-B650M-K    Linux x86_64 · RTX 4090
+               └─ Docker · Kubernetes · GPU 추론 · 24시간 연산 서버
+```
+
+**헬스체크 결과: 5/5 동시 응답 — 0.61초**
+
+### 제약의 조합이 만드는 시나리오
+
+**① 현장 점검 AI** — 이동성 × 연산 자원
+```
+cmini01 (현장, 주머니)  → 카메라로 장비 촬영
+RTX 4090 서버 (원격)   → GPU로 이상 감지 AI 분석
+Windows NucBox (현장)  → Excel 보고서 자동 생성·출력
+```
+> 단일 노트북으로는 현장 이동 + GPU 추론 + Office 자동화를 동시에 할 수 없다.
+
+**② 멀티플랫폼 앱 빌드** — OS 전용 소프트웨어 × 병렬 실행
+```
+macmini-intel    → Flutter iOS/Android 빌드 (macOS만 가능)
+hongswui-M4      → Swift/Xcode 아카이브  (Apple Silicon 네이티브)
+martin-B650M-K   → Docker Linux 이미지 + k8s 배포
+NUCBOXG3         → Windows 인스톨러 생성·테스트
+cmini01          → ARMv6 임베디드 바이너리 검증
+```
+> 5개 플랫폼 동시 빌드. 순차 실행 대비 **5× 속도**.
+
+**③ IoT 모니터링** — 하드웨어 접근 × 상시 연산
+```
+cmini01 (어디서나)  → I2C 온습도 · PIR 움직임 · 카메라 스냅샷 (GPIO)
+RTX 4090 서버      → 이상 패턴 AI 감지
+macmini-intel      → 주간 Excel 대시보드 자동 생성
+```
+> GPIO를 가진 머신은 cmini01뿐. 연산 서버는 현장에 나갈 수 없다.
+
+**④ 현장 인터뷰 → AI 자동 정리** — 이동성 × 전용 소프트웨어
+```
+NUCBOXG3 (현장)    → 인터뷰 녹음 (Windows 마이크)
+macmini-intel (귀가 후) → Whisper로 음성→텍스트 전사
+martin-B650M-K     → Claude로 인사이트 추출
+macmini-intel      → Word/Keynote 보고서 자동 생성
+```
+> 인터뷰 후 보고서 완성: 수 시간 → **15분 자동 처리**
+
+### 오픈소스만으로 구현
+
+| 구성 요소 | 라이선스 | 역할 |
+|---------|:-------:|------|
+| Phoenix (Elixir) | MIT | 실시간 WebSocket 채널 |
+| Claude Code CLI | 무료 | AI 오케스트레이터 |
+| ZeroClaw | Apache 2.0 | ARMv6 경량 AI |
+| OpenCode | MIT | 멀티모델 AI 에이전트 |
+| Raspberry Pi OS | GPL | IoT 엣지 OS |
+
+비싼 SaaS 없이, 내 네트워크 안의 유휴 머신들을 연결하는 것만으로 —
+**Raspberry Pi Zero W부터 RTX 4090 서버까지 — 하나의 AI 협업 팀이 된다.**
+
+---
+
 ## License
 
 MIT © 2025-2026 [Seungwoo Hong (홍승우)](https://github.com/hongsw)
