@@ -27,9 +27,16 @@ from urllib.request import urlopen, Request
 from urllib.error import URLError
 
 _ANSI_ESCAPE = re.compile(r'\x1b\[[0-9;]*[a-zA-Z]|\x1b\[[0-9;]*m')
+_ZEROCLAW_LOG = re.compile(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z\s+(INFO|WARN|ERROR|DEBUG)\s+')
 
 def strip_ansi(text: str) -> str:
     return _ANSI_ESCAPE.sub('', text)
+
+def clean_zeroclaw_output(text: str) -> str:
+    """ANSI 제거 + zeroclaw INFO 로그 라인 제거, 실제 AI 응답만 남김."""
+    plain = strip_ansi(text)
+    lines = [l for l in plain.splitlines() if not _ZEROCLAW_LOG.match(l)]
+    return '\n'.join(lines).strip()
 
 # ─── websockets 임포트 (pip3 install websockets) ───────────────────────────────
 try:
@@ -193,6 +200,8 @@ class PhoenixAgent:
         if event == "phx_reply":
             status = payload.get("status") if isinstance(payload, dict) else None
             if status == "ok":
+                if topic == "phoenix":
+                    return  # heartbeat pong — suppress
                 print(f"[daemon] joined channel {topic} ✅")
                 # 서버가 PROJECT_DIR을 알려줄 경우 적용
                 resp = (payload.get("response") or {}) if isinstance(payload, dict) else {}
@@ -341,7 +350,7 @@ class PhoenixAgent:
             stdout, _ = await proc.communicate()
             exit_code = proc.returncode or 0
             raw = stdout.decode(errors="replace").strip()
-            output = strip_ansi(raw) if backend == "zeroclaw" else raw
+            output = clean_zeroclaw_output(raw) if backend == "zeroclaw" else raw
         except Exception as e:
             output = str(e)
             exit_code = 1
