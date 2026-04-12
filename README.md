@@ -203,6 +203,14 @@ Phoenix Server              ws://host:4000
 
 > 실시간 에이전트 현황 및 태스크 모니터링: `http://서버IP:4000/`
 
+**태스크 디스패치 & 멀티 에이전트 현황 (6개 디바이스 동시 연결)**
+
+![DureClaw 대시보드 — 태스크 디스패치](./docs/screenshots/02-task-dispatch.png)
+
+**에이전트 상세 — 각 머신의 capability 실시간 확인**
+
+![DureClaw 대시보드 — 에이전트 상세](./docs/screenshots/03-agent-presence.png)
+
 ---
 
 ## 지원 환경

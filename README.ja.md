@@ -197,6 +197,14 @@ Phoenix Server              ws://host:4000
 | `analyst` | claude-cli / gemini | コード分析・レビュー・バグ検出 |
 | `executor` | aider / opencode | 軽量コマンド実行 · RPi Zero W に最適 |
 
+**タスクディスパッチ & マルチエージェント状況（6台デバイス同時接続）**
+
+![DureClaw ダッシュボード — タスクディスパッチ](./docs/screenshots/02-task-dispatch.png)
+
+**エージェント詳細 — 各マシンの capability をリアルタイム確認**
+
+![DureClaw ダッシュボード — エージェント詳細](./docs/screenshots/03-agent-presence.png)
+
 ---
 
 ## 対応プラットフォーム

@@ -197,6 +197,14 @@ Phoenix Server              ws://host:4000
 | `analyst` | claude-cli / gemini | 代码分析·审查·缺陷检测 |
 | `executor` | aider / opencode | 轻量命令执行 · 树莓派 Zero W 最优 |
 
+**任务调度 & 多智能体状态（6台设备同时连接）**
+
+![DureClaw 控制台 — 任务调度](./docs/screenshots/02-task-dispatch.png)
+
+**智能体详情 — 实时查看各机器 capability**
+
+![DureClaw 控制台 — 智能体详情](./docs/screenshots/03-agent-presence.png)
+
 ---
 
 ## 支持平台

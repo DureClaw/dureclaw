@@ -201,6 +201,14 @@ Key endpoints: `/api/health` · `/api/presence` · `/api/work-keys` · `/api/sta
 
 > Real-time agent status and task monitoring: `http://SERVER_IP:4000/`
 
+**Task Dispatch & Multi-Agent Status (6 devices connected simultaneously)**
+
+![DureClaw Dashboard — Task Dispatch](./docs/screenshots/02-task-dispatch.png)
+
+**Agent Detail — Real-time capability view per machine**
+
+![DureClaw Dashboard — Agent Detail](./docs/screenshots/03-agent-presence.png)
+
 ---
 
 ## Supported Platforms
