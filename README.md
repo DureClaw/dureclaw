@@ -152,6 +152,66 @@ mcp__oah__get_presence
 
 > 전체 도구 명세 → [docs/API_REFERENCE.md](docs/API_REFERENCE.md)
 
+### 분산 서브 에이전트 추가 — OS·아키텍처별 1줄 설치
+
+> **`SERVER_IP`** = Phoenix 서버 IP (Tailscale IP 권장). `ROLE`은 `builder` / `tester` / `executor` 중 선택.
+
+#### macOS · Linux — x64 / arm64 (M1·M2·M3·M4)
+
+```bash
+PHOENIX=ws://SERVER_IP:4000 ROLE=builder bash <(curl -fsSL https://open-agent-harness.baryon.ai/setup-agent.sh)
+```
+
+#### Linux — armv7l (Raspberry Pi 4 · 5 · 32bit OS)
+
+```bash
+PHOENIX=ws://SERVER_IP:4000 ROLE=executor bash <(curl -fsSL https://open-agent-harness.baryon.ai/setup-agent.sh)
+```
+
+> 자동으로 Node.js + `oah-agent.js` 번들을 선택합니다.
+
+#### Linux — armv6l (Raspberry Pi Zero W)
+
+```bash
+PHOENIX=ws://SERVER_IP:4000 ROLE=executor bash <(curl -fsSL https://open-agent-harness.baryon.ai/setup-agent.sh)
+```
+
+> 자동으로 Python 에이전트(`agent.py`)를 선택합니다. Node.js 불필요.
+
+#### Windows — PowerShell (x64)
+
+```powershell
+$env:PHOENIX="ws://SERVER_IP:4000"; $env:ROLE="builder"; iex (irm https://dureclaw.baryon.ai/agent.ps1)
+```
+
+#### Windows — CMD (x64)
+
+```cmd
+set PHOENIX=ws://SERVER_IP:4000&& set ROLE=builder&& curl -fsSL https://open-agent-harness.baryon.ai/agent.bat -o %TEMP%\oah.bat && call %TEMP%\oah.bat
+```
+
+#### 옵션: Work Key 지정 · Role 목록
+
+```bash
+# Work Key 수동 지정 (미지정 시 서버에서 최신 WK 자동 조회)
+PHOENIX=ws://SERVER_IP:4000 ROLE=tester WK=LN-20260418-001 bash <(curl -fsSL https://open-agent-harness.baryon.ai/setup-agent.sh)
+
+# 사용 가능한 ROLE
+#   builder   — 코드 작성·빌드 (기본값)
+#   tester    — 테스트 실행·검증
+#   executor  — 경량 명령 실행 (RPi 등 저사양 최적)
+#   analyst   — 코드 분석·리뷰
+```
+
+| OS | 아키텍처 | 자동 선택 에이전트 | AI 백엔드 |
+|----|---------|-----------------|---------|
+| macOS | arm64 (Apple Silicon) | 네이티브 바이너리 | claude-cli · opencode · gemini |
+| macOS | x64 (Intel) | 네이티브 바이너리 | claude-cli · opencode |
+| Linux | x64 · arm64 | 네이티브 바이너리 | claude-cli · opencode · ollama |
+| Linux | armv7l (RPi 4/5) | Node.js + oah-agent.js | zeroclaw · claude-cli |
+| Linux | armv6l (RPi Zero W) | Python + agent.py | zeroclaw (경량) |
+| Windows | x64 | PowerShell / CMD | claude-cli · opencode |
+
 ### 구성도
 
 ```
