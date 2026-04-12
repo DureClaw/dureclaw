@@ -33,7 +33,7 @@
 
 import { spawnCompat as spawn } from "./spawn-compat.ts";
 import { hostname } from "os";
-import { detectCapabilities } from "./capabilities.ts";
+import { detectCapabilities, detectPreferredModel } from "./capabilities.ts";
 import { orchestrateGoal } from "./orchestrator.ts";
 
 // Node.js WebSocket polyfill (Bun has it built-in, Node.js 20 does not)
@@ -60,9 +60,12 @@ const CLAUDE_BIN      = process.env.CLAUDE_BIN      ?? "claude";
 const GEMINI_BIN      = process.env.GEMINI_BIN      ?? "gemini";
 const CODEX_BIN       = process.env.CODEX_BIN       ?? "codex";
 const AIDER_BIN       = process.env.AIDER_BIN       ?? "aider";
+const OLLAMA_BIN      = process.env.OLLAMA_BIN      ?? "ollama";
+const OLLAMA_MODEL    = process.env.OLLAMA_MODEL    ?? "gemma4";
 // "auto" = pick best available from capabilities at runtime
 const AGENT_BACKEND   = process.env.AGENT_BACKEND   ?? "auto";
 const AGENT_CAPABILITIES = detectCapabilities();
+const AGENT_PREFERRED_MODEL = detectPreferredModel();
 
 // Normalise server URL: always keep ws:// for WS, derive http:// for REST
 const WS_BASE = STATE_SERVER_RAW.replace(/^http/, "ws").replace(/\/$/, "");
@@ -110,6 +113,10 @@ interface TaskPayload {
   timeout_ms?: number;
   to?: string;
   from?: string;
+  /** Required capabilities — agent rejects if not satisfied, server auto-reassigns */
+  requires?: string[];
+  /** Reassignment retry counter (incremented by server on each reassignment) */
+  retry_count?: number;
 }
 
 // ─── Active task tracking ─────────────────────────────────────────────────────
@@ -155,6 +162,8 @@ let ws: WebSocket | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let reconnectDelay = 1000;
 let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+/** Watchdog: if no server message arrives within 90s, force reconnect. */
+let heartbeatWatchdog: ReturnType<typeof setTimeout> | null = null;
 let isJoined = false;
 
 /** Monotonically increasing ref counter for messages */
@@ -197,17 +206,30 @@ function flushPending() {
 
 // ─── Heartbeat ───────────────────────────────────────────────────────────────
 
+function resetWatchdog() {
+  if (heartbeatWatchdog) clearTimeout(heartbeatWatchdog);
+  heartbeatWatchdog = setTimeout(() => {
+    console.warn("[daemon] heartbeat watchdog fired — no server message in 90s, reconnecting");
+    ws?.close();
+  }, 90_000);
+}
+
 function startHeartbeat() {
   if (heartbeatTimer) clearInterval(heartbeatTimer);
   heartbeatTimer = setInterval(() => {
     sendRaw([null, nextRef(), "phoenix", "heartbeat", {}]);
   }, 30_000);
+  resetWatchdog();
 }
 
 function stopHeartbeat() {
   if (heartbeatTimer) {
     clearInterval(heartbeatTimer);
     heartbeatTimer = null;
+  }
+  if (heartbeatWatchdog) {
+    clearTimeout(heartbeatWatchdog);
+    heartbeatWatchdog = null;
   }
 }
 
@@ -234,6 +256,7 @@ function connect() {
       role: AGENT_ROLE,
       machine: AGENT_MACHINE,
       capabilities: AGENT_CAPABILITIES,
+      preferred_model: AGENT_PREFERRED_MODEL,
     }]);
 
     console.log(`[daemon] sent phx_join → ${topic}`);
@@ -247,6 +270,8 @@ function connect() {
     } catch {
       return;
     }
+    // Reset watchdog on any server message (proves connection is alive)
+    if (heartbeatWatchdog) resetWatchdog();
     handlePhxMessage(msg);
   };
 
@@ -410,6 +435,20 @@ function handlePhxMessage([msgJoinRef, ref, topic, event, payload]: PhxMsg) {
       break;
     }
 
+    case "task.failed": {
+      // Server-side max_retries exhausted — no more reassignment possible
+      const p = payload as { task_id?: string; reason?: string; from?: string };
+      if (p.task_id) {
+        if (activeTasks.has(p.task_id)) {
+          const t = activeTasks.get(p.task_id)!;
+          t.abort.abort();
+          activeTasks.delete(p.task_id);
+        }
+        console.error(`[task] ❌ ${p.task_id} PERMANENTLY FAILED — reason: ${p.reason ?? "unknown"} (from: ${p.from ?? "server"})`);
+      }
+      break;
+    }
+
     case "task.cancel": {
       const p = payload as { task_id?: string };
       if (p.task_id && activeTasks.has(p.task_id)) {
@@ -457,8 +496,32 @@ function handlePhxMessage([msgJoinRef, ref, topic, event, payload]: PhxMsg) {
 
 // ─── Task execution ───────────────────────────────────────────────────────────
 
+/**
+ * Check if this agent satisfies all required capabilities.
+ * An empty or absent requires list means no restrictions.
+ */
+function satisfiesRequirements(required: string[]): boolean {
+  if (!required || required.length === 0) return true;
+  return required.every(cap => AGENT_CAPABILITIES.includes(cap));
+}
+
 async function handleTaskAssign(payload: TaskPayload) {
   const taskId = payload.task_id ?? `task-${Date.now()}`;
+
+  // Capability check — reject immediately if we lack required capabilities
+  const required = payload.requires;
+  if (required && required.length > 0 && !satisfiesRequirements(required)) {
+    console.log(`[task] ${taskId} requires [${required.join(", ")}] — I have [${AGENT_CAPABILITIES.join(", ")}] — skipping`);
+    sendEvent("task.blocked", {
+      task_id: taskId,
+      to: payload.from,
+      error: `Capability mismatch: requires [${required.join(", ")}]`,
+      status: "blocked",
+      requires: required,
+      retry_count: payload.retry_count ?? 0,
+    });
+    return;
+  }
 
   // Role check
   if (payload.role && payload.role !== AGENT_ROLE) {
@@ -520,6 +583,8 @@ async function handleTaskAssign(payload: TaskPayload) {
       to: payload.from,
       error: `Agent busy (${activeTasks.size} active tasks). Try again later.`,
       status: "blocked",
+      requires: required ?? [],
+      retry_count: payload.retry_count ?? 0,
     });
     return;
   }
@@ -538,33 +603,85 @@ async function handleTaskAssign(payload: TaskPayload) {
     status: "running",
   });
 
-  try {
-    const result = await runOpenCode(taskId, payload, abort.signal);
+  // Resolve effective backend: task-level override > env > auto-detect
+  const taskBackendHint = (payload as Record<string, unknown>).backend as string | undefined;
+  const resolvedBackend = (() => {
+    const b = taskBackendHint ?? AGENT_BACKEND;
+    return b === "auto" ? autoSelectBackend() : b;
+  })();
+
+  if (resolvedBackend === "claude" || resolvedBackend === "claude-cli") {
+    // ── Reflective executor path: retry loop + stuck detection ───────────────
+    const onProgress: ProgressCallback = (msg, tail) => {
+      sendEvent("task.progress", { task_id: taskId, to: payload.from, message: msg, output_tail: tail });
+    };
+
+    const result = await reflectiveAgent(
+      payload.instructions,
+      AGENT_ROLE,
+      payload.context ?? {},
+      onProgress,
+    );
+
     activeTasks.delete(taskId);
 
-    sendEvent("task.result", {
-      task_id: taskId,
-      to: payload.from,
-      status: "done",
-      output: result.output.slice(-2000),
-      exit_code: result.exitCode,
-      artifacts: result.artifacts,
-    });
+    if (result.solved) {
+      sendEvent("task.result", {
+        task_id: taskId,
+        to: payload.from,
+        status: "done",
+        output: result.output.slice(-2000),
+        exit_code: 0,
+        artifacts: [],
+        token_count: result.tokenCount,
+        attempts: result.attempts,
+      });
+      console.log(`[task] ${taskId} solved via reflective executor (${result.attempts} attempt(s))`);
+    } else {
+      sendEvent("task.blocked", {
+        task_id: taskId,
+        to: payload.from,
+        error: result.escalated ? "Escalated after max attempts" : "Task not solved",
+        status: result.escalated ? "escalate" : "blocked",
+        requires: required ?? [],
+        retry_count: payload.retry_count ?? 0,
+        token_count: result.tokenCount,
+      });
+      console.error(`[task] ${taskId} blocked by reflective executor (escalated=${result.escalated})`);
+    }
 
-    console.log(`[task] ${taskId} completed (exit ${result.exitCode})`);
+  } else {
+    // ── Direct subprocess path: opencode / zeroclaw / aider / gemini / etc. ──
+    try {
+      const result = await runOpenCode(taskId, payload, abort.signal);
+      activeTasks.delete(taskId);
 
-  } catch (err) {
-    activeTasks.delete(taskId);
-    const errMsg = err instanceof Error ? err.message : String(err);
+      sendEvent("task.result", {
+        task_id: taskId,
+        to: payload.from,
+        status: "done",
+        output: result.output.slice(-2000),
+        exit_code: result.exitCode,
+        artifacts: result.artifacts,
+      });
 
-    sendEvent("task.blocked", {
-      task_id: taskId,
-      to: payload.from,
-      error: errMsg,
-      status: "blocked",
-    });
+      console.log(`[task] ${taskId} completed via ${resolvedBackend} (exit ${result.exitCode})`);
 
-    console.error(`[task] ${taskId} blocked: ${errMsg}`);
+    } catch (err) {
+      activeTasks.delete(taskId);
+      const errMsg = err instanceof Error ? err.message : String(err);
+
+      sendEvent("task.blocked", {
+        task_id: taskId,
+        to: payload.from,
+        error: errMsg,
+        status: "blocked",
+        requires: required ?? [],
+        retry_count: payload.retry_count ?? 0,
+      });
+
+      console.error(`[task] ${taskId} blocked: ${errMsg}`);
+    }
   }
 }
 
@@ -844,6 +961,10 @@ function buildAgentCmd(backend: string, prompt: string): string[] {
     case "aider":
       return [AIDER_BIN, "--message", prompt, "--yes-always", "--no-git"];
 
+    // Ollama local LLM  — `ollama run <model> "<prompt>" --nowordwrap`
+    case "ollama":
+      return [OLLAMA_BIN, "run", OLLAMA_MODEL, "--nowordwrap", prompt];
+
     default:
       console.warn(`[backend] unknown backend "${resolved}", falling back to opencode`);
       return [OPENCODE_BIN, "run", "--format", "default", prompt];
@@ -852,7 +973,7 @@ function buildAgentCmd(backend: string, prompt: string): string[] {
 
 /** Pick best available backend from detected capabilities. */
 function autoSelectBackend(): string {
-  const priority = ["claude-cli", "opencode", "gemini", "codex", "aider", "zeroclaw"];
+  const priority = ["claude-cli", "opencode", "gemini", "codex", "aider", "ollama", "zeroclaw"];
   for (const b of priority) {
     if (AGENT_CAPABILITIES.includes(b)) return b;
   }

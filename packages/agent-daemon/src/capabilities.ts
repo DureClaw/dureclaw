@@ -69,6 +69,30 @@ function hasRpiSpeakerphone(): boolean {
   return usbKeywords.some(k => usb.includes(k));
 }
 
+/**
+ * Detect the preferred AI model for this agent.
+ *
+ * Priority:
+ *   1. PREFERRED_MODEL env override (explicit)
+ *   2. gemini CLI or GEMINI_API_KEY → "gemini-2.5-pro"
+ *   3. ollama local → "ollama:${OLLAMA_MODEL}"
+ *   4. claude-cli → "claude-sonnet-4-6"
+ *   5. opencode → "opencode/auto"
+ *   6. fallback → "claude-haiku-4-5"
+ *
+ * This field is broadcast in presence metadata so the orchestrator can
+ * route tasks to the most capable available model — matching the
+ * Anthropic Managed Agents "agent registry" pattern.
+ */
+export function detectPreferredModel(): string {
+  if (process.env.PREFERRED_MODEL) return process.env.PREFERRED_MODEL;
+  if (process.env.GEMINI_API_KEY || has("gemini")) return "gemini-2.5-pro";
+  if (has("ollama")) return `ollama:${process.env.OLLAMA_MODEL ?? "gemma4"}`;
+  if (has("claude")) return "claude-sonnet-4-6";
+  if (has("opencode")) return "opencode/auto";
+  return "claude-haiku-4-5";
+}
+
 export function detectCapabilities(): string[] {
   const caps: string[] = [];
 
@@ -88,6 +112,7 @@ export function detectCapabilities(): string[] {
   if (has("aider"))          caps.push("aider");         // Aider
   if (has("continue"))       caps.push("continue-cli");  // Continue CLI
   if (has("copilot"))        caps.push("copilot-cli");   // GitHub Copilot CLI
+  if (has("ollama"))         caps.push("ollama");         // Ollama local LLM
 
   // Runtimes
   if (has("python3") || has("python")) caps.push("python");

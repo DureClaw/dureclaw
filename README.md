@@ -360,6 +360,51 @@ macmini-intel      → Word/Keynote 보고서 자동 생성
 
 ---
 
+## Anthropic Managed Agents 호환성
+
+DureClaw는 [Anthropic Managed Agents](https://docs.anthropic.com/en/docs/agents) 의 **분산 물리 머신 구현체**로 포지셔닝됩니다.
+
+| Anthropic Managed Agents | DureClaw 대응 |
+|--------------------------|--------------|
+| Agent (model + tools + MCP) | `agent-daemon` process (`capabilities[]` + `preferred_model`) |
+| Environment (container) | 각 물리 머신 (macOS / Linux / Windows / RPi) |
+| Session (실행 인스턴스) | Work Key `LN-YYYYMMDD-XXX` |
+| Events (user → agent) | `task.assign` / `task.progress` / `task.result` |
+| SSE 스트리밍 | Phoenix Channel broadcast (WebSocket) |
+| 서버사이드 이벤트 히스토리 | DETS (`harness_tasks.dets`) |
+| Multi-agent (research preview) | Fan-out/Fan-in 패턴 (현재 구현됨) |
+
+### 멀티 모델 라우팅 (`preferred_model`)
+
+각 에이전트는 자신이 선호하는 AI 모델을 presence 메타데이터에 선언합니다:
+
+```json
+{
+  "role": "builder",
+  "capabilities": ["gemini", "docker", "nvidia-gpu"],
+  "preferred_model": "gemini-2.5-pro"
+}
+```
+
+오케스트레이터는 `task.assign` 시 `requires` 필드로 모델을 지정할 수 있습니다:
+
+```json
+{ "instructions": "...", "requires": ["gemini"], "role": "builder" }
+```
+
+**모델 우선순위 자동 감지** (`PREFERRED_MODEL` 환경변수로 override 가능):
+
+| 감지 조건 | preferred_model |
+|-----------|----------------|
+| `PREFERRED_MODEL` env | 명시값 |
+| `GEMINI_API_KEY` 또는 `gemini` CLI | `gemini-2.5-pro` |
+| `ollama` CLI | `ollama:${OLLAMA_MODEL}` |
+| `claude` CLI | `claude-sonnet-4-6` |
+| `opencode` CLI | `opencode/auto` |
+| 기본값 | `claude-haiku-4-5` |
+
+---
+
 ## License
 
 MIT © 2025-2026 [Seungwoo Hong (홍승우)](https://github.com/hongsw)

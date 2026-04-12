@@ -48,7 +48,10 @@ defmodule HarnessServer.WorkChannel do
       |> assign(:machine, machine)
 
     capabilities = Map.get(payload, "capabilities", [])
-    socket = assign(socket, :capabilities, capabilities)
+    preferred_model = Map.get(payload, "preferred_model", "claude-haiku-4-5")
+
+    socket =
+      socket |> assign(:capabilities, capabilities) |> assign(:preferred_model, preferred_model)
 
     {:ok, _} =
       Presence.track(socket, agent_name, %{
@@ -56,6 +59,7 @@ defmodule HarnessServer.WorkChannel do
         machine: machine,
         work_key: work_key,
         capabilities: capabilities,
+        preferred_model: preferred_model,
         online_since: DateTime.utc_now() |> DateTime.to_iso8601()
       })
 
@@ -92,31 +96,91 @@ defmodule HarnessServer.WorkChannel do
   # Offline delivery: use "mailbox.post" explicitly.
 
   @impl true
-  def handle_in(event, payload, socket)
-      when event in ["task.result", "task.blocked"] do
+  def handle_in("task.blocked", payload, socket) do
+    task_id = Map.get(payload, "task_id")
+    retry_count = Map.get(payload, "retry_count", 0)
+    requires = Map.get(payload, "requires", [])
+
     msg =
       payload
       |> Map.put("from", socket.assigns.agent_name)
-      |> Map.put("event", event)
+      |> Map.put("event", "task.blocked")
+      |> Map.put("ts", DateTime.utc_now() |> DateTime.to_iso8601())
+
+    if task_id do
+      StateStore.store_task_result(task_id, msg)
+    end
+
+    if retry_count < 3 do
+      presences = Presence.list(socket)
+      blocked_agent = socket.assigns.agent_name
+
+      case find_capable_agent(presences, requires, blocked_agent) do
+        nil ->
+          broadcast!(socket, "task.blocked", msg)
+
+        next_agent ->
+          reassigned =
+            payload
+            |> Map.put("to", next_agent)
+            |> Map.put("retry_count", retry_count + 1)
+            |> Map.put("ts", DateTime.utc_now() |> DateTime.to_iso8601())
+            |> Map.delete("from")
+
+          broadcast!(socket, "task.assign", reassigned)
+          broadcast!(socket, "task.blocked", Map.put(msg, "reassigned_to", next_agent))
+      end
+    else
+      broadcast!(
+        socket,
+        "task.failed",
+        Map.merge(msg, %{"reason" => "max_retries", "event" => "task.failed"})
+      )
+
+      broadcast!(socket, "task.blocked", msg)
+    end
+
+    {:reply, {:ok, %{broadcast: true, retry_count: retry_count}}, socket}
+  end
+
+  @impl true
+  def handle_in("task.result", payload, socket) do
+    msg =
+      payload
+      |> Map.put("from", socket.assigns.agent_name)
+      |> Map.put("event", "task.result")
       |> Map.put("ts", DateTime.utc_now() |> DateTime.to_iso8601())
 
     if task_id = Map.get(payload, "task_id") do
       StateStore.store_task_result(task_id, msg)
-      maybe_dispatch_unblocked(event, task_id, socket.assigns.work_key)
+      maybe_dispatch_unblocked(task_id, socket.assigns.work_key)
     end
 
-    broadcast!(socket, event, msg)
+    broadcast!(socket, "task.result", msg)
     {:reply, {:ok, %{broadcast: true}}, socket}
   end
 
-  defp maybe_dispatch_unblocked("task.result", task_id, default_wk) do
+  defp maybe_dispatch_unblocked(task_id, default_wk) do
     for task_payload <- StateStore.complete_dependency(task_id) do
       wk = Map.get(task_payload, "work_key", default_wk)
       HarnessServer.Endpoint.broadcast("work:#{wk}", "task.assign", task_payload)
     end
   end
 
-  defp maybe_dispatch_unblocked(_event, _task_id, _wk), do: :ok
+  # Find a capable agent from presence, excluding the blocked agent.
+  # Returns agent name string or nil.
+  defp find_capable_agent(presences, requires, exclude_agent) do
+    presences
+    |> Enum.reject(fn {name, _} -> name == exclude_agent end)
+    |> Enum.find(fn {_name, %{metas: [meta | _]}} ->
+      caps = Map.get(meta, :capabilities, [])
+      Enum.all?(requires, &(&1 in caps))
+    end)
+    |> case do
+      {name, _} -> name
+      nil -> nil
+    end
+  end
 
   @impl true
   def handle_in(event, payload, socket)
