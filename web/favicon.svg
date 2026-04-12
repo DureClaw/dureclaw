@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Dark navy background -->
+  <rect width="32" height="32" rx="6" fill="#0d1b2a"/>
+  <!-- Orange base circle -->
+  <circle cx="16" cy="22" r="4" fill="#f5a623"/>
+  <!-- Claw tines (3 curved lines in cyan) -->
+  <!-- Left tine -->
+  <path d="M10 20 Q8 14 11 9" stroke="#00d2ff" stroke-width="2" stroke-linecap="round" fill="none"/>
+  <!-- Center tine -->
+  <path d="M16 20 Q16 13 16 8" stroke="#00d2ff" stroke-width="2" stroke-linecap="round" fill="none"/>
+  <!-- Right tine -->
+  <path d="M22 20 Q24 14 21 9" stroke="#00d2ff" stroke-width="2" stroke-linecap="round" fill="none"/>
+  <!-- Tip nodes on outer tines -->
+  <circle cx="11" cy="9" r="1.8" fill="#0284c7"/>
+  <circle cx="21" cy="9" r="1.8" fill="#0284c7"/>
+  <circle cx="16" cy="8" r="1.8" fill="#00d2ff"/>
+</svg>
