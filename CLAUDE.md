@@ -47,6 +47,6 @@ orchestrator
 
 - Phoenix 서버 코드: `packages/phoenix-server/` (Elixir)
 - 에이전트 데몬: `packages/agent-daemon/` (TypeScript/Bun)
-- 스킬/에이전트 정의: `.claude/skills/`, `.claude/agents/`
+- 스킬/에이전트 정의: `skills/`, `agents/` (Claude Code 플러그인 로더는 톱레벨에서 검색)
 - Credo strict 통과 필수: `mix credo --strict`
 - 두 리모트에 항상 push: `origin` (baryonlabs) + `dureclaw`
