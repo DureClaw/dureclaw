@@ -20,7 +20,7 @@ Claude Code를 오케스트레이터로, 각 머신의 AI 에이전트들을 워
 
 ## 설치
 
-> 한 줄 요약: `(1) 마켓플레이스 추가 → (2) 플러그인 설치 → (3) /reload-plugins → (4) /team-status` 까지만 해도 Claude Code 안에서 즉시 사용 가능합니다.
+> 한 줄 요약: `(1) 마켓플레이스 추가 → (2) 플러그인 설치 → (3) /reload-plugins → (4) /dureteam-status` 까지만 해도 Claude Code 안에서 즉시 사용 가능합니다.
 
 ### Step 1 — 마켓플레이스 추가
 
@@ -74,7 +74,7 @@ Reloaded: N plugins · M skills · K agents · ...
 리로드가 끝나면 다음 셋 중 무엇이든 입력해 보세요. 모두 동일한 진입점입니다.
 
 ```
-/team-status                         ← 슬래시 커맨드
+/dureteam-status                         ← 슬래시 커맨드
 "두레팀 상태 알려줘"                   ← 한국어 자연어 (그냥 "팀"이 아닌 "두레팀")
 "두레팀 알려줘" / "show DureClaw team"  ← 영문/혼합도 OK
 ```
@@ -186,10 +186,9 @@ dureclaw/
 │   ├── plugin.json
 │   └── marketplace.json
 │
-├── .claude/
-│   ├── commands/               슬래시 커맨드 (/setup-team, /team-status)
-│   ├── agents/                 에이전트 정의 (orchestrator 등)
-│   └── skills/dureclaw/        DureClaw 오케스트레이션 스킬
+├── commands/                   슬래시 커맨드 (/setup-team, /dureteam-status)
+├── agents/                     에이전트 정의 (orchestrator 등)
+├── skills/                     DureClaw 오케스트레이션 스킬 (dureclaw, dureclaw-run)
 │
 ├── packages/
 │   ├── phoenix-server/         Elixir/Phoenix 메시지 버스 (핵심)
@@ -212,7 +211,7 @@ dureclaw/
 
 ```
 # 팀 상태 확인
-/team-status
+/dureteam-status
 
 # 멀티머신 팀 확장 (Phoenix 서버 + 워커 에이전트 자동 설정)
 /setup-team

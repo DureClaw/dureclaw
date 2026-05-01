@@ -20,7 +20,7 @@ Uses Claude Code as the orchestrator and connects AI agents on each machine as w
 
 ## Installation
 
-> TL;DR: `(1) add marketplace → (2) install plugin → (3) /reload-plugins → (4) /team-status`. That's it — you're ready to use DureClaw inside Claude Code.
+> TL;DR: `(1) add marketplace → (2) install plugin → (3) /reload-plugins → (4) /dureteam-status`. That's it — you're ready to use DureClaw inside Claude Code.
 
 ### Step 1 — Add Marketplace
 
@@ -74,7 +74,7 @@ Reloaded: N plugins · M skills · K agents · ...
 After reload, any of the following works as the entry point:
 
 ```
-/team-status                            ← slash command
+/dureteam-status                            ← slash command
 "show team status"                      ← English natural language
 "how many agents are online?"           ← also works
 ```
@@ -186,10 +186,9 @@ dureclaw/
 │   ├── plugin.json
 │   └── marketplace.json
 │
-├── .claude/
-│   ├── commands/               Slash commands (/setup-team, /team-status)
-│   ├── agents/                 Agent definitions (orchestrator, etc.)
-│   └── skills/dureclaw/        DureClaw orchestration skills
+├── commands/                   Slash commands (/setup-team, /dureteam-status)
+├── agents/                     Agent definitions (orchestrator, etc.)
+├── skills/                     DureClaw orchestration skills (dureclaw, dureclaw-run)
 │
 ├── packages/
 │   ├── phoenix-server/         Elixir/Phoenix message bus (core)
@@ -212,7 +211,7 @@ After installing the plugin, use directly inside Claude Code:
 
 ```
 # Check team status
-/team-status
+/dureteam-status
 
 # Expand to multi-machine team (auto setup Phoenix server + worker agents)
 /setup-team
