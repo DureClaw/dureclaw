@@ -32,7 +32,7 @@ Type the following directly into the Claude Code prompt.
 
 Expected output:
 ```
-Successfully added marketplace: dureclaw-marketplace
+Successfully added marketplace: dureclaw
 ```
 
 ---

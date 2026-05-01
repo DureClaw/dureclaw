@@ -32,7 +32,7 @@ Claude Code 프롬프트에 그대로 입력하세요.
 
 기대 출력:
 ```
-Successfully added marketplace: dureclaw-marketplace
+Successfully added marketplace: dureclaw
 ```
 
 ---
