@@ -168,9 +168,13 @@ _docker_run() {
   # 기존 컨테이너 정리
   docker rm -f "$CONTAINER_NAME" 2>/dev/null || true
 
-  # 이미지 pull (없으면)
-  docker image inspect "$DOCKER_IMAGE" &>/dev/null || \
-    docker pull "$DOCKER_IMAGE"
+  # 이미지 pull (없으면). 실패 시 호출자가 폴백할 수 있도록 1을 반환.
+  if ! docker image inspect "$DOCKER_IMAGE" &>/dev/null; then
+    if ! docker pull "$DOCKER_IMAGE" 2>&1; then
+      echo "⚠ Docker 이미지($DOCKER_IMAGE) 가져오기 실패 — 다음 단계로 폴백합니다"
+      return 1
+    fi
+  fi
 
   _print_connect_info
 
@@ -190,19 +194,45 @@ _docker_run() {
 _source_build() {
   command -v elixir &>/dev/null || {
     echo ""
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo " Elixir 없음 → Docker로 실행하세요 (권장):"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo " 이 플랫폼에 사용할 수 있는 사전빌드 바이너리·Docker 이미지가 없고,"
+    echo " Elixir도 설치되어 있지 않습니다."
     echo ""
-    echo "   curl -fsSL $GITHUB_RAW/scripts/setup-server.sh | USE_DOCKER=1 bash"
+    echo " 해결 방법 (택 1):"
     echo ""
-    echo " 또는 Docker 설치: https://docs.docker.com/get-docker/"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo " 1) GitHub Releases에서 본인 OS/arch tarball 직접 다운로드:"
+    echo "      https://github.com/DureClaw/dureclaw/releases"
+    echo ""
+    echo " 2) Docker 설치 후 다시 실행:"
+    echo "      https://docs.docker.com/get-docker/"
+    echo "      curl -fsSL $GITHUB_RAW/scripts/setup-server.sh | USE_DOCKER=1 bash"
+    echo ""
+    echo " 3) Elixir 설치 후 소스 빌드:"
+    echo "      https://elixir-lang.org/install.html"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     exit 1
   }
   local SCRIPT_DIR
   SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  local SERVER_DIR
-  SERVER_DIR="$(cd "$SCRIPT_DIR/../packages/phoenix-server" && pwd)"
+  local SERVER_DIR=""
+  if [[ -d "$SCRIPT_DIR/../packages/phoenix-server" ]]; then
+    SERVER_DIR="$(cd "$SCRIPT_DIR/../packages/phoenix-server" && pwd)"
+  else
+    # curl-bash 일회성 실행 — 레포를 임시로 클론
+    command -v git &>/dev/null || {
+      echo "ERROR: 소스 빌드를 위해 git이 필요합니다. brew install git / apt install git"
+      exit 1
+    }
+    local TMP_REPO="$INSTALL_DIR/src"
+    echo "→ 소스 클론 중... ($TMP_REPO)"
+    if [[ -d "$TMP_REPO/.git" ]]; then
+      (cd "$TMP_REPO" && git pull --ff-only --quiet) || true
+    else
+      rm -rf "$TMP_REPO"
+      git clone --depth 1 --quiet https://github.com/DureClaw/dureclaw "$TMP_REPO"
+    fi
+    SERVER_DIR="$TMP_REPO/packages/phoenix-server"
+  fi
   cd "$SERVER_DIR"
   mix local.hex --force --quiet
   mix local.rebar --force --quiet
@@ -257,7 +287,10 @@ if [[ -n "$AVAILABLE_URL" ]]; then
 
 elif command -v docker &>/dev/null && [[ "$USE_DOCKER" != "0" ]]; then
   echo "⚠ 사전 빌드 없음 → Docker로 시작합니다... (Elixir 불필요)"
-  _docker_run
+  if ! _docker_run; then
+    echo "→ Docker 폴백 → 소스 빌드 시도..."
+    _source_build
+  fi
 
 # ─── 4. Elixir 소스빌드 (마지막 수단) ──────────────────────────────────────
 
