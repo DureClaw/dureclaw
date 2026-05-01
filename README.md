@@ -20,63 +20,141 @@ Claude Code를 오케스트레이터로, 각 머신의 AI 에이전트들을 워
 
 ## 설치
 
-### Step 1 — Claude Code에 플러그인 추가 (필수)
+> 한 줄 요약: `(1) 마켓플레이스 추가 → (2) 플러그인 설치 → (3) /reload-plugins → (4) /team-status` 까지만 해도 Claude Code 안에서 즉시 사용 가능합니다.
 
-```shell
+### Step 1 — 마켓플레이스 추가
+
+Claude Code 프롬프트에 그대로 입력하세요.
+
+```
 /plugin marketplace add DureClaw/dureclaw
 ```
 
-```shell
-/plugin install dureclaw@dureclaw
+기대 출력:
 ```
-
-> 수동 등록: `oah setup-mcp` 또는 `curl -fsSL .../scripts/setup-mcp.sh | bash`
-
-**여기까지만 해도 바로 사용 가능합니다.** Claude Code가 오케스트레이터 역할을 하며, 로컬에서 태스크를 직접 실행할 수 있습니다.
+Successfully added marketplace: dureclaw-marketplace
+```
 
 ---
 
-### Step 2+3 — 멀티머신 팀 확장 (선택)
+### Step 2 — 플러그인 설치
 
-다른 머신에 작업을 분산시키려면 **Claude Code CLI 안에서** 명령어 또는 자연어로 실행합니다:
+```
+/plugin install dureclaw@dureclaw
+```
+
+기대 출력:
+```
+✓ Installed dureclaw. Run /reload-plugins to apply.
+```
+
+> 수동 MCP 등록만 필요한 경우: `oah setup-mcp` 또는 `curl -fsSL https://dureclaw.baryon.ai/scripts/setup-mcp.sh | bash`
+
+---
+
+### Step 3 — 플러그인 리로드 (필수)
+
+설치 후 **반드시 한 번** 실행해야 슬래시 커맨드·스킬·에이전트가 활성화됩니다.
+
+```
+/reload-plugins
+```
+
+기대 출력 (예시):
+```
+Reloaded: N plugins · M skills · K agents · ...
+```
+
+> 로드 에러가 1건 정도 표시될 수 있습니다. `/doctor`로 상세 내용을 확인하되, DureClaw 자체 사용에는 보통 영향이 없습니다.
+
+---
+
+### Step 4 — 첫 실행 명령 (여기서부터 바로 사용)
+
+리로드가 끝나면 다음 셋 중 무엇이든 입력해 보세요. 모두 동일한 진입점입니다.
+
+```
+/team-status                         ← 슬래시 커맨드
+"팀 상태 알려줘"                      ← 한국어 자연어
+"두레워커 팀 알려줘" / "show team"     ← 영문/혼합도 OK
+```
+
+처음에는 “팀 없음 / Phoenix 서버 미연결” 상태가 정상입니다. 로컬 한 대로 끝낼 거라면 여기까지로 충분합니다 — Claude Code 자체가 오케스트레이터이고, 곧바로 태스크를 처리합니다.
+
+멀티머신으로 확장할 거면 Step 5로 진행하세요.
+
+---
+
+### Step 5 — Phoenix 서버 실행 (멀티머신 확장 시에만)
+
+다른 머신과 협업하려면 메시지 버스 역할을 할 Phoenix 서버를 한 곳(보통 메인 데스크톱/서버)에 띄워야 합니다.
+
+#### 5-A. 자동 실행 (가장 쉬움)
+
+Claude Code 안에서:
 
 ```
 /setup-team
 ```
 
-또는 **자연어로도 동일하게 실행** 가능합니다:
+또는 자연어:
 
 ```
 "팀 설정해줘"   "워커 추가해줘"   "setup team"
 ```
 
-자동으로 실행되는 순서:
-1. Phoenix 서버 상태 확인 → 없으면 설치 (**Elixir 불필요 — Docker 또는 사전빌드 바이너리**)
+자동으로 진행되는 순서:
+1. Phoenix 서버 상태 확인 → 없으면 설치 (**Elixir 불필요 — Docker 또는 사전빌드 바이너리 자동 선택**)
 2. 서버 IP 감지 (Tailscale 우선)
 3. 현재 온라인 에이전트 목록 출력
-4. 원격 머신용 워커 설치 명령 출력 (macOS/Linux/Windows)
+4. 원격 머신용 워커 설치 명령 자동 생성 (macOS / Linux / Windows)
 
+#### 5-B. 수동으로 서버만 띄우기
+
+```bash
+bash <(curl -fsSL https://dureclaw.baryon.ai/server)
 ```
-/team-status   ← 팀 현황 확인 (또는 "팀 상태 알려줘", "온라인 에이전트 몇 명이야")
+
+옵션:
+
+```bash
+# 포트 변경
+PORT=8080 bash <(curl -fsSL https://dureclaw.baryon.ai/server)
+
+# Docker 강제 (Elixir 없는 머신)
+USE_DOCKER=1 bash <(curl -fsSL https://dureclaw.baryon.ai/server)
+
+# docker compose
+docker compose up
 ```
 
-> Phoenix 서버는 **Docker만 있으면 Elixir 없이 바로 실행**됩니다.
-> `USE_DOCKER=1 bash <(curl -fsSL .../setup-server.sh)` 또는 `docker compose up`
+성공 시 출력:
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ DureClaw Phoenix Server
+ Port    : 4000
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ Tailscale 연결됨: 100.x.x.x
+✅ 설치 완료
+```
 
-> 멀티머신 분산 처리가 필요할 때만 실행하세요.
+> 서버 프로세스는 포그라운드(blocking) 로 실행됩니다. 백그라운드로 띄우려면 `nohup … &` 또는 `tmux/screen`을 사용하세요.
 
 ---
 
-### Step 4 — 워커 에이전트 설치 (각 원격 머신)
+### Step 6 — 워커 에이전트 설치 (각 원격 머신)
 
-**Claude Code에게 말하면 직접 안내해 줍니다.**
+Phoenix 서버가 떠 있으면, 다른 머신에서 워커를 연결합니다.
+
+**가장 쉬운 방법** — Claude Code에 자연어로:
 
 ```
 "워커 추가해줘"   "tester 머신 연결하고 싶어"   "팀에 Mac Mini 추가해줘"
 ```
 
-Claude가 서버 IP를 자동으로 감지해 **바로 복사·실행 가능한 명령어**를 머신별로 알려줍니다.
-Tailscale이 없어도 설치까지 단계별로 안내합니다.
+Claude가 서버 IP를 감지해 **바로 복사·실행 가능한 한 줄 명령**을 OS·아키텍처별로 알려줍니다. Tailscale이 없어도 설치까지 단계별로 안내합니다.
+
+수동 설치 명령은 [분산 서브 에이전트 추가 — OS·아키텍처별 1줄 설치](#분산-서브-에이전트-추가--os아키텍처별-1줄-설치) 섹션 참고.
 
 ---
 

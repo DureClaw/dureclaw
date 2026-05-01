@@ -20,63 +20,141 @@
 
 ## 安装
 
-### 第一步 — 添加 Claude Code 插件（必须）
+> 一句话总结：`(1) 添加市场 → (2) 安装插件 → (3) /reload-plugins → (4) /team-status`，到这一步即可在 Claude Code 中立即使用。
 
-```shell
+### 第一步 — 添加市场
+
+直接在 Claude Code 提示符中输入：
+
+```
 /plugin marketplace add DureClaw/dureclaw
 ```
 
-```shell
-/plugin install dureclaw@dureclaw
+预期输出：
 ```
-
-> 手动注册：`oah setup-mcp` 或 `curl -fsSL .../scripts/setup-mcp.sh | bash`
-
-**仅此步骤即可立即使用。** Claude Code 作为编排器，可以在本地直接执行任务。
+Successfully added marketplace: dureclaw-marketplace
+```
 
 ---
 
-### 第二步+第三步 — 扩展为多机器团队（可选）
+### 第二步 — 安装插件
 
-要将任务分发到其他机器，请在 **Claude Code CLI 中**通过命令或自然语言执行：
+```
+/plugin install dureclaw@dureclaw
+```
+
+预期输出：
+```
+✓ Installed dureclaw. Run /reload-plugins to apply.
+```
+
+> 仅需手动注册 MCP 时：`oah setup-mcp` 或 `curl -fsSL https://dureclaw.baryon.ai/scripts/setup-mcp.sh | bash`
+
+---
+
+### 第三步 — 重新加载插件（必须）
+
+安装后 **必须执行一次**，斜杠命令、技能、智能体才会生效。
+
+```
+/reload-plugins
+```
+
+预期输出（示例）：
+```
+Reloaded: N plugins · M skills · K agents · ...
+```
+
+> 可能会显示 1 条加载错误。可用 `/doctor` 查看详情，但 DureClaw 本身通常不受影响。
+
+---
+
+### 第四步 — 首次运行命令（从这里开始即可使用）
+
+重新加载完成后，以下任意一种输入都是相同的入口：
+
+```
+/team-status                            ← 斜杠命令
+"显示团队状态" / "团队怎么样"             ← 中文自然语言
+"show team" / "现在有几个智能体在线？"    ← 英文/混合也可以
+```
+
+初次会显示 “暂无团队 / Phoenix 未连接”，这是正常的。如果只用本机一台，到此即可 — Claude Code 自身就是编排器，可立即执行任务。
+
+要扩展为多机器，请继续第五步。
+
+---
+
+### 第五步 — 启动 Phoenix 服务器（仅多机器扩展时）
+
+要跨机器协作，需要在一台机器（通常是主桌面 / 服务器）上运行作为消息总线的 Phoenix 服务器。
+
+#### 5-A. 自动启动（最简单）
+
+在 Claude Code 中：
 
 ```
 /setup-team
 ```
 
-或使用**自然语言**——效果相同：
+或自然语言：
 
 ```
 "帮我配置团队"   "添加工作节点"   "setup team"
 ```
 
 自动执行顺序：
-1. 检查 Phoenix 服务器状态 → 未运行则安装（**无需 Elixir — 使用 Docker 或预构建二进制**）
+1. 检查 Phoenix 服务器状态 → 未运行则自动安装（**无需 Elixir — 自动选择 Docker 或预构建二进制**）
 2. 自动检测服务器 IP（优先使用 Tailscale）
 3. 列出当前在线智能体
-4. 输出各平台的工作节点安装命令（macOS/Linux/Windows）
+4. 自动生成各平台工作节点安装命令（macOS / Linux / Windows）
 
+#### 5-B. 仅手动启动服务器
+
+```bash
+bash <(curl -fsSL https://dureclaw.baryon.ai/server)
 ```
-/team-status   ← 查看团队状态（或"现在有几个智能体在线？"）
+
+选项：
+
+```bash
+# 自定义端口
+PORT=8080 bash <(curl -fsSL https://dureclaw.baryon.ai/server)
+
+# 强制使用 Docker（无 Elixir 的机器）
+USE_DOCKER=1 bash <(curl -fsSL https://dureclaw.baryon.ai/server)
+
+# docker compose
+docker compose up
 ```
 
-> Phoenix 服务器**只需 Docker，无需 Elixir**即可运行。
-> `USE_DOCKER=1 bash <(curl -fsSL .../setup-server.sh)` 或 `docker compose up`
+成功输出：
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ DureClaw Phoenix Server
+ Port    : 4000
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ Tailscale 已连接: 100.x.x.x
+✅ 安装完成
+```
 
-> 仅在需要多机器分布式处理时运行。
+> 服务器以前台（阻塞）方式运行。如需后台运行，请使用 `nohup … &` 或 `tmux/screen`。
 
 ---
 
-### 第四步 — 安装工作节点（各远程机器）
+### 第六步 — 安装工作节点（各远程机器）
 
-**直接告诉 Claude Code，它会一步步引导你。**
+Phoenix 服务器启动后，从其他机器连接工作节点。
+
+**最简单方式** — 直接用自然语言告诉 Claude Code：
 
 ```
 "帮我添加工作节点"   "想连接一台 tester 机器"   "把 Mac Mini 加入团队"
 ```
 
-Claude 自动检测服务器 IP，并为每台机器提供**可直接复制执行的命令**。
-即使没有安装 Tailscale，也会逐步引导完成安装。
+Claude 会自动检测服务器 IP，并按 OS / 架构提供 **可直接复制执行的一行命令**。即使没有 Tailscale，也会逐步引导完成安装。
+
+手动一行命令请参阅 [添加分布式子智能体 — 按 OS / 架构的一行安装](#添加分布式子智能体--按-os--架构的一行安装) 章节。
 
 ---
 

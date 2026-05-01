@@ -275,4 +275,4 @@ exec env \
   PORT="$PORT" \
   HOST="$HOST" \
   OAH_DATA_DIR="$DATA_DIR" \
-  "$EXE" foreground
+  "$EXE" start
