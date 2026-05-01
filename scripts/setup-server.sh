@@ -43,6 +43,8 @@ EXE="$INSTALL_DIR/bin/harness_server"
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo " DureClaw Phoenix Server"
+echo " Platform: ${OS}-${ARCH}    (uname: $(uname -sm))"
+echo " Tarball : $TARBALL"
 echo " Port    : $PORT"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
@@ -286,7 +288,8 @@ if [[ -n "$AVAILABLE_URL" ]]; then
 # ─── 3. Docker fallback (Elixir 없을 때) ────────────────────────────────────
 
 elif command -v docker &>/dev/null && [[ "$USE_DOCKER" != "0" ]]; then
-  echo "⚠ 사전 빌드 없음 → Docker로 시작합니다... (Elixir 불필요)"
+  echo "⚠ ${OS}-${ARCH} 사전 빌드 없음 → Docker로 시작합니다... (Elixir 불필요)"
+  echo "  (해당 플랫폼 tarball이 GitHub Releases에 없습니다: $TARBALL)"
   if ! _docker_run; then
     echo "→ Docker 폴백 → 소스 빌드 시도..."
     _source_build
@@ -295,7 +298,8 @@ elif command -v docker &>/dev/null && [[ "$USE_DOCKER" != "0" ]]; then
 # ─── 4. Elixir 소스빌드 (마지막 수단) ──────────────────────────────────────
 
 else
-  echo "⚠ 사전 빌드 없음 — 소스 빌드 시도..."
+  echo "⚠ ${OS}-${ARCH} 사전 빌드 없음 — 소스 빌드 시도..."
+  echo "  (해당 플랫폼 tarball이 GitHub Releases에 없습니다: $TARBALL)"
   _source_build
 fi
 

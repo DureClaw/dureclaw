@@ -23,10 +23,12 @@ jobs:
           - os: darwin
             arch: arm64
             runner: macos-14
-          # macOS x86_64 (Intel)
-          - os: darwin
-            arch: x86_64
-            runner: macos-13
+          # macOS x86_64 (Intel) — disabled: macos-13 runner allocation
+          # is unreliable and blocks the whole release. Intel Mac users can
+          # use the source-build fallback in setup-server.sh.
+          # - os: darwin
+          #   arch: x86_64
+          #   runner: macos-13
           # Linux x86_64
           - os: linux
             arch: x86_64
@@ -112,9 +114,10 @@ jobs:
             | 파일 | 플랫폼 |
             |------|--------|
             | `oah-server-darwin-arm64.tar.gz` | macOS Apple Silicon (M1/M2/M3/M4) |
-            | `oah-server-darwin-x86_64.tar.gz` | macOS Intel |
             | `oah-server-linux-x86_64.tar.gz` | Linux x86_64 |
             | `oah-server-linux-arm64.tar.gz` | Linux arm64 (Raspberry Pi 4/5 64bit) |
+
+            > Intel Mac은 사전빌드 없음 — `bash <(curl ...)` 한 줄 실행 시 자동으로 소스 빌드로 폴백됩니다.
           files: dist/*.tar.gz
           generate_release_notes: true
           fail_on_unmatched_files: false
