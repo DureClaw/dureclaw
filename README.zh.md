@@ -32,7 +32,7 @@
 
 预期输出：
 ```
-Successfully added marketplace: dureclaw-marketplace
+Successfully added marketplace: dureclaw
 ```
 
 ---

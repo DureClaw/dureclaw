@@ -32,7 +32,7 @@ Claude Code のプロンプトにそのまま入力してください。
 
 期待される出力:
 ```
-Successfully added marketplace: dureclaw-marketplace
+Successfully added marketplace: dureclaw
 ```
 
 ---
