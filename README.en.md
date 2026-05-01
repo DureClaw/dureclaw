@@ -20,63 +20,141 @@ Uses Claude Code as the orchestrator and connects AI agents on each machine as w
 
 ## Installation
 
-### Step 1 — Add Plugin to Claude Code (Required)
+> TL;DR: `(1) add marketplace → (2) install plugin → (3) /reload-plugins → (4) /team-status`. That's it — you're ready to use DureClaw inside Claude Code.
 
-```shell
+### Step 1 — Add Marketplace
+
+Type the following directly into the Claude Code prompt.
+
+```
 /plugin marketplace add DureClaw/dureclaw
 ```
 
-```shell
-/plugin install dureclaw@dureclaw
+Expected output:
 ```
-
-> Manual registration: `oah setup-mcp` or `curl -fsSL .../scripts/setup-mcp.sh | bash`
-
-**This alone is enough to get started.** Claude Code acts as the orchestrator and can execute tasks locally right away.
+Successfully added marketplace: dureclaw-marketplace
+```
 
 ---
 
-### Step 2+3 — Expand to Multi-Machine Team (Optional)
+### Step 2 — Install Plugin
 
-To distribute work across other machines, run the following inside **Claude Code CLI** — either as a command or in natural language:
+```
+/plugin install dureclaw@dureclaw
+```
+
+Expected output:
+```
+✓ Installed dureclaw. Run /reload-plugins to apply.
+```
+
+> If you only need MCP registration: `oah setup-mcp` or `curl -fsSL https://dureclaw.baryon.ai/scripts/setup-mcp.sh | bash`
+
+---
+
+### Step 3 — Reload Plugins (Required)
+
+Run this **once** after install to activate slash commands, skills, and agents.
+
+```
+/reload-plugins
+```
+
+Expected output (example):
+```
+Reloaded: N plugins · M skills · K agents · ...
+```
+
+> A single load error may appear. Run `/doctor` for details — DureClaw itself usually works fine regardless.
+
+---
+
+### Step 4 — First Run (You Can Use It Now)
+
+After reload, any of the following works as the entry point:
+
+```
+/team-status                            ← slash command
+"show team status"                      ← English natural language
+"how many agents are online?"           ← also works
+```
+
+It's normal to see "no team / Phoenix not connected" at first. If you only need a single machine, you're done — Claude Code is itself the orchestrator and can execute tasks immediately.
+
+To go multi-machine, continue to Step 5.
+
+---
+
+### Step 5 — Run Phoenix Server (Multi-Machine Only)
+
+To collaborate across machines, run a Phoenix server (the message bus) on one host (typically your main desktop/server).
+
+#### 5-A. Automatic (Easiest)
+
+Inside Claude Code:
 
 ```
 /setup-team
 ```
 
-Or use **natural language** — works the same way:
+Or natural language:
 
 ```
 "set up the team"   "add a worker"   "setup team"
 ```
 
 What happens automatically:
-1. Check Phoenix server status → install if not running (**No Elixir required — uses Docker or pre-built binary**)
+1. Check Phoenix server status → install if not running (**No Elixir required — Docker or pre-built binary auto-selected**)
 2. Auto-detect server IP (Tailscale preferred)
 3. List currently online agents
-4. Output ready-to-run worker install commands for each platform (macOS/Linux/Windows)
+4. Output ready-to-run worker install commands per platform (macOS / Linux / Windows)
 
+#### 5-B. Run the Server Manually
+
+```bash
+bash <(curl -fsSL https://dureclaw.baryon.ai/server)
 ```
-/team-status   ← Check team status (or "how many agents are online?", "show team status")
+
+Options:
+
+```bash
+# Custom port
+PORT=8080 bash <(curl -fsSL https://dureclaw.baryon.ai/server)
+
+# Force Docker (machines without Elixir)
+USE_DOCKER=1 bash <(curl -fsSL https://dureclaw.baryon.ai/server)
+
+# docker compose
+docker compose up
 ```
 
-> Phoenix server runs **without Elixir — just Docker** is enough.
-> `USE_DOCKER=1 bash <(curl -fsSL .../setup-server.sh)` or `docker compose up`
+Successful output:
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ DureClaw Phoenix Server
+ Port    : 4000
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ Tailscale connected: 100.x.x.x
+✅ Install complete
+```
 
-> Only run this when you need multi-machine distributed processing.
+> The server runs in the foreground (blocking). To run in the background, use `nohup … &` or `tmux/screen`.
 
 ---
 
-### Step 4 — Install Worker Agents (Each Remote Machine)
+### Step 6 — Install Worker Agents (Each Remote Machine)
 
-**Just tell Claude Code — it will guide you through it.**
+Once the Phoenix server is up, connect workers from other machines.
+
+**Easiest way** — just ask Claude Code in natural language:
 
 ```
 "add a worker"   "connect a tester machine"   "add my Mac Mini to the team"
 ```
 
-Claude auto-detects the server IP and provides **ready-to-copy-and-run commands** for each machine.
-Even if Tailscale isn't installed, it will walk you through the setup step by step.
+Claude auto-detects the server IP and provides **ready-to-copy-and-run one-liners** per OS/architecture. Walks you through Tailscale setup if needed.
+
+Manual one-liners are listed in the [Adding Distributed Sub-Agents — One-Liner per OS/Arch](#adding-distributed-sub-agents--one-liner-per-osarch) section.
 
 ---
 
