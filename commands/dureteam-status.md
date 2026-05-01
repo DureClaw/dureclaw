@@ -30,7 +30,7 @@ curl -sf http://localhost:4000/api/health > /dev/null && echo "RUNNING" || echo 
   docker compose up                                                       # 레포 클론으로 실행
 
 서버는 포그라운드(blocking)로 실행됩니다 — 별도 탭/창에 띄워 두세요.
-서버가 뜨면 다시 /team-status 또는 "두레팀 상태 알려줘" 라고 입력하세요.
+서버가 뜨면 다시 /dureteam-status 또는 "두레팀 상태 알려줘" 라고 입력하세요.
 ```
 
 여기서 멈춥니다 — Step 3·4는 실행하지 마세요.

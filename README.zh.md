@@ -20,7 +20,7 @@
 
 ## 安装
 
-> 一句话总结：`(1) 添加市场 → (2) 安装插件 → (3) /reload-plugins → (4) /team-status`，到这一步即可在 Claude Code 中立即使用。
+> 一句话总结：`(1) 添加市场 → (2) 安装插件 → (3) /reload-plugins → (4) /dureteam-status`，到这一步即可在 Claude Code 中立即使用。
 
 ### 第一步 — 添加市场
 
@@ -74,7 +74,7 @@ Reloaded: N plugins · M skills · K agents · ...
 重新加载完成后，以下任意一种输入都是相同的入口：
 
 ```
-/team-status                            ← 斜杠命令
+/dureteam-status                            ← 斜杠命令
 "显示团队状态" / "团队怎么样"             ← 中文自然语言
 "show team" / "现在有几个智能体在线？"    ← 英文/混合也可以
 ```
@@ -186,10 +186,9 @@ dureclaw/
 │   ├── plugin.json
 │   └── marketplace.json
 │
-├── .claude/
-│   ├── commands/               斜杠命令 (/setup-team, /team-status)
-│   ├── agents/                 智能体定义（orchestrator 等）
-│   └── skills/dureclaw/        DureClaw 编排技能
+├── commands/                   斜杠命令 (/setup-team, /dureteam-status)
+├── agents/                     智能体定义（orchestrator 等）
+├── skills/                     DureClaw 编排技能 (dureclaw, dureclaw-run)
 │
 ├── packages/
 │   ├── phoenix-server/         Elixir/Phoenix 消息总线（核心）
@@ -212,7 +211,7 @@ dureclaw/
 
 ```
 # 查看团队状态
-/team-status
+/dureteam-status
 
 # 扩展为多机器团队（自动配置 Phoenix 服务器 + 工作节点）
 /setup-team
