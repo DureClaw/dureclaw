@@ -23,10 +23,10 @@ jobs:
           - os: darwin
             arch: arm64
             runner: macos-14
-          # macOS x86_64 (Intel) — macos-13 대신 macos-12 사용
+          # macOS x86_64 (Intel)
           - os: darwin
             arch: x86_64
-            runner: macos-12
+            runner: macos-13
           # Linux x86_64
           - os: linux
             arch: x86_64
@@ -106,7 +106,7 @@ jobs:
             OS/아키텍처에 맞는 파일을 다운로드 후:
             ```bash
             tar -xzf oah-server-darwin-arm64.tar.gz
-            ./harness_server/bin/harness_server foreground
+            ./harness_server/bin/harness_server start
             ```
 
             | 파일 | 플랫폼 |
