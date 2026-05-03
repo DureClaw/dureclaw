@@ -275,7 +275,7 @@ defmodule HarnessServer.Router do
         StateStore.latest_work_key() ||
         StateStore.generate_work_key()
 
-    task_id = "http-#{System.system_time(:millisecond)}"
+    task_id = Map.get(params, "task_id") || "http-#{System.system_time(:millisecond)}"
     depends_on = Map.get(params, "depends_on", [])
 
     payload = %{
@@ -339,6 +339,22 @@ defmodule HarnessServer.Router do
   # Poll for task result. Returns 202 while pending, 200 when done.
 
   get "/api/task/:task_id" do
+    case StateStore.get_task_result(task_id) do
+      {:ok, [single]} ->
+        send_json(conn, 200, single)
+
+      {:ok, results} ->
+        send_json(conn, 200, %{task_id: task_id, results: results, count: length(results)})
+
+      :not_found ->
+        send_json(conn, 202, %{status: "pending", task_id: task_id})
+    end
+  end
+
+  # ── GET /api/task-result/:task_id ────────────────────────────────────────────
+  # Alias for /api/task/:task_id — same behaviour.
+
+  get "/api/task-result/:task_id" do
     case StateStore.get_task_result(task_id) do
       {:ok, [single]} ->
         send_json(conn, 200, single)
