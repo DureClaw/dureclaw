@@ -430,6 +430,95 @@ Claude Code → analyzer-agent (버그 탐지)
 
 ---
 
+### 실사례 — GPU 서버에 AI 모델 원격 설치·운용
+
+> **상황**: 맥북으로 작업하는데, 다른 방에 RTX 4090 Linux 서버가 있다. SSH 없이 Claude Code 안에서 모델 설치부터 API 서빙까지 끝냈다.
+
+#### 구성
+
+```
+MacBook (Claude Code + DureClaw 오케스트레이터)
+  │  Tailscale VPN
+  ▼
+Linux GPU 서버 (RTX 4090 24GB)
+  └─ oah-agent [builder 역할]
+  └─ ollama 서비스
+  └─ Open WebUI (포트 8080)
+```
+
+#### 실행 흐름
+
+**1단계** — DureClaw로 에이전트 상태 확인
+
+```
+/dureteam-status
+→ builder@gpu-server [builder] nvidia-gpu, ollama, docker, ...
+```
+
+**2단계** — SHELL 태스크로 모델 설치 원격 실행
+
+```python
+# Claude Code 안에서 DureClaw로 dispatch
+POST /api/task {
+  "task_id": "pull-gemma4-31b",
+  "to": "builder@gpu-server",
+  "instructions": "[SHELL] ollama pull gemma4:31b"
+}
+
+# 결과 조회
+GET /api/task/pull-gemma4-31b
+→ { "status": "done", "output": "success", "exit_code": 0 }
+```
+
+**3단계** — 어디서나 API 접근 (Tailscale)
+
+```bash
+# Tailscale VPN에 연결된 어느 기기에서나
+curl http://gpu-server-tailscale-ip:11434/v1/chat/completions \
+  -d '{"model":"gemma4:31b","messages":[{"role":"user","content":"안녕"}],"think":false}'
+```
+
+**4단계** — 웹 채팅 인터페이스 원격 설치
+
+```python
+# Open WebUI Docker 원격 실행
+POST /api/task {
+  "instructions": "[SHELL] docker run -d --name open-webui --network=host \
+    -e OLLAMA_BASE_URL=http://127.0.0.1:11434 \
+    ghcr.io/open-webui/open-webui:main"
+}
+# → http://gpu-server:8080 에서 멀티유저 채팅 UI 즉시 사용 가능
+```
+
+#### 결과
+
+| 항목 | 내용 |
+|------|------|
+| 설치한 모델 | gemma4:31b (19.9 GB), 이전 17개 포함 총 18개 |
+| 추론 속도 | ~19 tok/s (thinking 모드 끄면 체감 빠름) |
+| 접근 방법 | Tailscale VPN → 어느 기기에서나 `http://gpu-server:11434` |
+| 관리 UI | Open WebUI `http://gpu-server:8080` |
+| SSH 사용 여부 | **없음** — 전부 DureClaw SHELL 태스크로 처리 |
+
+> Tailscale을 쓰면 GPU 서버가 회사 내부망이든 집이든 상관없이 `ws://서버-tailscale-ip:4000` 한 줄로 연결됩니다.
+
+#### 사용 모델 목록 (예시)
+
+```bash
+curl http://gpu-server:11434/api/tags | jq '.models[].name'
+# gemma4:31b, qwen3:32b, deepseek-r1:32b, qwen3-coder:30b ...
+```
+
+용도별 추천:
+| 용도 | 모델 | 속도 |
+|------|------|------|
+| 일반 대화 | `gemma4:31b` | ~19 tok/s |
+| 빠른 응답 | `gemma3:27b` | ~49 tok/s |
+| 코딩 | `qwen3-coder:30b` | ~22 tok/s |
+| 추론/수학 | `deepseek-r1:32b` | ~20 tok/s |
+
+---
+
 ## 왜 팀이 필요한가 — 이동성·권한·전용 소프트웨어의 한계를 조합으로 넘는다
 
 현실의 컴퓨터는 각자 제약이 다르다.
