@@ -1300,6 +1300,28 @@ function shutdown(reason: string) {
 process.on("SIGINT", () => shutdown("SIGINT"));
 process.on("SIGTERM", () => shutdown("SIGTERM"));
 
+// ─── Mailbox polling (fallback for missed WebSocket events) ───────────────────
+// Polls GET /api/mailbox/{AGENT_NAME} every 5s and processes any queued tasks.
+// This ensures tasks are handled even if the agent joined a different work key
+// or missed the broadcast.
+
+const seenMailboxTasks = new Set<string>();
+
+async function pollMailbox() {
+  try {
+    const res = await fetch(`${HTTP_BASE}/api/mailbox/${encodeURIComponent(AGENT_NAME)}`);
+    if (!res.ok) return;
+    const data = await res.json() as { count: number; messages: TaskPayload[] };
+    for (const msg of data.messages ?? []) {
+      const tid = msg.task_id;
+      if (!tid || seenMailboxTasks.has(tid) || activeTasks.has(tid)) continue;
+      seenMailboxTasks.add(tid);
+      console.log(`[mailbox] received task ${tid} via polling`);
+      handleTaskAssign(msg);
+    }
+  } catch { /* server unreachable, will retry */ }
+}
+
 // ─── Entry point ─────────────────────────────────────────────────────────────
 
 console.log(`
@@ -1314,3 +1336,9 @@ console.log(`
 `);
 
 connect();
+
+// Start mailbox polling after a brief delay to let WebSocket settle
+setTimeout(() => {
+  pollMailbox();
+  setInterval(pollMailbox, 5_000);
+}, 3_000);
