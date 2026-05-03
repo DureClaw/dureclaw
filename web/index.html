@@ -337,6 +337,21 @@ tr:nth-child(even) td { background: var(--bg2); }
 .chip.orange { background: rgba(255,140,66,0.1); color: var(--orange); }
 .chip.purple { background: rgba(140,107,255,0.1); color: var(--purple); }
 
+/* SCREENSHOTS */
+.ss-featured { width: 100%; border-radius: 10px; border: 1px solid var(--border2); display: block; margin-bottom: 16px; box-shadow: 0 4px 24px rgba(0,0,0,.08); }
+.ss-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.ss-item { display: flex; flex-direction: column; gap: 8px; }
+.ss-item img { width: 100%; border-radius: 8px; border: 1px solid var(--border); display: block; box-shadow: 0 2px 10px rgba(0,0,0,.06); transition: transform .2s, box-shadow .2s; cursor: zoom-in; }
+.ss-item img:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,.12); }
+.ss-caption { font-size: 11px; color: var(--text3); text-align: center; line-height: 1.4; }
+.ss-caption strong { color: var(--text2); display: block; margin-bottom: 2px; }
+@media (max-width: 900px) { .ss-grid { grid-template-columns: 1fr; } }
+
+/* lightbox */
+.lb-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,.85); z-index:9999; align-items:center; justify-content:center; cursor:zoom-out; }
+.lb-bg.open { display:flex; }
+.lb-img { max-width:92vw; max-height:90vh; border-radius:8px; box-shadow:0 8px 40px rgba(0,0,0,.5); }
+
 /* CHANGELOG */
 .cl-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
 .cl-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 20px 22px; }
@@ -402,6 +417,7 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
         <a href="#add-agent">에이전트 추가</a>
         <a href="#events">이벤트</a>
         <a href="#api">REST API</a>
+        <a href="#screenshots">스크린샷</a>
         <a href="#changelog">Changelog</a>
         <a href="https://github.com/DureClaw/dureclaw/tree/main/docs" target="_blank">문서</a>
       </div>
@@ -881,11 +897,78 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
   </div>
 </section>
 
+<!-- SCREENSHOTS -->
+<section class="section" id="screenshots">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-num">08</span>
+      <h2 class="section-title"><em>스크린샷</em></h2>
+    </div>
+
+    <!-- GIF 데모 (featured) -->
+    <img
+      class="ss-featured"
+      src="screenshots/dureclaw-dashboard-demo.gif"
+      alt="DureClaw 대시보드 라이브 데모 — 에이전트 팀 태스크 디스패치"
+      loading="lazy"
+    />
+
+    <!-- 3열 스크린샷 -->
+    <div class="ss-grid">
+
+      <div class="ss-item">
+        <img
+          src="screenshots/01-dashboard.png"
+          alt="OAH control 대시보드 — 6개 에이전트 온라인"
+          onclick="openLB(this)"
+          loading="lazy"
+        />
+        <div class="ss-caption">
+          <strong>OAH 컨트롤 대시보드</strong>
+          6개 에이전트 온라인 · Work Key 관리 · 실시간 이벤트 로그
+        </div>
+      </div>
+
+      <div class="ss-item">
+        <img
+          src="screenshots/02-task-dispatch.png"
+          alt="태스크 디스패치 — builder/tester/orchestrator 에이전트 선택"
+          onclick="openLB(this)"
+          loading="lazy"
+        />
+        <div class="ss-caption">
+          <strong>태스크 디스패치</strong>
+          에이전트 선택 → Instructions 입력 → 전송 한 번으로 팀 전체에 배분
+        </div>
+      </div>
+
+      <div class="ss-item">
+        <img
+          src="screenshots/dureclaw-demo.png"
+          alt="Claude Code에서 DureClaw로 태스크 디스패치 — 터미널"
+          onclick="openLB(this)"
+          loading="lazy"
+        />
+        <div class="ss-caption">
+          <strong>Claude Code 터미널</strong>
+          오케스트레이터가 자연어로 지시 → DureClaw가 원격 에이전트에 실행
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- lightbox -->
+<div class="lb-bg" id="lb" onclick="closeLB()">
+  <img class="lb-img" id="lb-img" src="" alt=""/>
+</div>
+
 <!-- CHANGELOG -->
 <section class="section" id="changelog">
   <div class="container">
     <div class="section-header">
-      <span class="section-num">08</span>
+      <span class="section-num">09</span>
       <h2 class="section-title"><em>Changelog</em></h2>
     </div>
     <div class="cl-grid">
@@ -961,6 +1044,18 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
 </footer>
 
 <script>
+function openLB(img) {
+  document.getElementById('lb-img').src = img.src;
+  document.getElementById('lb-img').alt = img.alt;
+  document.getElementById('lb').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeLB() {
+  document.getElementById('lb').classList.remove('open');
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLB(); });
+
 function copyText(btn, text) {
   navigator.clipboard.writeText(text).then(() => {
     const orig = btn.textContent;
