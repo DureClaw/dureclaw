@@ -1140,7 +1140,47 @@ defmodule HarnessServer.Router do
     }
 
     // ── UI helpers ──────────────────────────────────────────────────────────────
-    function switchTab(name){
+    // ── URL hash sync ───────────────────────────────────────────────────────────
+    // Format: #tab[/agent[/agentTab]]
+    // Examples:
+    //   #monitors
+    //   #agent/builder@martin-B650M-K
+    //   #agent/builder@martin-B650M-K/output
+    let _updatingHash = false;
+
+    function pushHash(){
+      if(_updatingHash) return;
+      const parts = [_activeTab];
+      if(_activeTab === 'agent' && selAgent) {
+        parts.push(encodeURIComponent(selAgent));
+        if(_activeAgentTab !== 'info') parts.push(_activeAgentTab);
+      }
+      const h = '#' + parts.join('/');
+      if(location.hash !== h) history.replaceState(null,'',h);
+    }
+
+    function applyHash(){
+      const raw = decodeURIComponent(location.hash.slice(1)||'');
+      if(!raw) return;
+      const [tab, agent, agentTab] = raw.split('/');
+      if(tab) switchTab(tab, true);
+      if(agent) {
+        // defer until agents are loaded
+        const tryPick=()=>{
+          if(allAgents.find(a=>a.name===agent)){pickAgent(agent,true);if(agentTab)switchAgentTab(agentTab,true);}
+          else setTimeout(tryPick,300);
+        };
+        tryPick();
+      }
+    }
+
+    window.addEventListener('popstate', applyHash);
+
+    let _activeTab = 'dispatch';
+    let _activeAgentTab = 'info';
+
+    function switchTab(name, noHash){
+      _activeTab = name;
       document.querySelectorAll('.tab').forEach((t,i)=>{
         const names=['dispatch','tasks','state','agent','monitors','files','chat'];
         t.classList.toggle('active',names[i]===name);
@@ -1148,15 +1188,18 @@ defmodule HarnessServer.Router do
       document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
       id('tab-'+name)?.classList.add('active');
       if(name==='monitors') fetchMetricsNow();
+      if(!noHash) pushHash();
     }
 
-    function switchAgentTab(name){
+    function switchAgentTab(name, noHash){
+      _activeAgentTab = name;
       document.querySelectorAll('.adt-tab').forEach((t,i)=>{
         t.classList.toggle('active',['info','output','mailbox'][i]===name);
       });
       id('agt-info').style.display=name==='info'?'':'none';
       id('agt-output').style.display=name==='output'?'':'none';
       id('agt-mailbox').style.display=name==='mailbox'?'':'none';
+      if(!noHash) pushHash();
     }
 
     function setConn(on,label){
@@ -1243,11 +1286,12 @@ defmodule HarnessServer.Router do
       }).join('');
     }
 
-    function pickAgent(name){
+    function pickAgent(name, noHash){
       selAgent=name;
       document.querySelectorAll('.agi').forEach(el=>el.classList.toggle('sel',el.dataset.name===name));
       refreshAgentDetail(name);
-      switchTab('agent');
+      switchTab('agent', noHash);
+      if(!noHash) pushHash();
     }
 
     // ── Agent Detail ────────────────────────────────────────────────────────────
@@ -1806,6 +1850,7 @@ defmodule HarnessServer.Router do
     poll();
     setInterval(poll,POLL);
     connectWs();
+    if(location.hash) applyHash();
     </script>
     </body>
     </html>
