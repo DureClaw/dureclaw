@@ -438,19 +438,26 @@ CFG
 fi
 
 BINARY_NAME="oah-agent-${OS}-${ARCH}"
-BINARY_URL="$OAH_BASE/$BINARY_NAME"
+GH_RELEASE_URL="https://github.com/DureClaw/dureclaw/releases/latest/download/$BINARY_NAME"
+BINARY_URL="$GH_RELEASE_URL"
+
+_download_agent() {
+  local url="$1" dest="$2"
+  curl -fsSL --retry 3 -o "$dest" "$url" && chmod +x "$dest"
+}
 
 if [[ ! -f "$EXE" ]]; then
   echo "→ 에이전트 다운로드 중... ($BINARY_NAME)"
-  curl -fsSL "$BINARY_URL" -o "$EXE"
-  chmod +x "$EXE"
-elif curl -sf --max-time 5 -I "$BINARY_URL" | grep -q "200"; then
-  REMOTE_SIZE=$(curl -sfI "$BINARY_URL" | grep -i content-length | awk '{print $2}' | tr -d '\r')
-  LOCAL_SIZE=$(wc -c < "$EXE" | tr -d ' ')
-  if [[ -n "$REMOTE_SIZE" && "$REMOTE_SIZE" != "$LOCAL_SIZE" ]]; then
+  _download_agent "$BINARY_URL" "$EXE" \
+    || { echo "⚠ GitHub Releases 실패, CDN 시도 중..."; _download_agent "$OAH_BASE/$BINARY_NAME" "$EXE"; }
+else
+  REMOTE_ETAG=$(curl -sfI --max-time 5 -L "$BINARY_URL" | grep -i etag | awk '{print $2}' | tr -d '\r"')
+  CACHED_ETAG=$(cat "${EXE}.etag" 2>/dev/null || true)
+  if [[ -n "$REMOTE_ETAG" && "$REMOTE_ETAG" != "$CACHED_ETAG" ]]; then
     echo "→ 에이전트 업데이트 중..."
-    curl -fsSL "$BINARY_URL" -o "$EXE"
-    chmod +x "$EXE"
+    _download_agent "$BINARY_URL" "$EXE" \
+      || { echo "⚠ GitHub Releases 실패, CDN 시도 중..."; _download_agent "$OAH_BASE/$BINARY_NAME" "$EXE"; }
+    echo "$REMOTE_ETAG" > "${EXE}.etag"
   fi
 fi
 

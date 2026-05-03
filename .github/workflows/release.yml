@@ -14,10 +14,10 @@ permissions:
   contents: write   # softprops/action-gh-release needs this to create the Release
 
 jobs:
-  build:
-    name: Build ${{ matrix.os }} ${{ matrix.arch }}
+  build-server:
+    name: Build server ${{ matrix.os }} ${{ matrix.arch }}
     runs-on: ${{ matrix.runner }}
-    continue-on-error: true   # 일부 플랫폼 실패해도 Release는 진행
+    continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
@@ -26,12 +26,6 @@ jobs:
           - os: darwin
             arch: arm64
             runner: macos-14
-          # macOS x86_64 (Intel) — disabled: macos-13 runner allocation
-          # is unreliable and blocks the whole release. Intel Mac users can
-          # use the source-build fallback in setup-server.sh.
-          # - os: darwin
-          #   arch: x86_64
-          #   runner: macos-13
           # Linux x86_64
           - os: linux
             arch: x86_64
@@ -76,9 +70,57 @@ jobs:
           path: ${{ env.TARBALL_PATH }}
           retention-days: 7
 
+  build-agent:
+    name: Build agent ${{ matrix.os }} ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: darwin
+            arch: arm64
+            runner: macos-14
+            bun_target: bun-darwin-arm64
+          - os: linux
+            arch: x64
+            runner: ubuntu-22.04
+            bun_target: bun-linux-x64
+          - os: linux
+            arch: arm64
+            runner: ubuntu-22.04-arm
+            bun_target: bun-linux-arm64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        working-directory: packages/agent-daemon
+        run: bun install --frozen-lockfile
+
+      - name: Build binary
+        working-directory: packages/agent-daemon
+        run: |
+          bun build src/index.ts \
+            --compile \
+            --target=${{ matrix.bun_target }} \
+            --outfile=oah-agent-${{ matrix.os }}-${{ matrix.arch }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: oah-agent-${{ matrix.os }}-${{ matrix.arch }}
+          path: packages/agent-daemon/oah-agent-${{ matrix.os }}-${{ matrix.arch }}
+          retention-days: 7
+
   release:
     name: Publish GitHub Release
-    needs: build
+    needs: [build-server, build-agent]
     runs-on: ubuntu-latest
     if: always()   # build 일부 실패해도 실행
 
@@ -121,6 +163,16 @@ jobs:
             | `oah-server-linux-arm64.tar.gz` | Linux arm64 (Raspberry Pi 4/5 64bit) |
 
             > Intel Mac은 사전빌드 없음 — `bash <(curl ...)` 한 줄 실행 시 자동으로 소스 빌드로 폴백됩니다.
-          files: dist/*.tar.gz
+
+            ### 워커 에이전트 바이너리
+
+            | 파일 | 플랫폼 |
+            |------|--------|
+            | `oah-agent-darwin-arm64` | macOS Apple Silicon |
+            | `oah-agent-linux-x64` | Linux x86_64 |
+            | `oah-agent-linux-arm64` | Linux arm64 |
+          files: |
+            dist/*.tar.gz
+            dist/oah-agent-*
           generate_release_notes: true
           fail_on_unmatched_files: false
