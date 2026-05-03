@@ -180,10 +180,10 @@ defmodule HarnessServer.StateStore do
 
   @impl true
   def handle_call({:generate_work_key, meta}, _from, state) do
-    today = Date.utc_today() |> Date.to_string() |> String.replace("-", "")
-    counter = Map.get(state.counter, today, 0) + 1
-    work_key = "LN-#{today}-#{String.pad_leading("#{counter}", 3, "0")}"
-    new_state = put_in(state.counter[today], counter)
+    # WK-<8 random hex chars> — unguessable, human-readable
+    rand = :crypto.strong_rand_bytes(4) |> Base.encode16(case: :lower)
+    work_key = "WK-#{rand}"
+    new_state = state
 
     :dets.insert(
       @state_table,

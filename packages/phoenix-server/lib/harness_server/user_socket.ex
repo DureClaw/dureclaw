@@ -7,17 +7,21 @@ defmodule HarnessServer.UserSocket do
 
   @impl true
   def connect(params, socket, _connect_info) do
-    agent_name = params["agent_name"] || "unknown@unknown"
-    agent_role = params["role"] || "unknown"
-    machine = params["machine"] || "unknown"
+    with :ok <- HarnessServer.Auth.verify_ws(params) do
+      agent_name = params["agent_name"] || "unknown@unknown"
+      agent_role = params["role"] || "unknown"
+      machine = params["machine"] || "unknown"
 
-    socket =
-      socket
-      |> assign(:agent_name, agent_name)
-      |> assign(:role, agent_role)
-      |> assign(:machine, machine)
+      socket =
+        socket
+        |> assign(:agent_name, agent_name)
+        |> assign(:role, agent_role)
+        |> assign(:machine, machine)
 
-    {:ok, socket}
+      {:ok, socket}
+    else
+      {:error, :unauthorized} -> :error
+    end
   end
 
   @impl true

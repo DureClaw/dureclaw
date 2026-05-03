@@ -18,5 +18,6 @@ defmodule HarnessServer.Endpoint do
     json_decoder: Phoenix.json_library()
   )
 
+  plug(HarnessServer.AuthPlug)
   plug(HarnessServer.Router)
 end

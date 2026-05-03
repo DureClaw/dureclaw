@@ -83,8 +83,16 @@ const AGENT_PREFERRED_MODEL = detectPreferredModel();
 const WS_BASE = STATE_SERVER_RAW.replace(/^http/, "ws").replace(/\/$/, "");
 const HTTP_BASE = STATE_SERVER_RAW.replace(/^ws/, "http").replace(/\/$/, "");
 
-// Phoenix WebSocket path
-const WS_URL = `${WS_BASE}/socket/websocket?vsn=2.0.0`;
+// Phoenix WebSocket path — include OAH_SECRET token if set
+const OAH_SECRET = process.env.OAH_SECRET ?? "";
+const WS_URL = OAH_SECRET
+  ? `${WS_BASE}/socket/websocket?vsn=2.0.0&token=${encodeURIComponent(OAH_SECRET)}`
+  : `${WS_BASE}/socket/websocket?vsn=2.0.0`;
+
+/** Returns Authorization header if OAH_SECRET is set, else empty object. */
+function authHeaders(): Record<string, string> {
+  return OAH_SECRET ? { Authorization: `Bearer ${OAH_SECRET}` } : {};
+}
 
 let WORK_KEY = process.env.WORK_KEY ?? "";
 
@@ -306,7 +314,7 @@ function connect() {
 async function fetchOrCreateWorkKey(): Promise<string> {
   if (AGENT_ROLE === "orchestrator") {
     // Orchestrator always creates a fresh Work Key
-    const res = await fetch(`${HTTP_BASE}/api/work-keys`, { method: "POST" });
+    const res = await fetch(`${HTTP_BASE}/api/work-keys`, { method: "POST", headers: authHeaders() });
     const { work_key } = await res.json() as { work_key: string };
     console.log(`[daemon] created Work Key: ${work_key}`);
     return work_key;
@@ -316,7 +324,7 @@ async function fetchOrCreateWorkKey(): Promise<string> {
   console.log(`[daemon] waiting for orchestrator to create a Work Key...`);
   for (let attempt = 1; attempt <= 30; attempt++) {
     try {
-      const res = await fetch(`${HTTP_BASE}/api/work-keys/latest`);
+      const res = await fetch(`${HTTP_BASE}/api/work-keys/latest`, { headers: authHeaders() });
       if (res.ok) {
         const { work_key } = await res.json() as { work_key: string };
         console.log(`[daemon] discovered Work Key: ${work_key}`);
@@ -329,7 +337,7 @@ async function fetchOrCreateWorkKey(): Promise<string> {
 
   // Last resort: create own Work Key
   console.warn(`[daemon] no Work Key found after 60s, creating one`);
-  const res = await fetch(`${HTTP_BASE}/api/work-keys`, { method: "POST" });
+  const res = await fetch(`${HTTP_BASE}/api/work-keys`, { method: "POST", headers: authHeaders() });
   const { work_key } = await res.json() as { work_key: string };
   return work_key;
 }
@@ -779,13 +787,13 @@ async function handleOrchestrateTask(payload: TaskPayload) {
   try {
     // Fetch current builders from server
     progress("Fetching available builders...");
-    const presRes = await fetch(`${HTTP_BASE}/api/capabilities`);
+    const presRes = await fetch(`${HTTP_BASE}/api/capabilities`, { headers: authHeaders() });
     const builders: Array<{ name: string; capabilities: string[]; role: string; os: string }> =
       presRes.ok ? (await presRes.json() as any).builders ?? [] : [];
 
     if (builders.length === 0) {
       // Fallback: use presence
-      const pres = await fetch(`${HTTP_BASE}/api/presence`);
+      const pres = await fetch(`${HTTP_BASE}/api/presence`, { headers: authHeaders() });
       const data = await pres.json() as any;
       for (const a of (data.agents ?? [])) {
         if (a.role === "builder") {
@@ -806,7 +814,7 @@ async function handleOrchestrateTask(payload: TaskPayload) {
     for (const subtask of plan.subtasks) {
       const taskRes = await fetch(`${HTTP_BASE}/api/task`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({
           work_key: WORK_KEY,
           instructions: subtask.instructions,
@@ -1079,7 +1087,7 @@ async function dispatchPhase1(goal: string, repoPath: string, maxIterations = 3)
       // Store synthesis in state
       await fetch(`${HTTP_BASE}/api/state/${WORK_KEY}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({
           pipeline_result: {
             synthesis: result.synthesis,
@@ -1168,7 +1176,7 @@ function handlePhaseResult(taskId: string, role: string, output: string) {
     _phaseOrch.phase1Results.forEach((v, k) => { phase1Partial[k] = v.output.slice(0, 3000); });
     fetch(`${HTTP_BASE}/api/state/${WORK_KEY}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify({ phase1_results: phase1Partial }),
     }).catch(e => console.error(`[phase] state update failed: ${e}`));
 
@@ -1322,7 +1330,7 @@ const seenMailboxTasks = new Set<string>();
 
 async function pollMailbox() {
   try {
-    const res = await fetch(`${HTTP_BASE}/api/mailbox/${encodeURIComponent(AGENT_NAME)}`);
+    const res = await fetch(`${HTTP_BASE}/api/mailbox/${encodeURIComponent(AGENT_NAME)}`, { headers: authHeaders() });
     if (!res.ok) return;
     const data = await res.json() as { count: number; messages: TaskPayload[] };
     for (const msg of data.messages ?? []) {
