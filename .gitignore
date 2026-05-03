@@ -25,3 +25,7 @@ oah-agent.js
 qdrant_storage/
 .wrangler/
 packages/phoenix-server/priv/dist/
+
+# Local-only docs (not for public repo)
+docs/PROMOTION.md
+image-*.png
