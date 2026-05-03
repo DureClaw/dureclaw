@@ -147,17 +147,68 @@ _install_oah_cli() {
     || true
   chmod +x "$cli_dir/oah" 2>/dev/null || true
 
-  # .bashrc/.zshrc 에 PATH 추가 (없으면)
-  for rc in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile"; do
-    if [[ -f "$rc" ]] && ! grep -q ".local/bin" "$rc" 2>/dev/null; then
-      echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$rc"
-    fi
+  # 현재 셸에 맞는 rc 파일 결정 (없으면 생성)
+  local primary_rc
+  case "${SHELL:-}" in
+    */zsh)  primary_rc="$HOME/.zshrc" ;;
+    */fish) primary_rc="$HOME/.config/fish/config.fish" ;;
+    *)      primary_rc="$HOME/.bashrc" ;;
+  esac
+
+  # primary rc 가 없으면 생성 후 PATH 추가
+  if [[ ! -f "$primary_rc" ]]; then
+    mkdir -p "$(dirname "$primary_rc")"
+    touch "$primary_rc"
+  fi
+
+  # PATH 등록 — primary rc + 나머지 존재하는 rc
+  local path_line='export PATH="$HOME/.local/bin:$PATH"'
+  local rc
+  for rc in "$primary_rc" "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile"; do
+    [[ -f "$rc" ]] || continue
+    grep -q ".local/bin" "$rc" 2>/dev/null && continue
+    echo "" >> "$rc"
+    echo "# oah (open-agent-harness)" >> "$rc"
+    echo "$path_line" >> "$rc"
   done
   export PATH="$HOME/.local/bin:$PATH"
 
   # bash <(curl ...) 서브셸에서는 부모 셸 PATH에 영향을 못 주므로 항상 안내 출력
-  # (서브셸 안에서 command -v oah 가 성공해도 부모 셸은 여전히 미적용)
   OAH_PATH_NOTICE=true
+}
+
+# 설정값을 rc 파일에 저장 (새 터미널에서도 oah 가 바로 뜨도록)
+_persist_env_to_rc() {
+  local phoenix="$1" role="$2" name="$3" dir="$4" wk="${5:-}"
+
+  local primary_rc
+  case "${SHELL:-}" in
+    */zsh)  primary_rc="$HOME/.zshrc" ;;
+    */fish) primary_rc="$HOME/.config/fish/config.fish" ;;
+    *)      primary_rc="$HOME/.bashrc" ;;
+  esac
+  [[ -f "$primary_rc" ]] || return 0
+
+  # 이미 OAH 설정 블록이 있으면 업데이트, 없으면 추가
+  if grep -q "# oah-agent config" "$primary_rc" 2>/dev/null; then
+    sed -i.bak \
+      -e "s|^export OAH_PHOENIX=.*|export OAH_PHOENIX=\"$phoenix\"|" \
+      -e "s|^export OAH_ROLE=.*|export OAH_ROLE=\"$role\"|" \
+      -e "s|^export OAH_NAME=.*|export OAH_NAME=\"$name\"|" \
+      -e "s|^export OAH_DIR=.*|export OAH_DIR=\"$dir\"|" \
+      "$primary_rc"
+    rm -f "${primary_rc}.bak"
+  else
+    {
+      echo ""
+      echo "# oah-agent config (자동 생성 — 수동 수정 가능)"
+      echo "export OAH_PHOENIX=\"$phoenix\""
+      echo "export OAH_ROLE=\"$role\""
+      echo "export OAH_NAME=\"$name\""
+      echo "export OAH_DIR=\"$dir\""
+      [[ -n "$wk" ]] && echo "export OAH_WK=\"$wk\""
+    } >> "$primary_rc"
+  fi
 }
 
 if [[ "$USE_NODE" == "true" ]]; then
@@ -223,6 +274,7 @@ DIR=$DIR
 WK=${WK:-}
 NAME=$NAME
 CFG
+  _persist_env_to_rc "$PHOENIX" "$ROLE" "$NAME" "$DIR" "${WK:-}"
 
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo " oah-agent  ${ROLE}@$(hostname -s 2>/dev/null || hostname)  [Node.js/32-bit]"
@@ -237,6 +289,7 @@ CFG
   echo " ⚠  oah 명령어가 없다면 다음을 실행하세요:"
   echo "      export PATH=\"\$HOME/.local/bin:\$PATH\""
   echo "    (새 터미널을 열면 자동 적용됩니다)"
+  echo " ✅ 설정값이 $(case "${SHELL:-}" in */zsh) echo ~/.zshrc ;; */fish) echo ~/.config/fish/config.fish ;; *) echo ~/.bashrc ;; esac) 에 저장되었습니다."
   echo ""
 
   exec env \
@@ -302,6 +355,7 @@ DIR=$DIR
 WK=${WK:-}
 NAME=$NAME
 CFG
+_persist_env_to_rc "$PHOENIX" "$ROLE" "$NAME" "$DIR" "${WK:-}"
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo " oah-agent  ${ROLE}@$(hostname -s 2>/dev/null || hostname)"
@@ -315,6 +369,7 @@ echo ""
 echo " ⚠  oah 명령어가 없다면 다음을 실행하세요:"
 echo "      export PATH=\"\$HOME/.local/bin:\$PATH\""
 echo "    (새 터미널을 열면 자동 적용됩니다)"
+echo " ✅ 설정값이 $(case "${SHELL:-}" in */zsh) echo ~/.zshrc ;; */fish) echo ~/.config/fish/config.fish ;; *) echo ~/.bashrc ;; esac) 에 저장되었습니다."
 echo ""
 
 exec env \
