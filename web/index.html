@@ -337,6 +337,20 @@ tr:nth-child(even) td { background: var(--bg2); }
 .chip.orange { background: rgba(255,140,66,0.1); color: var(--orange); }
 .chip.purple { background: rgba(140,107,255,0.1); color: var(--purple); }
 
+/* CHANGELOG */
+.cl-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.cl-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 20px 22px; }
+.cl-card-ver { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 800; color: var(--white); letter-spacing: -0.3px; display: flex; align-items: center; gap: 8px; }
+.cl-badge { font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 20px; letter-spacing: .5px; background: var(--cyan); color: #fff; }
+.cl-card-date { font-size: 10px; color: var(--text3); margin: 4px 0 12px; }
+.cl-items { list-style: none; display: flex; flex-direction: column; gap: 7px; }
+.cl-items li { font-size: 11px; color: var(--text2); display: flex; align-items: baseline; gap: 7px; line-height: 1.5; }
+.cl-tag { font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 3px; letter-spacing: .4px; flex-shrink: 0; text-transform: uppercase; }
+.cl-tag.feat { background: rgba(2,132,199,.12); color: var(--cyan); }
+.cl-tag.fix  { background: rgba(245,158,11,.12); color: #d97706; }
+.cl-tag.sec  { background: rgba(220,38,38,.12);  color: var(--red); }
+@media (max-width: 900px) { .cl-grid { grid-template-columns: 1fr; } }
+
 /* FOOTER */
 footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px; }
 .footer-inner { display: flex; align-items: center; justify-content: space-between; }
@@ -388,6 +402,7 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
         <a href="#add-agent">에이전트 추가</a>
         <a href="#events">이벤트</a>
         <a href="#api">REST API</a>
+        <a href="#changelog">Changelog</a>
         <a href="https://github.com/DureClaw/dureclaw/tree/main/docs" target="_blank">문서</a>
       </div>
       <a href="https://github.com/DureClaw/dureclaw" class="nav-gh" target="_blank">
@@ -862,6 +877,67 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
           <tr><td><span class="chip orange">POST</span></td><td><span class="ev">/api/mailbox/:agent</span></td><td><span class="desc">에이전트 mailbox 메시지 전송</span></td></tr>
         </tbody>
       </table>
+    </div>
+  </div>
+</section>
+
+<!-- CHANGELOG -->
+<section class="section" id="changelog">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-num">08</span>
+      <h2 class="section-title"><em>Changelog</em></h2>
+    </div>
+    <div class="cl-grid">
+
+      <div class="cl-card">
+        <div class="cl-card-ver">v0.4.0 <span class="cl-badge">latest</span></div>
+        <div class="cl-card-date">2025-05-04</div>
+        <ul class="cl-items">
+          <li><span class="cl-tag sec">security</span>Bearer token auth (OAH_SECRET) — REST + WebSocket 전체 보호</li>
+          <li><span class="cl-tag sec">security</span>Work Key 무작위화 → <code>WK-&lt;8hex&gt;</code></li>
+          <li><span class="cl-tag sec">security</span>Phoenix 서버 Tailscale IP 바인드 (0.0.0.0 제거)</li>
+          <li><span class="cl-tag sec">security</span><code>OAH_BIND_IP</code>로 바인드 주소 명시 지정</li>
+          <li><span class="cl-tag feat">feature</span>대시보드 URL 해시 네비게이션 (탭/에이전트 상태 북마크)</li>
+          <li><span class="cl-tag feat">feature</span>🖥 Monitors 탭 — GPU/RAM/ollama 실시간 모니터링</li>
+        </ul>
+      </div>
+
+      <div class="cl-card">
+        <div class="cl-card-ver">v0.3.0</div>
+        <div class="cl-card-date">2025-04</div>
+        <ul class="cl-items">
+          <li><span class="cl-tag feat">feature</span><code>--version</code> 플래그 + presence 버전 메타데이터</li>
+          <li><span class="cl-tag feat">feature</span>CI GitHub Releases 바이너리 자동 빌드/배포</li>
+          <li><span class="cl-tag feat">feature</span>mailbox 폴링 폴백 — WebSocket task.assign 유실 방지</li>
+          <li><span class="cl-tag fix">fix</span>POST /api/task 커스텀 task_id 존중</li>
+          <li><span class="cl-tag fix">fix</span>에이전트 설치 시 PATH + rc 파일 영속 저장</li>
+        </ul>
+      </div>
+
+      <div class="cl-card">
+        <div class="cl-card-ver">v0.2.0</div>
+        <div class="cl-card-date">2025-03</div>
+        <ul class="cl-items">
+          <li><span class="cl-tag feat">feature</span>파일 변경 추적 탭 — ARTIFACT 이벤트 실시간 표시</li>
+          <li><span class="cl-tag feat">feature</span>에이전트 대화 탭 — 이벤트 타임라인</li>
+          <li><span class="cl-tag feat">feature</span>WK State 편집기 — 공유 컨텍스트 직접 수정</li>
+          <li><span class="cl-tag feat">feature</span>Tailscale 사설망 통합 — 원격 머신 에이전트 연결</li>
+          <li><span class="cl-tag feat">feature</span>DETS 영속 상태 — 재시작 후 Work Key 유지</li>
+        </ul>
+      </div>
+
+      <div class="cl-card">
+        <div class="cl-card-ver">v0.1.0</div>
+        <div class="cl-card-date">2025-02</div>
+        <ul class="cl-items">
+          <li><span class="cl-tag feat">feature</span>Phoenix WebSocket 채널 기반 태스크 오케스트레이션</li>
+          <li><span class="cl-tag feat">feature</span><code>[SHELL]</code> 태스크 원격 에이전트 실행</li>
+          <li><span class="cl-tag feat">feature</span>Work Key 생성/관리 + 에이전트 presence 추적</li>
+          <li><span class="cl-tag feat">feature</span>REST API + 대시보드 기본 UI</li>
+        </ul>
+      </div>
+
     </div>
   </div>
 </section>
