@@ -47,6 +47,16 @@ import {
   type ProgressCallback,
 } from "./reflective_executor.ts";
 
+// ─── Version ─────────────────────────────────────────────────────────────────
+
+const AGENT_VERSION = "0.3.6";
+
+// --version flag
+if (process.argv.includes("--version") || process.argv.includes("-v")) {
+  console.log(`oah-agent v${AGENT_VERSION}`);
+  process.exit(0);
+}
+
 // ─── Config ───────────────────────────────────────────────────────────────────
 
 const STATE_SERVER_RAW = process.env.STATE_SERVER ?? "ws://localhost:4000";
@@ -257,6 +267,7 @@ function connect() {
       machine: AGENT_MACHINE,
       capabilities: AGENT_CAPABILITIES,
       preferred_model: AGENT_PREFERRED_MODEL,
+      version: AGENT_VERSION,
     }]);
 
     console.log(`[daemon] sent phx_join → ${topic}`);
@@ -1326,7 +1337,7 @@ async function pollMailbox() {
 
 console.log(`
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- open-agent-harness | agent-daemon
+ open-agent-harness | agent-daemon v${AGENT_VERSION}
  Agent : ${AGENT_NAME}
  Role  : ${AGENT_ROLE}
  Server: ${WS_URL}

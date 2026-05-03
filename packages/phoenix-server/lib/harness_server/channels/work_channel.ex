@@ -49,9 +49,13 @@ defmodule HarnessServer.WorkChannel do
 
     capabilities = Map.get(payload, "capabilities", [])
     preferred_model = Map.get(payload, "preferred_model", "claude-haiku-4-5")
+    version = Map.get(payload, "version", "unknown")
 
     socket =
-      socket |> assign(:capabilities, capabilities) |> assign(:preferred_model, preferred_model)
+      socket
+      |> assign(:capabilities, capabilities)
+      |> assign(:preferred_model, preferred_model)
+      |> assign(:version, version)
 
     {:ok, _} =
       Presence.track(socket, agent_name, %{
@@ -60,6 +64,7 @@ defmodule HarnessServer.WorkChannel do
         work_key: work_key,
         capabilities: capabilities,
         preferred_model: preferred_model,
+        version: version,
         online_since: DateTime.utc_now() |> DateTime.to_iso8601()
       })
 

@@ -1,6 +1,6 @@
 {
   "name": "@open-agent-harness/agent-daemon",
-  "version": "0.1.0",
+  "version": "0.3.6",
   "description": "Per-machine daemon — wraps OpenCode CLI, connects to state-server WebSocket channel",
   "type": "module",
   "bin": {
