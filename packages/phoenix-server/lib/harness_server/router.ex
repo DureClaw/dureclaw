@@ -159,7 +159,7 @@ defmodule HarnessServer.Router do
 
     send_json(conn, 200, %{
       ok: true,
-      version: "0.3.0",
+      version: "0.4.0",
       work_keys: length(work_keys)
     })
   end
@@ -720,6 +720,18 @@ defmodule HarnessServer.Router do
     .chat-ts{color:var(--text3);font-size:9px;margin-left:auto}
     .chat-body{font-size:10px;color:var(--text2);line-height:1.5;word-break:break-word;max-height:100px;overflow-y:auto;padding:4px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:3px}
     @media(max-width:900px){.log-panel{display:none}.sb{width:200px}}
+    /* changelog */
+    .cl-entry{padding:14px 0;border-bottom:1px solid var(--border)}
+    .cl-entry:last-child{border-bottom:none}
+    .cl-ver{font-size:13px;font-weight:700;color:var(--text);letter-spacing:.5px}
+    .cl-date{font-size:10px;color:var(--text3);margin-bottom:8px;margin-top:2px}
+    .cl-list{margin:0;padding-left:16px;display:flex;flex-direction:column;gap:5px}
+    .cl-list li{font-size:11px;color:var(--text2);line-height:1.5}
+    .cl-list code{background:var(--bg3);border:1px solid var(--border);border-radius:2px;padding:0 3px;font-size:10px;color:var(--accent)}
+    .cl-tag{display:inline-block;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;margin-right:5px;text-transform:uppercase;letter-spacing:.4px;vertical-align:middle}
+    .cl-tag.feat{background:rgba(82,164,255,.15);color:#52a4ff}
+    .cl-tag.fix{background:rgba(250,189,47,.12);color:#fabd2f}
+    .cl-tag.sec{background:rgba(251,73,52,.15);color:#fb4934}
     </style>
     </head>
     <body>
@@ -821,6 +833,7 @@ defmodule HarnessServer.Router do
               <div class="tab" onclick="switchTab('monitors')">🖥 Monitors</div>
               <div class="tab" onclick="switchTab('files')">파일 변경</div>
               <div class="tab" onclick="switchTab('chat')">에이전트 대화</div>
+              <div class="tab" onclick="switchTab('changelog')">📋 Changelog</div>
             </div>
 
             <!-- TAB: DISPATCH -->
@@ -1008,6 +1021,67 @@ defmodule HarnessServer.Router do
                   </div>
                 </div>
                 <div id="chat-list" style="overflow-y:auto;flex:1"><div class="empty"><div class="empty-icon">💬</div>대화 없음<br/><span style="font-size:9px;color:var(--text3);margin-top:4px;display:block">task.assign, mailbox.post/message 이벤트가 여기에 표시됩니다</span></div></div>
+              </div>
+            </div>
+
+            <!-- TAB: CHANGELOG -->
+            <div class="tab-content" id="tab-changelog">
+              <div class="card">
+                <div class="card-h">
+                  <span class="card-ht">Changelog</span>
+                  <span style="font-size:9px;color:var(--text3)">open-agent-harness</span>
+                </div>
+                <div class="card-body" style="display:flex;flex-direction:column;gap:0">
+
+                  <div class="cl-entry">
+                    <div class="cl-ver">v0.4.0</div>
+                    <div class="cl-date">2025-05-04</div>
+                    <ul class="cl-list">
+                      <li><span class="cl-tag sec">security</span> Bearer token auth (OAH_SECRET) — REST + WebSocket 전체 보호</li>
+                      <li><span class="cl-tag sec">security</span> Work Key 형식 무작위화 → <code>WK-&lt;8hex&gt;</code> (예측 불가)</li>
+                      <li><span class="cl-tag sec">security</span> Phoenix 서버 Tailscale IP 바인드 — LAN 전체 노출 방지</li>
+                      <li><span class="cl-tag sec">security</span> <code>OAH_BIND_IP</code> env 변수로 바인드 주소 명시 지정 가능</li>
+                      <li><span class="cl-tag feat">feature</span> 대시보드 URL 해시 네비게이션 — 탭/에이전트 선택 상태 북마크 가능</li>
+                      <li><span class="cl-tag feat">feature</span> 🖥 Monitors 탭 — 연결된 에이전트 머신의 GPU/RAM/ollama/서비스 실시간 모니터링</li>
+                    </ul>
+                  </div>
+
+                  <div class="cl-entry">
+                    <div class="cl-ver">v0.3.0</div>
+                    <div class="cl-date">2025-04</div>
+                    <ul class="cl-list">
+                      <li><span class="cl-tag feat">feature</span> <code>--version</code> 플래그 및 presence 메타데이터에 에이전트 버전 표시</li>
+                      <li><span class="cl-tag feat">feature</span> CI GitHub Releases를 통한 <code>oah-agent</code> 바이너리 자동 빌드/배포</li>
+                      <li><span class="cl-tag feat">feature</span> mailbox 폴링 폴백 — WebSocket <code>task.assign</code> 유실 방지</li>
+                      <li><span class="cl-tag fix">fix</span> <code>POST /api/task</code>에서 커스텀 <code>task_id</code> 존중 + <code>/api/task-result</code> 별칭 추가</li>
+                      <li><span class="cl-tag fix">fix</span> 에이전트 설치 시 PATH + 설정 rc 파일에 영속 저장</li>
+                    </ul>
+                  </div>
+
+                  <div class="cl-entry">
+                    <div class="cl-ver">v0.2.0</div>
+                    <div class="cl-date">2025-03</div>
+                    <ul class="cl-list">
+                      <li><span class="cl-tag feat">feature</span> 파일 변경 추적 탭 — ARTIFACT 이벤트 실시간 표시</li>
+                      <li><span class="cl-tag feat">feature</span> 에이전트 대화 탭 — task.assign / mailbox 이벤트 타임라인</li>
+                      <li><span class="cl-tag feat">feature</span> WK State 편집기 — 공유 컨텍스트 직접 수정</li>
+                      <li><span class="cl-tag feat">feature</span> Tailscale 사설망 통합 — 원격 머신 에이전트 연결</li>
+                      <li><span class="cl-tag feat">feature</span> DETS 영속 상태 저장 — 서버 재시작 후에도 Work Key/mailbox 유지</li>
+                    </ul>
+                  </div>
+
+                  <div class="cl-entry">
+                    <div class="cl-ver">v0.1.0</div>
+                    <div class="cl-date">2025-02</div>
+                    <ul class="cl-list">
+                      <li><span class="cl-tag feat">feature</span> Phoenix WebSocket 채널 기반 태스크 오케스트레이션</li>
+                      <li><span class="cl-tag feat">feature</span> <code>[SHELL]</code> 태스크 원격 에이전트 실행</li>
+                      <li><span class="cl-tag feat">feature</span> Work Key 생성/관리 + 에이전트 presence 추적</li>
+                      <li><span class="cl-tag feat">feature</span> REST API + 대시보드 기본 UI</li>
+                    </ul>
+                  </div>
+
+                </div>
               </div>
             </div>
 
