@@ -18,6 +18,19 @@ Uses Claude Code as the orchestrator and connects AI agents on each machine as w
 
 ---
 
+## Live Demo
+
+> "Can you run that with DureClaw?" — one sentence, tasks dispatched to the Linux builder.
+
+![DureClaw in action — natural language → remote task dispatch](./docs/screenshots/dureclaw-demo.png)
+
+**Flow**:
+1. User types a natural-language request referencing DureClaw
+2. Claude Code issues a Work Key (`LN-20260501-001`) and sends tasks to the Linux builder
+3. Each step (llmfit install → system stack check) runs sequentially on the remote machine
+
+---
+
 ## Installation
 
 > TL;DR: `(1) add marketplace → (2) install plugin → (3) /reload-plugins → (4) /dureteam-status`. That's it — you're ready to use DureClaw inside Claude Code.
@@ -273,6 +286,12 @@ Key endpoints: `/api/health` · `/api/presence` · `/api/work-keys` · `/api/sta
 | `tester` | claude-cli / aider | `[SHELL] pytest tests/` → test execution & verification |
 | `analyst` | claude-cli / gemini | code analysis, review, bug detection |
 | `executor` | aider / opencode | lightweight command execution · ideal for RPi Zero W |
+
+### Live conversation — natural language → remote execution
+
+**"Can you run that with DureClaw?" dispatches tasks to the Linux builder automatically**
+
+![DureClaw live demo](./docs/screenshots/dureclaw-demo.png)
 
 ### Dashboard
 

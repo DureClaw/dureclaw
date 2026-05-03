@@ -18,6 +18,19 @@ Claude Code를 오케스트레이터로, 각 머신의 AI 에이전트들을 워
 
 ---
 
+## 실제 동작 예시
+
+> "두레클로로 네가 실행가능하지 않을 ?" — 한 마디로 리눅스 빌더에 태스크가 넘어간다.
+
+![DureClaw 실제 동작 — 자연어 명령 → 리눅스 빌더 태스크 디스패치](./docs/screenshots/dureclaw-demo.png)
+
+**흐름**:
+1. 사용자가 자연어로 "두레클로로 실행해" 요청
+2. Claude Code가 Work Key(`LN-20260501-001`)를 발급하고 리눅스 빌더에 태스크 전송
+3. 각 단계(llmfit 설치 → 시스템 스택 확인)가 순차적으로 원격 머신에서 실행됨
+
+---
+
 ## 설치
 
 > 한 줄 요약: `(1) 마켓플레이스 추가 → (2) 플러그인 설치 → (3) /reload-plugins → (4) /dureteam-status` 까지만 해도 Claude Code 안에서 즉시 사용 가능합니다.
@@ -335,6 +348,12 @@ Phoenix Server              ws://host:4000
 | `tester` | claude-cli / aider | `[SHELL] pytest tests/` → 테스트 실행·검증 |
 | `analyst` | claude-cli / gemini | 코드 분석·리뷰·버그 탐지 |
 | `executor` | aider / opencode | 경량 명령 실행 · RPi Zero W 최적 |
+
+### 실제 대화 — 자연어 → 원격 실행
+
+**"두레클로로 네가 실행가능하지 않을 ?" 한 마디에 리눅스 빌더로 태스크 자동 전달**
+
+![DureClaw 실제 동작 예시](./docs/screenshots/dureclaw-demo.png)
 
 ### 대시보드
 
