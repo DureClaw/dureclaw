@@ -101,7 +101,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: packages/agent-daemon
-        run: bun install --frozen-lockfile
+        run: bun install
 
       - name: Build binary
         working-directory: packages/agent-daemon
