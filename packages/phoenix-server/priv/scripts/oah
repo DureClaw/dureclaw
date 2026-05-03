@@ -1066,7 +1066,7 @@ case "$CMD" in
   completions|completion) cmd_completions "${1:-bash}" ;;
   service)              cmd_service "$CMD" "$@" ;;
   help|--help|-h)       cmd_help ;;
-  version|--version|-v) local _bin; _bin=$(_exe_cmd | awk '{print $NF}'); "$_bin" --version 2>/dev/null || echo "oah-agent 바이너리 없음 — oah update 로 설치" ;;
+  version|--version|-v) _bin=$(_exe_cmd | awk '{print $NF}'); "$_bin" --version 2>/dev/null || echo "oah-agent 바이너리 없음 — oah update 로 설치" ;;
   run|"")               cmd_run ;;
   *)
     echo "알 수 없는 명령어: $CMD"
