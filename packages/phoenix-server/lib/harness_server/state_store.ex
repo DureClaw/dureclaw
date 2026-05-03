@@ -29,6 +29,7 @@ defmodule HarnessServer.StateStore do
   @mailbox_table :harness_mailbox
   @task_table :harness_tasks
   @pending_table :harness_pending
+  @metrics_table :harness_metrics
 
   # ─── Public API ─────────────────────────────────────────────────────────────
 
@@ -105,6 +106,25 @@ defmodule HarnessServer.StateStore do
     end
   end
 
+  @doc "Store latest metrics snapshot for an agent (in-memory ETS, not persisted)."
+  def store_agent_metrics(agent_name, metrics) do
+    :ets.insert(@metrics_table, {agent_name, metrics})
+    :ok
+  end
+
+  @doc "Get latest metrics for an agent."
+  def get_agent_metrics(agent_name) do
+    case :ets.lookup(@metrics_table, agent_name) do
+      [{^agent_name, m}] -> {:ok, m}
+      [] -> :not_found
+    end
+  end
+
+  @doc "Get all agent metrics as a map of agent_name => metrics."
+  def all_agent_metrics do
+    :ets.tab2list(@metrics_table) |> Map.new(fn {k, v} -> {k, v} end)
+  end
+
   @doc "Peek at mailbox count without clearing."
   def mailbox_count(agent_name) do
     case :dets.lookup(@mailbox_table, agent_name) do
@@ -139,6 +159,7 @@ defmodule HarnessServer.StateStore do
       )
 
     :ets.new(@pending_table, [:named_table, :public, read_concurrency: true])
+    :ets.new(@metrics_table, [:named_table, :public, read_concurrency: true])
 
     # Rebuild daily counter from persisted work keys
     counter = rebuild_counter()

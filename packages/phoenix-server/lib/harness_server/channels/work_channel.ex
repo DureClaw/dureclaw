@@ -247,6 +247,21 @@ defmodule HarnessServer.WorkChannel do
     {:reply, {:ok, %{messages: msgs, count: length(msgs)}}, socket}
   end
 
+  # ─── Metrics ───────────────────────────────────────────────────────────────
+
+  @impl true
+  def handle_in("metrics.update", payload, socket) do
+    msg =
+      payload
+      |> Map.put("from", socket.assigns.agent_name)
+      |> Map.put("event", "metrics.update")
+      |> Map.put("ts", DateTime.utc_now() |> DateTime.to_iso8601())
+
+    StateStore.store_agent_metrics(socket.assigns.agent_name, msg)
+    broadcast!(socket, "metrics.update", msg)
+    {:reply, :ok, socket}
+  end
+
   # ─── Agent events ──────────────────────────────────────────────────────────
 
   @impl true

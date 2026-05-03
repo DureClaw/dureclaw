@@ -33,6 +33,8 @@
 
 import { spawnCompat as spawn } from "./spawn-compat.ts";
 import { hostname } from "os";
+import { execSync } from "child_process";
+import { readFileSync } from "fs";
 import { detectCapabilities, detectPreferredModel } from "./capabilities.ts";
 import { orchestrateGoal } from "./orchestrator.ts";
 
@@ -1353,3 +1355,97 @@ setTimeout(() => {
   pollMailbox();
   setInterval(pollMailbox, 5_000);
 }, 3_000);
+
+// ─── Metrics Push ────────────────────────────────────────────────────────────
+
+function execSafe(cmd: string): string {
+  try { return execSync(cmd, { stdio: "pipe", encoding: "utf8", timeout: 3000 }).trim(); }
+  catch { return ""; }
+}
+
+function readSafe(path: string): string {
+  try { return readFileSync(path, "utf8"); } catch { return ""; }
+}
+
+async function collectMetrics(): Promise<Record<string, unknown>> {
+  const m: Record<string, unknown> = { ts: Date.now() };
+
+  // ── Ollama ──────────────────────────────────────────────────────────────
+  try {
+    const r = await fetch("http://localhost:11434/api/ps", { signal: AbortSignal.timeout(2000) });
+    if (r.ok) {
+      const d = await r.json() as { models?: Array<{ name: string; size_vram?: number }> };
+      m.ollama = {
+        running: true,
+        models: (d.models ?? []).map(x => ({
+          name: x.name,
+          vram_mb: Math.round((x.size_vram ?? 0) / 1024 / 1024),
+        })),
+      };
+    } else {
+      m.ollama = { running: false };
+    }
+  } catch {
+    const pid = execSafe("pgrep -x ollama");
+    m.ollama = { running: pid !== "" };
+  }
+
+  // ── GPU (nvidia-smi) ─────────────────────────────────────────────────────
+  const gpuOut = execSafe(
+    "nvidia-smi --query-gpu=name,memory.used,memory.free,memory.total,temperature.gpu,utilization.gpu --format=csv,noheader,nounits"
+  );
+  if (gpuOut) {
+    m.gpu = gpuOut.split("\n").map(line => {
+      const [name, used, free, total, temp, util] = line.split(",").map(s => s.trim());
+      return { name, used_mb: +used, free_mb: +free, total_mb: +total, temp_c: +temp, util_pct: +util };
+    });
+  }
+
+  // ── System RAM ───────────────────────────────────────────────────────────
+  if (process.platform === "linux") {
+    const mem = readSafe("/proc/meminfo");
+    const getKb = (key: string) => {
+      const m2 = mem.match(new RegExp(`${key}:\\s+(\\d+)`));
+      return m2 ? parseInt(m2[1]) * 1024 : 0;
+    };
+    const total = getKb("MemTotal");
+    const avail = getKb("MemAvailable");
+    m.ram = { total_mb: Math.round(total / 1024 / 1024), used_mb: Math.round((total - avail) / 1024 / 1024) };
+  } else if (process.platform === "darwin") {
+    const hw = execSafe("sysctl -n hw.memsize");
+    const total = parseInt(hw) || 0;
+    const vmstat = execSafe("vm_stat");
+    const freePages = +(vmstat.match(/Pages free:\s+(\d+)/)?.[1] ?? 0);
+    const used = total - freePages * 4096;
+    m.ram = { total_mb: Math.round(total / 1024 / 1024), used_mb: Math.round(used / 1024 / 1024) };
+  }
+
+  // ── Key services ─────────────────────────────────────────────────────────
+  m.services = {
+    docker: execSafe("pgrep -x dockerd") !== "" || execSafe("docker info --format '{{.ServerVersion}}' 2>/dev/null") !== "",
+    open_webui: execSafe("pgrep -f open-webui") !== "" || execSafe("docker ps --filter name=open-webui -q 2>/dev/null") !== "",
+    litellm: execSafe("pgrep -f litellm") !== "" || execSafe("docker ps --filter name=litellm -q 2>/dev/null") !== "",
+  };
+
+  return m;
+}
+
+async function pushMetrics() {
+  if (!isJoined) return;
+  try {
+    const metrics = await collectMetrics();
+    sendEvent("metrics.update" as AgentEvent, {
+      agent: AGENT_NAME,
+      machine: AGENT_MACHINE,
+      metrics,
+    });
+  } catch (e) {
+    console.warn("[metrics] collection error:", e);
+  }
+}
+
+// Push metrics 10s after join stabilises, then every 30s
+setTimeout(() => {
+  pushMetrics();
+  setInterval(pushMetrics, 30_000);
+}, 10_000);

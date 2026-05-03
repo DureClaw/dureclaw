@@ -422,6 +422,19 @@ defmodule HarnessServer.Router do
     send_json(conn, 201, %{ok: true, queued: true})
   end
 
+  # ── GET /api/metrics ───────────────────────────────────────────────────────
+
+  get "/api/metrics" do
+    send_json(conn, 200, StateStore.all_agent_metrics())
+  end
+
+  get "/api/metrics/:agent" do
+    case StateStore.get_agent_metrics(agent) do
+      {:ok, m} -> send_json(conn, 200, m)
+      :not_found -> send_json(conn, 404, %{error: "no metrics yet for #{agent}"})
+    end
+  end
+
   # ── GET / ─ Observer Dashboard ──────────────────────────────────────────────
 
   get "/" do
@@ -662,6 +675,27 @@ defmodule HarnessServer.Router do
     .x-btn{background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;padding:1px 3px;line-height:1}
     .x-btn:hover{color:var(--red)}
     @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+    /* monitors tab */
+    .mon-card{background:var(--bg2);border:1px solid var(--border);border-radius:6px;overflow:hidden}
+    .mon-head{display:flex;align-items:center;justify-content:space-between;padding:9px 14px;background:var(--bg3);border-bottom:1px solid var(--border)}
+    .mon-name{font-size:11px;font-weight:700;color:var(--text)}
+    .mon-ts{font-size:9px;color:var(--text3)}
+    .mon-body{padding:12px;display:flex;flex-direction:column;gap:10px}
+    .mon-section{display:flex;flex-direction:column;gap:4px}
+    .mon-sl{font-size:9px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:2px}
+    .bar-wrap{display:flex;align-items:center;gap:8px}
+    .bar-bg{flex:1;height:6px;border-radius:3px;background:var(--bg3);overflow:hidden}
+    .bar-fill{height:100%;border-radius:3px;transition:width .4s}
+    .bar-fill.green{background:var(--green)}
+    .bar-fill.amber{background:var(--amber)}
+    .bar-fill.red{background:var(--red)}
+    .bar-label{font-size:9px;color:var(--text2);white-space:nowrap;min-width:70px;text-align:right}
+    .mon-chips{display:flex;flex-wrap:wrap;gap:4px}
+    .mon-chip{font-size:9px;padding:2px 7px;border-radius:3px;border:1px solid var(--border2);color:var(--text2)}
+    .mon-chip.on{border-color:rgba(52,211,153,.4);color:var(--green);background:rgba(52,211,153,.06)}
+    .mon-chip.off{color:var(--text3);opacity:.5}
+    .mon-model{font-size:10px;color:var(--cyan);background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.2);border-radius:3px;padding:3px 8px;display:flex;justify-content:space-between;align-items:center}
+    .mon-model-vram{font-size:9px;color:var(--text3)}
     @keyframes slide-in{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
     .slide-in{animation:slide-in .18s ease both}
     /* file change tab */
@@ -784,6 +818,7 @@ defmodule HarnessServer.Router do
               <div class="tab" onclick="switchTab('tasks')">태스크 히스토리</div>
               <div class="tab" onclick="switchTab('state')">WK State 편집</div>
               <div class="tab" onclick="switchTab('agent')">에이전트 상세</div>
+              <div class="tab" onclick="switchTab('monitors')">🖥 Monitors</div>
               <div class="tab" onclick="switchTab('files')">파일 변경</div>
               <div class="tab" onclick="switchTab('chat')">에이전트 대화</div>
             </div>
@@ -937,6 +972,17 @@ defmodule HarnessServer.Router do
               </div>
             </div>
 
+            <!-- TAB: MONITORS -->
+            <div class="tab-content" id="tab-monitors">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+                <span style="font-size:9px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase">에이전트 머신 모니터링 (30초 갱신)</span>
+                <button class="btn btn-ghost" style="padding:2px 10px;font-size:9px" onclick="fetchMetricsNow()">지금 갱신</button>
+              </div>
+              <div id="monitors-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px">
+                <div class="empty"><div class="empty-icon">🖥</div>에이전트 연결 대기 중...<br/><span style="font-size:9px;color:var(--text3);margin-top:4px;display:block">에이전트가 연결되면 30초 이내에 메트릭이 표시됩니다</span></div>
+              </div>
+            </div>
+
             <!-- TAB: FILE CHANGES -->
             <div class="tab-content" id="tab-files">
               <div class="card">
@@ -993,6 +1039,7 @@ defmodule HarnessServer.Router do
     let dispatchTargets=new Set(), logFilter=null;
     const POLL=5000;
     let completedTasks=0, activeTasks=0;
+    let agentMetrics={};  // agent_name → metrics payload
 
     const rc={orchestrator:'c',builder:'g',verifier:'p',reviewer:'p',integrator:'o'};
     const dotCls={orchestrator:'c',builder:'g',verifier:'p',reviewer:'o',integrator:'o'};
@@ -1001,14 +1048,106 @@ defmodule HarnessServer.Router do
     const fmt=iso=>iso?new Date(iso).toLocaleTimeString('ko',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'—';
     const elapsed=iso=>{if(!iso)return'—';const s=Math.floor((Date.now()-new Date(iso))/1000);return s<60?s+'초':s<3600?Math.floor(s/60)+'분':Math.floor(s/3600)+'h '+Math.floor((s%3600)/60)+'m';};
 
+    // ── Monitors ────────────────────────────────────────────────────────────────
+    function pct(used,total){return total>0?Math.round(used/total*100):0;}
+    function barColor(p){return p>85?'red':p>60?'amber':'green';}
+
+    function renderMetricCard(agent,m){
+      const met=m.metrics||{};
+      const ts=met.ts?new Date(met.ts).toLocaleTimeString('ko',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'—';
+      let html=`<div class="mon-card" id="mon-${agent.replace(/[^a-z0-9]/gi,'_')}">
+        <div class="mon-head">
+          <span class="mon-name">${e(agent)}</span>
+          <span class="mon-ts">갱신: ${ts}</span>
+        </div>
+        <div class="mon-body">`;
+
+      // GPU
+      if(met.gpu&&met.gpu.length>0){
+        html+='<div class="mon-section"><div class="mon-sl">GPU</div>';
+        met.gpu.forEach(g=>{
+          const p=pct(g.used_mb,g.total_mb);
+          const cl=barColor(p);
+          html+=`<div style="margin-bottom:4px">
+            <div style="font-size:9px;color:var(--text2);margin-bottom:3px">${e(g.name)} · ${g.temp_c}°C · ${g.util_pct}% util</div>
+            <div class="bar-wrap">
+              <div class="bar-bg"><div class="bar-fill ${cl}" style="width:${p}%"></div></div>
+              <span class="bar-label">${g.used_mb}/${g.total_mb} MB</span>
+            </div></div>`;
+        });
+        html+='</div>';
+      }
+
+      // RAM
+      if(met.ram){
+        const p=pct(met.ram.used_mb,met.ram.total_mb);
+        const cl=barColor(p);
+        html+=`<div class="mon-section"><div class="mon-sl">RAM</div>
+          <div class="bar-wrap">
+            <div class="bar-bg"><div class="bar-fill ${cl}" style="width:${p}%"></div></div>
+            <span class="bar-label">${met.ram.used_mb}/${met.ram.total_mb} MB</span>
+          </div></div>`;
+      }
+
+      // Ollama + loaded models
+      if(met.ollama!==undefined){
+        const running=met.ollama.running;
+        html+=`<div class="mon-section"><div class="mon-sl">ollama</div>
+          <div class="mon-chip ${running?'on':'off'}" style="margin-bottom:4px">${running?'● 실행 중':'○ 중지'}</div>`;
+        if(running&&met.ollama.models&&met.ollama.models.length>0){
+          met.ollama.models.forEach(mo=>{
+            html+=`<div class="mon-model">
+              <span>${e(mo.name)}</span>
+              <span class="mon-model-vram">${mo.vram_mb} MB VRAM</span>
+            </div>`;
+          });
+        } else if(running){
+          html+='<div style="font-size:9px;color:var(--text3)">모델 미로드 (idle)</div>';
+        }
+        html+='</div>';
+      }
+
+      // Services
+      if(met.services){
+        html+='<div class="mon-section"><div class="mon-sl">서비스</div><div class="mon-chips">';
+        Object.entries(met.services).forEach(([k,v])=>{
+          html+=`<span class="mon-chip ${v?'on':'off'}">${e(k)}</span>`;
+        });
+        html+='</div></div>';
+      }
+
+      html+='</div></div>';
+      return html;
+    }
+
+    function renderMonitors(){
+      const keys=Object.keys(agentMetrics);
+      const el=id('monitors-grid');
+      if(!keys.length){
+        el.innerHTML='<div class="empty"><div class="empty-icon">🖥</div>에이전트 연결 대기 중...<br/><span style="font-size:9px;color:var(--text3);margin-top:4px;display:block">에이전트가 연결되면 30초 이내에 메트릭이 표시됩니다</span></div>';
+        return;
+      }
+      el.innerHTML=keys.map(a=>renderMetricCard(a,agentMetrics[a])).join('');
+    }
+
+    async function fetchMetricsNow(){
+      try{
+        const r=await fetch('/api/metrics');
+        const data=await r.json();
+        Object.assign(agentMetrics,data);
+        renderMonitors();
+      }catch(err){console.warn('[monitors] fetch error',err);}
+    }
+
     // ── UI helpers ──────────────────────────────────────────────────────────────
     function switchTab(name){
       document.querySelectorAll('.tab').forEach((t,i)=>{
-        const names=['dispatch','tasks','state','agent','files','chat'];
+        const names=['dispatch','tasks','state','agent','monitors','files','chat'];
         t.classList.toggle('active',names[i]===name);
       });
       document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
       id('tab-'+name)?.classList.add('active');
+      if(name==='monitors') fetchMetricsNow();
     }
 
     function switchAgentTab(name){
@@ -1641,6 +1780,14 @@ defmodule HarnessServer.Router do
             allAgents=allAgents.filter(x=>x.name!==a);
             if(selAgent===a){selAgent=null;id('agent-detail-card').style.display='none';id('agent-detail-empty').style.display='';}
             renderAgents(allAgents);renderDispatchAgents(allAgents);
+          } else if(ev==='metrics.update'){
+            const agentName=payload?.agent||payload?.from||'?';
+            agentMetrics[agentName]=payload;
+            const monCard=id('monitors-grid')?.querySelector(`#mon-${agentName.replace(/[^a-z0-9]/gi,'_')}`);
+            if(monCard){monCard.outerHTML=renderMetricCard(agentName,payload);}
+            else if(id('tab-monitors')?.classList.contains('active')){renderMonitors();}
+            msg=`${agentName} 메트릭 갱신`;
+            return;
           } else {
             msg=payload?.message||taskId||JSON.stringify(payload).slice(0,80);
           }
