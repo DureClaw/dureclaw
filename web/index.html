@@ -450,33 +450,17 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
           <span style="background:#febc2e"></span>
           <span style="background:#28c840"></span>
         </div>
-        <span class="install-bar-label">STEP 1 — Claude Code 플러그인</span>
+        <span class="install-bar-label">한 줄 설치 — 서버 + MCP + Tailscale 안내 포함</span>
         <span style="width:40px"></span>
       </div>
       <div class="install-cmd">
-        <code><span class="dim">/plugin marketplace add </span><span class="url">DureClaw/dureclaw</span></code>
-        <button class="copy-btn" onclick="copyCmd(this, '/plugin marketplace add DureClaw/dureclaw')">복사</button>
-      </div>
-    </div>
-
-    <div class="install-block" style="margin-top:8px;">
-      <div class="install-bar">
-        <div class="install-bar-dots">
-          <span style="background:#ff5f57"></span>
-          <span style="background:#febc2e"></span>
-          <span style="background:#28c840"></span>
-        </div>
-        <span class="install-bar-label">STEP 2 — 서버 설치 (멀티머신 확장 시)</span>
-        <span style="width:40px"></span>
-      </div>
-      <div class="install-cmd">
-        <code><span class="dim">bash &lt;(curl -fsSL </span><span class="url">https://dureclaw.baryon.ai/server</span><span class="dim">)</span></code>
-        <button class="copy-btn" onclick="copyCmd(this, 'bash <(curl -fsSL https://dureclaw.baryon.ai/server)')">복사</button>
+        <code><span class="dim">bash &lt;(curl -fsSL </span><span class="url">https://dureclaw.baryon.ai/install</span><span class="dim">)</span></code>
+        <button class="copy-btn" onclick="copyCmd(this, 'bash <(curl -fsSL https://dureclaw.baryon.ai/install)')">복사</button>
       </div>
     </div>
 
     <p class="install-note">
-      Elixir 불필요 — Docker 또는 사전빌드 바이너리 자동 사용 ·
+      서버 자동 시작 · Claude Code MCP 자동 등록 · Tailscale 보안 안내 포함 ·
       <a href="https://github.com/DureClaw/dureclaw" target="_blank">소스 보기 ↗</a>
     </p>
 

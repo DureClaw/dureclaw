@@ -1,189 +1,199 @@
 #!/usr/bin/env bash
-# oah 설치 스크립트
+# DureClaw — 올인원 설치 스크립트
 #
-#   curl -fsSL https://open-agent-harness.baryon.ai/install | bash
+# 한 줄로 서버 + MCP + Tailscale 안내까지:
+#   bash <(curl -fsSL https://dureclaw.baryon.ai/install)
 #
-# oah CLI를 ~/.local/bin/oah 에 설치하고 PATH에 추가합니다.
+# 순서:
+#   1. Phoenix 서버 백그라운드 데몬으로 시작
+#   2. OAH_SECRET 자동 획득
+#   3. Claude Code MCP 등록 (claude mcp add oah)
+#   4. Tailscale 보안 안내/설치 (옵션, 권장)
+#   5. 원격 에이전트 연결 명령어 출력
+#
+# 환경변수:
+#   PORT=4000          서버 포트 (기본 4000)
+#   SKIP_TAILSCALE=1   Tailscale 설정 건너뜀
+#   SKIP_MCP=1         Claude Code MCP 등록 건너뜀
 
 set -euo pipefail
 
-OAH_BASE="https://open-agent-harness.baryon.ai"
-CLI_DIR="$HOME/.local/bin"
-CLI_PATH="$CLI_DIR/oah"
-OAH_DIR="$HOME/.oah"
-OAH_CONFIG="$OAH_DIR/config"
-OAH_LOG="$OAH_DIR/oah.log"
-OAH_PID="$OAH_DIR/oah.pid"
+GITHUB_RAW="https://raw.githubusercontent.com/DureClaw/dureclaw/main"
+PORT="${PORT:-4000}"
+INSTALL_DIR="${OAH_INSTALL_DIR:-$HOME/.oah-server}"
+DATA_DIR="${OAH_DATA_DIR:-$INSTALL_DIR/data}"
+SECRET_FILE="$DATA_DIR/server.secret"
+SKIP_TAILSCALE="${SKIP_TAILSCALE:-0}"
+SKIP_MCP="${SKIP_MCP:-0}"
 
-CYAN="\033[1;36m"; GREEN="\033[1;32m"
-YELLOW="\033[1;33m"; RED="\033[1;31m"; GRAY="\033[0;90m"; RESET="\033[0m"
+_bold()  { printf "\033[1m%s\033[0m" "$*"; }
+_cyan()  { printf "\033[36m%s\033[0m" "$*"; }
+_green() { printf "\033[32m%s\033[0m" "$*"; }
+_yellow(){ printf "\033[33m%s\033[0m" "$*"; }
+_dim()   { printf "\033[2m%s\033[0m" "$*"; }
 
 echo ""
-echo -e "${CYAN}  OAH — open-agent-harness${RESET}"
-echo -e "${GRAY}  v0.3.0${RESET}"
+printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+_bold " DureClaw — AI 에이전트 팀 설치"
+echo ""
+echo "  Claude Code를 오케스트레이터로,"
+echo "  내 모든 머신을 하나의 팀으로."
+printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
 echo ""
 
-# ─── 이미 설치된 경우 선택 메뉴 ─────────────────────────────────────────────
+# ─── 헬퍼 ────────────────────────────────────────────────────────────────────
 
-INSTALL_MODE="fresh"  # fresh | upgrade | cancel
+_server_healthy() {
+  curl -sf "http://localhost:$PORT/api/health" > /dev/null 2>&1
+}
 
-if [[ -f "$CLI_PATH" ]] || [[ -f "$OAH_DIR/config" ]] || [[ -f "$HOME/.oah-agent" ]]; then
-  echo -e "  ${YELLOW}이미 설치된 oah 가 발견되었습니다.${RESET}"
+_ts_ip() {
+  tailscale ip -4 2>/dev/null || echo ""
+}
+
+# ─── Step 1: Phoenix 서버 ─────────────────────────────────────────────────────
+
+echo "$(_bold '[1/4]') Phoenix 서버"
+
+if _server_healthy; then
+  echo "  $(_green '✅') 이미 실행 중 (http://localhost:$PORT)"
+else
+  echo "  → 서버를 백그라운드로 시작합니다..."
+  # DAEMON=1: setup-server.sh 에서 exec start 대신 daemon 모드로 실행
+  curl -fsSL "$GITHUB_RAW/scripts/setup-server.sh" \
+    | DAEMON=1 PORT="$PORT" SKIP_TAILSCALE=1 bash &
+  SERVER_SETUP_PID=$!
+
+  # 서버 준비 대기 (최대 30초)
+  echo -n "  → 준비 대기 중 "
+  READY=0
+  for i in $(seq 1 30); do
+    if _server_healthy; then
+      READY=1; break
+    fi
+    printf "."
+    sleep 1
+  done
   echo ""
 
-  # 현재 버전 표시
-  if [[ -f "$OAH_CONFIG" ]]; then
-    echo -e "  ${GRAY}설정 파일: $OAH_CONFIG${RESET}"
-    while IFS= read -r line; do
-      [[ "$line" =~ ^(PHOENIX|ROLE|WK|NAME)= ]] && echo -e "  ${GRAY}  $line${RESET}"
-    done < "$OAH_CONFIG" 2>/dev/null || true
-    echo ""
+  # setup 프로세스 정리
+  wait "$SERVER_SETUP_PID" 2>/dev/null || true
+
+  if [[ $READY -eq 0 ]]; then
+    echo "  $(_yellow '⚠') 30초 내에 서버가 응답하지 않습니다."
+    echo "     수동으로 서버를 시작하고 다시 실행하세요:"
+    echo "     bash <(curl -fsSL https://dureclaw.baryon.ai/server)"
+    exit 1
   fi
-
-  echo -e "  설치 방식을 선택하세요:"
-  echo ""
-  echo -e "    ${GREEN}1)${RESET} 업그레이드만   — 데이터/설정 유지, oah CLI+바이너리만 최신화"
-  echo -e "    ${YELLOW}2)${RESET} 완전 재설치    — 데이터/설정 삭제 후 새로 설치 (초기화)"
-  echo -e "    ${GRAY}3)${RESET} 취소"
-  echo ""
-  printf "  선택 [1]: "
-
-  # curl | bash 환경에서는 stdin이 파이프라 /dev/tty에서 읽어야 함
-  read -r choice </dev/tty || choice="1"
-
-  case "${choice:-1}" in
-    2)
-      INSTALL_MODE="clean"
-      echo ""
-      echo -e "  ${RED}⚠  데이터/설정을 삭제합니다.${RESET}"
-      printf "  정말 삭제하시겠습니까? [y/N]: "
-      read -r confirm </dev/tty || confirm="n"
-      if [[ ! "${confirm,,}" =~ ^y ]]; then
-        echo "  취소됨."
-        exit 0
-      fi
-      ;;
-    3)
-      echo "  취소됨."
-      exit 0
-      ;;
-    *)
-      INSTALL_MODE="upgrade"
-      ;;
-  esac
-  echo ""
+  echo "  $(_green '✅') 서버 시작 완료 (http://localhost:$PORT)"
 fi
+echo ""
 
-# ─── 데이터 삭제 (완전 재설치) ───────────────────────────────────────────────
+# ─── Step 2: OAH_SECRET ──────────────────────────────────────────────────────
 
-if [[ "$INSTALL_MODE" == "clean" ]]; then
-  echo -e "${CYAN}→${RESET} 기존 데이터 삭제 중..."
+echo "$(_bold '[2/4]') 보안 키"
 
-  # 실행 중인 프로세스 종료
-  if [[ -f "$OAH_PID" ]]; then
-    local_pid=$(cat "$OAH_PID" 2>/dev/null || true)
-    if [[ -n "$local_pid" ]] && kill -0 "$local_pid" 2>/dev/null; then
-      kill "$local_pid" 2>/dev/null || true
-      echo -e "  → 실행 중인 oah-agent 종료 (PID $local_pid)"
+OAH_SECRET=""
+if [[ -f "$SECRET_FILE" ]]; then
+  OAH_SECRET=$(tr -d '[:space:]' < "$SECRET_FILE")
+  echo "  $(_green '✅') OAH_SECRET 로드 $(_dim "($(basename "$SECRET_FILE")")")"
+else
+  echo "  $(_yellow '⚠') 시크릿 파일 없음: $SECRET_FILE"
+  echo "     서버 실행 후 자동 생성됩니다. 수동 지정:"
+  echo "     OAH_SECRET=<값> bash <(curl -fsSL https://dureclaw.baryon.ai/install)"
+fi
+echo ""
+
+# ─── Step 3: Claude Code MCP 등록 ────────────────────────────────────────────
+
+echo "$(_bold '[3/4]') Claude Code MCP 등록"
+
+if [[ "$SKIP_MCP" == "1" ]]; then
+  echo "  $(_dim '(건너뜀 — SKIP_MCP=1)')"
+elif ! command -v claude &>/dev/null; then
+  echo "  $(_yellow '⚠') Claude Code가 설치되어 있지 않습니다."
+  echo "     설치 후 별도 실행: bash <(curl -fsSL https://dureclaw.baryon.ai/mcp)"
+else
+  # Phoenix URL: Tailscale IP > localhost
+  TS=$(tailscale ip -4 2>/dev/null || echo "")
+  PHOENIX_URL="${TS:+ws://$TS:$PORT}"
+  PHOENIX_URL="${PHOENIX_URL:-ws://localhost:$PORT}"
+  MACHINE=$(hostname -s 2>/dev/null || hostname)
+  AGENT_NAME="orchestrator@${MACHINE}"
+
+  ENV_VARS="PHOENIX_URL=$PHOENIX_URL AGENT_NAME=$AGENT_NAME SKIP_TAILSCALE=1"
+  [[ -n "$OAH_SECRET" ]] && ENV_VARS="$ENV_VARS OAH_SECRET=$OAH_SECRET"
+
+  if env $ENV_VARS bash <(curl -fsSL "$GITHUB_RAW/scripts/setup-mcp.sh"); then
+    echo "  $(_green '✅') MCP 등록 완료"
+  else
+    echo "  $(_yellow '⚠') MCP 등록 실패. 수동: bash <(curl -fsSL https://dureclaw.baryon.ai/mcp)"
+  fi
+fi
+echo ""
+
+# ─── Step 4: Tailscale ────────────────────────────────────────────────────────
+
+echo "$(_bold '[4/4]') Tailscale 보안 설정"
+
+TS_IP=$(_ts_ip)
+if [[ -n "$TS_IP" ]]; then
+  echo "  $(_green '✅') Tailscale 연결됨: $TS_IP"
+elif [[ "$SKIP_TAILSCALE" == "1" ]]; then
+  echo "  $(_dim '(건너뜀 — SKIP_TAILSCALE=1)')"
+else
+  printf "  %s\n" "$(cat <<'MSG'
+  ┌──────────────────────────────────────────────────────────┐
+  │  Tailscale — 원격 머신 연결을 위한 보안 사설망            │
+  │  무료 · 최대 100대 · WireGuard 기반 암호화               │
+  │  https://tailscale.com/download                          │
+  │                                                          │
+  │  ℹ  같은 LAN 내에서만 사용하면 없어도 됩니다.             │
+  └──────────────────────────────────────────────────────────┘
+MSG
+)"
+
+  if [[ -t 0 ]]; then
+    read -rp "  지금 Tailscale을 설치하시겠습니까? [Y/n] " yn
+    if [[ ! "${yn:-Y}" =~ ^[Nn] ]]; then
+      if [[ "$(uname -s)" == "Darwin" ]] && command -v brew &>/dev/null; then
+        brew install --cask tailscale
+        open -a Tailscale 2>/dev/null || true
+        echo "  → 메뉴바 Tailscale 아이콘으로 로그인 후 Enter를 누르세요..."
+        read -r _
+      else
+        curl -fsSL https://tailscale.com/install.sh | sh
+        tailscale up
+      fi
+      TS_IP=$(_ts_ip)
     fi
   fi
+fi
+echo ""
 
-  # systemd 서비스 제거
-  if command -v systemctl &>/dev/null; then
-    systemctl --user stop oah-agent 2>/dev/null || true
-    systemctl --user disable oah-agent 2>/dev/null || true
-    rm -f "$HOME/.config/systemd/user/oah-agent.service"
-    systemctl --user daemon-reload 2>/dev/null || true
-  fi
+# ─── 완료 안내 ────────────────────────────────────────────────────────────────
 
-  # launchd 서비스 제거
-  if [[ "$(uname)" == "Darwin" ]]; then
-    launchctl unload "$HOME/Library/LaunchAgents/ai.baryon.oah-agent.plist" 2>/dev/null || true
-    rm -f "$HOME/Library/LaunchAgents/ai.baryon.oah-agent.plist"
-  fi
+CONNECT_IP="${TS_IP:-localhost}"
+AGENT_URL="https://dureclaw.baryon.ai/agent"
+SECRET_PART=""
+[[ -n "$OAH_SECRET" ]] && SECRET_PART=" OAH_SECRET='$OAH_SECRET'"
 
-  # 데이터 파일 삭제
-  rm -rf "$OAH_DIR"
-  rm -f "$HOME/.oah-agent" "$HOME/.oah-agent.js"
-  echo -e "  ${GREEN}✅ 삭제 완료${RESET}"
+printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+_green "✅ DureClaw 설치 완료!"
+echo ""
+echo "  대시보드:  http://localhost:$PORT"
+echo ""
+echo "  에이전트 연결 — 다른 머신에서 실행:"
+echo ""
+_cyan "  PHOENIX=ws://$CONNECT_IP:$PORT$SECRET_PART \\"
+echo ""
+_cyan "    bash <(curl -fsSL $AGENT_URL)"
+echo ""
+if [[ -n "$OAH_SECRET" ]]; then
+  _dim "  ※ OAH_SECRET은 위 에이전트 명령에 포함되었습니다."
   echo ""
 fi
-
-# ─── oah CLI 설치/업데이트 ──────────────────────────────────────────────────
-
-echo -e "${CYAN}→${RESET} oah CLI 설치 중..."
-mkdir -p "$CLI_DIR"
-curl -fsSL "$OAH_BASE/oah?nc=$(date +%s)" -o "$CLI_PATH"
-chmod +x "$CLI_PATH"
-echo -e "  ${GREEN}✅ $CLI_PATH${RESET}"
-
-# ─── oah-agent 바이너리 업데이트 (이미 있는 경우) ──────────────────────────
-
-if [[ "$INSTALL_MODE" == "upgrade" ]] && [[ -f "$HOME/.oah-agent" || -f "$HOME/.oah-agent.js" ]]; then
-  OS=$(uname -s | tr '[:upper:]' '[:lower:]')
-  ARCH=$(uname -m)
-  case "$ARCH" in
-    x86_64)        ARCH="x64" ;;
-    aarch64|arm64) ARCH="arm64" ;;
-    armv7l|armv6l)
-      echo -e "${CYAN}→${RESET} oah-agent JS 번들 업데이트 중..."
-      curl -fsSL "$OAH_BASE/oah-agent.js?nc=$(date +%s)" -o "$HOME/.oah-agent.js"
-      echo -e "  ${GREEN}✅ ~/.oah-agent.js${RESET}"
-      ARCH=""
-      ;;
-  esac
-  if [[ -n "$ARCH" ]]; then
-    echo -e "${CYAN}→${RESET} oah-agent 바이너리 업데이트 중..."
-    curl -fsSL "$OAH_BASE/oah-agent-${OS}-${ARCH}?nc=$(date +%s)" -o "$HOME/.oah-agent"
-    chmod +x "$HOME/.oah-agent"
-    echo -e "  ${GREEN}✅ ~/.oah-agent${RESET}"
-  fi
-fi
-
-# ─── PATH 등록 ───────────────────────────────────────────────────────────────
-
-PATH_LINE='export PATH="$HOME/.local/bin:$PATH"'
-PATH_ADDED=false
-for rc in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile"; do
-  if [[ -f "$rc" ]] && ! grep -q ".local/bin" "$rc" 2>/dev/null; then
-    { echo ""; echo "# oah (open-agent-harness)"; echo "$PATH_LINE"; } >> "$rc"
-    PATH_ADDED=true
-  fi
-done
-export PATH="$HOME/.local/bin:$PATH"
-
-# ─── 완료 메시지 ─────────────────────────────────────────────────────────────
-
+echo "  Claude Code에서 팀 실행:"
+_cyan "  /dureclaw"
+printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
 echo ""
-if [[ "$INSTALL_MODE" == "upgrade" ]]; then
-  echo -e "  ${GREEN}✅ 업그레이드 완료${RESET} — 설정/데이터가 유지되었습니다."
-elif [[ "$INSTALL_MODE" == "clean" ]]; then
-  echo -e "  ${GREEN}✅ 재설치 완료${RESET} — 초기화 상태입니다."
-else
-  echo -e "  ${GREEN}✅ 설치 완료${RESET}"
-fi
-
-echo ""
-echo -e "  ${CYAN}다음 단계:${RESET}"
-echo ""
-
-# oah.local 서버 자동 탐색
-if curl -sf --max-time 2 "http://oah.local:4000/api/health" > /dev/null 2>&1; then
-  echo -e "  oah.local 서버 발견!"
-  echo ""
-  echo -e "  에이전트 시작:        ${GREEN}oah${RESET}"
-  echo -e "  서비스로 등록:        ${GREEN}oah service install${RESET}"
-  echo -e "  상태 확인:            ${GREEN}oah status${RESET}"
-else
-  echo -e "  서버 주소를 지정하여 실행:"
-  echo ""
-  echo -e "  ${GREEN}  PHOENIX=ws://<서버IP>:4000 oah${RESET}"
-  echo ""
-  echo -e "  또는 Tailscale 자동 탐색:"
-  echo -e "  ${GREEN}  oah${RESET}"
-fi
-
-echo ""
-echo -e "  ${GRAY}도움말: oah help${RESET}"
-echo ""
-$PATH_ADDED && echo -e "  ${YELLOW}⚠  새 터미널을 열거나 source ~/.bashrc 를 실행하세요.${RESET}" && echo "" || true

@@ -34,6 +34,8 @@ jobs:
 
       - name: Publish scripts as short URLs
         run: |
+          # dureclaw.baryon.ai/install → install.sh (올인원 — server+mcp+tailscale)
+          cp scripts/install.sh      web/install
           # dureclaw.baryon.ai/server  → setup-server.sh
           cp scripts/setup-server.sh web/server
           # dureclaw.baryon.ai/agent   → setup-agent.sh

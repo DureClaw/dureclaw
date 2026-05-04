@@ -22,6 +22,7 @@ PHOENIX_URL="${PHOENIX_URL:-}"
 AGENT_NAME="${AGENT_NAME:-}"
 AGENT_ROLE="${AGENT_ROLE:-orchestrator}"
 SCOPE="${SCOPE:-user}"
+OAH_SECRET="${OAH_SECRET:-}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -29,9 +30,16 @@ while [[ $# -gt 0 ]]; do
     --name|-n)    AGENT_NAME="$2";  shift 2 ;;
     --role|-r)    AGENT_ROLE="$2";  shift 2 ;;
     --scope|-s)   SCOPE="$2";       shift 2 ;;
+    --secret|-k)  OAH_SECRET="$2";  shift 2 ;;
     *) echo "알 수 없는 옵션: $1"; exit 1 ;;
   esac
 done
+
+# OAH_SECRET 자동 로드 (파일에서)
+if [[ -z "$OAH_SECRET" ]]; then
+  _secret_file="${OAH_DATA_DIR:-$HOME/.oah-server/data}/server.secret"
+  [[ -f "$_secret_file" ]] && OAH_SECRET=$(tr -d '[:space:]' < "$_secret_file")
+fi
 
 echo "━━━ DureClaw MCP 설치 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
@@ -122,12 +130,15 @@ echo "▶ Claude Code에 oah MCP 등록 중..."
 # 기존 항목 제거 (있을 경우)
 claude mcp remove oah 2>/dev/null || true
 
-claude mcp add oah \
-  --scope "$SCOPE" \
-  -e "PHOENIX_URL=$PHOENIX_URL" \
-  -e "AGENT_NAME=$AGENT_NAME" \
-  -e "AGENT_ROLE=$AGENT_ROLE" \
-  -- bun run "$MCP_PATH"
+MCP_ADD_ARGS=(mcp add oah --scope "$SCOPE"
+  -e "PHOENIX_URL=$PHOENIX_URL"
+  -e "AGENT_NAME=$AGENT_NAME"
+  -e "AGENT_ROLE=$AGENT_ROLE"
+)
+[[ -n "$OAH_SECRET" ]] && MCP_ADD_ARGS+=(-e "OAH_SECRET=$OAH_SECRET")
+MCP_ADD_ARGS+=(-- bun run "$MCP_PATH")
+
+claude "${MCP_ADD_ARGS[@]}"
 
 # ─── 완료 ─────────────────────────────────────────────────────────────────────
 

@@ -25,6 +25,8 @@ INSTALL_DIR="${OAH_INSTALL_DIR:-$HOME/.oah-server}"
 DATA_DIR="${OAH_DATA_DIR:-$INSTALL_DIR/data}"
 USE_DOCKER="${USE_DOCKER:-auto}"
 CONTAINER_NAME="dureclaw-server"
+# DAEMON=1: 백그라운드 데몬으로 실행 (install.sh에서 사용)
+DAEMON="${DAEMON:-0}"
 
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
 ARCH=$(uname -m)
@@ -306,10 +308,23 @@ fi
 # ─── 데이터 디렉토리 + 주소 안내 + 실행 (바이너리 경로) ─────────────────────
 
 mkdir -p "$DATA_DIR"
-_print_connect_info
 
-exec env \
-  PORT="$PORT" \
-  HOST="$HOST" \
-  OAH_DATA_DIR="$DATA_DIR" \
-  "$EXE" start
+# DAEMON 모드: 백그라운드로 실행 (install.sh에서 사용)
+# 일반 모드: 포그라운드 (기본 동작)
+if [[ "$DAEMON" == "1" ]]; then
+  echo "→ 백그라운드 데몬으로 시작..."
+  export PORT="$PORT" HOST="$HOST" OAH_DATA_DIR="$DATA_DIR"
+  export RELEASE_TMP="$INSTALL_DIR/tmp"
+  mkdir -p "$RELEASE_TMP"
+  "$EXE" daemon
+  sleep 2
+  echo "✅ 서버 백그라운드 실행 중 (http://localhost:$PORT)"
+  _print_connect_info
+else
+  _print_connect_info
+  exec env \
+    PORT="$PORT" \
+    HOST="$HOST" \
+    OAH_DATA_DIR="$DATA_DIR" \
+    "$EXE" start
+fi
