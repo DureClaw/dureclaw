@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>DureClaw — 분산 AI 에이전트 오케스트레이션</title>
-<meta name="description" content="분산된 디바이스의 AI 에이전트들이 하나의 채널로 묶여 실시간 협력하는 오케스트레이션 인프라. Claude Code를 오케스트레이터로, 각 머신의 AI 에이전트들을 워커로 연결해 멀티머신 팀을 구성한다."/>
+<title>DureClaw — 내 모든 머신을 하나의 AI 팀으로</title>
+<meta name="description" content="Claude Code 네이티브 플러그인. Mac이 오케스트레이트하는 동안 GPU 서버·Linux·라즈베리파이가 동시에 일한다. 한 줄 설치로 멀티머신 AI 팀을 3분만에 구성하세요."/>
 
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
@@ -366,6 +366,47 @@ tr:nth-child(even) td { background: var(--bg2); }
 .cl-tag.sec  { background: rgba(220,38,38,.12);  color: var(--red); }
 @media (max-width: 900px) { .cl-grid { grid-template-columns: 1fr; } }
 
+/* FOR-WHO PERSONAS */
+.fw-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 0; }
+.fw-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 24px 22px;
+  transition: border-color 0.2s, transform 0.2s;
+}
+.fw-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+.fw-icon { font-size: 28px; margin-bottom: 12px; }
+.fw-who { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; color: var(--white); margin-bottom: 6px; }
+.fw-situation { font-size: 12px; color: var(--text3); margin-bottom: 12px; letter-spacing: 0.2px; }
+.fw-pain { font-size: 12px; color: var(--text2); padding: 10px 12px; background: rgba(220,38,38,0.05); border: 1px solid rgba(220,38,38,0.12); border-radius: 4px; margin-bottom: 8px; line-height: 1.6; }
+.fw-gain { font-size: 12px; color: var(--text2); padding: 10px 12px; background: rgba(5,150,105,0.05); border: 1px solid rgba(5,150,105,0.15); border-radius: 4px; line-height: 1.6; }
+.fw-gain strong { color: var(--green); }
+.fw-pain strong { color: var(--red); }
+@media (max-width: 900px) { .fw-grid { grid-template-columns: 1fr; } }
+
+/* HOW-IT-WORKS */
+.how-row {
+  display: grid; grid-template-columns: 1fr 40px 1fr 40px 1fr;
+  gap: 0; align-items: stretch; margin-bottom: 0;
+}
+.how-step {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 20px 18px;
+}
+.how-arrow {
+  display: flex; align-items: center; justify-content: center;
+  color: var(--border2); font-size: 20px;
+}
+.how-num { font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 800; letter-spacing: 3px; color: var(--text3); margin-bottom: 6px; }
+.how-title { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; color: var(--white); margin-bottom: 6px; }
+.how-desc { font-size: 11px; color: var(--text2); line-height: 1.6; }
+.how-code { margin-top: 10px; background: var(--bg3); border: 1px solid var(--border); border-radius: 3px; padding: 8px 10px; font-size: 10px; color: var(--green); word-break: break-all; }
+.how-code .dim { color: var(--text3); }
+.how-code .cyan { color: var(--cyan); }
+@media (max-width: 900px) {
+  .how-row { grid-template-columns: 1fr; }
+  .how-arrow { transform: rotate(90deg); height: 32px; }
+}
+
 /* FOOTER */
 footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px; }
 .footer-inner { display: flex; align-items: center; justify-content: space-between; }
@@ -378,7 +419,6 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
 /* RESPONSIVE */
 @media (max-width: 900px) {
   .platform-grid { grid-template-columns: repeat(2, 1fr); }
-  .what-grid { grid-template-columns: repeat(2, 1fr); }
   .steps-grid { grid-template-columns: 1fr; }
   .oneliner-row { grid-template-columns: 1fr; }
   .footer-inner { flex-direction: column; gap: 12px; text-align: center; }
@@ -386,7 +426,6 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
   .hero h1 { font-size: 32px; letter-spacing: -1px; }
 }
 @media (max-width: 600px) {
-  .what-grid { grid-template-columns: 1fr; }
   .parallel-box { padding: 16px; }
   .arch-ascii { padding: 20px; }
 }
@@ -411,12 +450,10 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
     <div class="nav-inner">
       <a href="/" class="nav-logo">Dure<span>Claw</span></a>
       <div class="nav-links">
+        <a href="#how-it-works">시작하기</a>
         <a href="#install">설치</a>
         <a href="#platforms">지원 환경</a>
         <a href="#architecture">아키텍처</a>
-        <a href="#add-agent">에이전트 추가</a>
-        <a href="#events">이벤트</a>
-        <a href="#api">REST API</a>
         <a href="#screenshots">스크린샷</a>
         <a href="#changelog">Changelog</a>
         <a href="https://github.com/DureClaw/dureclaw/tree/main/docs" target="_blank">문서</a>
@@ -433,14 +470,13 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
 <section class="hero">
   <div class="container">
     <img src="https://github.com/user-attachments/assets/7ed690a2-92e8-4fbd-a0c8-510f6ee3944e" alt="DureClaw" style="width:100%;border-radius:8px;margin-bottom:40px;display:block;" />
-    <div class="hero-badge">LIVE · v0.3+</div>
-    <p class="hero-sub-ko">두레클로 — <a href="https://en.wikipedia.org/wiki/Dure" target="_blank" style="color:var(--text3);text-decoration:none;border-bottom:1px solid var(--border2);">조선시대 두레(협동 경작)</a> 정신을 AI 에이전트에 담다</p>
-    <h1>Dure<em>Claw</em></h1>
+    <div class="hero-badge">Claude Code 네이티브 플러그인 · v0.4.0 · 오픈소스</div>
+    <p class="hero-sub-ko">두레클로 — <a href="https://en.wikipedia.org/wiki/Dure" target="_blank" style="color:var(--text3);text-decoration:none;border-bottom:1px solid var(--border2);">두레(협동 경작)</a> 정신을 AI 에이전트에 담다</p>
+    <h1>내 모든 머신이<br/><em>AI 팀</em>이 된다</h1>
     <p class="hero-sub">
-      분산된 디바이스의 AI 에이전트들이 하나의 채널로 묶여 실시간 협력한다.<br/>
-      <strong style="color:var(--cyan)">Claude Code</strong>를 오케스트레이터로,
-      각 머신의 AI 에이전트들을 워커로 연결해
-      <strong style="color:var(--green)">멀티머신 AI 팀</strong>을 구성한다.
+      Claude Code를 <strong>창 하나</strong>에서만 쓰고 있다면?<br/>
+      DureClaw는 내 <strong style="color:var(--cyan)">모든 머신</strong>을 하나의 팀으로 연결한다.<br/>
+      Mac이 오케스트레이트하는 동안, GPU 서버·Linux 박스·라즈베리파이가 <strong style="color:var(--green)">동시에</strong> 일한다.
     </p>
 
     <div class="install-block">
@@ -464,26 +500,61 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
       <a href="https://github.com/DureClaw/dureclaw" target="_blank">소스 보기 ↗</a>
     </p>
 
-    <div class="what-grid">
-      <div class="what-item">
-        <div class="what-item-label">Claude Code 플러그인</div>
-        <div class="what-item-title">오케스트레이터</div>
-        <p>Claude Code가 AI 팀장 역할. MCP 도구로 태스크를 에이전트에 배분하고 결과를 수집한다.</p>
+    <!-- 이런 분을 위해 -->
+    <p style="font-size:11px;letter-spacing:2px;color:var(--text3);margin-bottom:14px;text-transform:uppercase;">이런 분을 위해</p>
+    <div class="fw-grid">
+      <div class="fw-card">
+        <div class="fw-icon">🖥️</div>
+        <div class="fw-who">맥 + 서버/워크스테이션 보유 개발자</div>
+        <div class="fw-situation">메인 Mac + GPU 서버 or Linux 박스</div>
+        <div class="fw-pain"><strong>기존:</strong> Claude Code는 맥에서만. 서버는 별도 SSH로 수동 작업.</div>
+        <div class="fw-gain"><strong>DureClaw:</strong> Mac Claude가 지시하면 서버가 동시에 빌드·테스트·학습 실행.</div>
       </div>
-      <div class="what-item">
-        <div class="what-item-label">Phoenix Channel</div>
-        <div class="what-item-title">실시간 메시지 버스</div>
-        <p>모든 에이전트가 WebSocket 채널로 연결. 태스크 배분, 진행 상황, 결과가 실시간으로 전달된다.</p>
+      <div class="fw-card">
+        <div class="fw-icon">🤖</div>
+        <div class="fw-who">집·회사 멀티 셋업 개발자</div>
+        <div class="fw-situation">회사 Mac + 집 워크스테이션 (Tailscale로 연결)</div>
+        <div class="fw-pain"><strong>기존:</strong> 한 곳에서만 작업 가능. 다른 머신은 놀고 있음.</div>
+        <div class="fw-gain"><strong>DureClaw:</strong> 어디서든 Claude에게 말하면 두 머신이 동시에 태스크 수행.</div>
       </div>
-      <div class="what-item">
-        <div class="what-item-label">멀티머신</div>
-        <div class="what-item-title">분산 워커 팀</div>
-        <p>Mac, GPU 서버, Linux 박스, Raspberry Pi까지. Tailscale 사설망으로 어디서든 연결된다.</p>
+      <div class="fw-card">
+        <div class="fw-icon">👥</div>
+        <div class="fw-who">소규모 팀·스터디그룹</div>
+        <div class="fw-situation">팀원 각자의 머신에 AI 에이전트 설치</div>
+        <div class="fw-pain"><strong>기존:</strong> AI 도구를 각자 따로. 결과 공유가 느리고 번거롭다.</div>
+        <div class="fw-gain"><strong>DureClaw:</strong> 팀장 Claude가 태스크 배분 → 모든 머신이 협력해서 결과 통합.</div>
       </div>
-      <div class="what-item">
-        <div class="what-item-label">AI 백엔드</div>
-        <div class="what-item-title">자동 감지 실행</div>
-        <p>claude-cli, opencode, gemini, aider, codex 등 머신에 설치된 AI를 자동 감지해 태스크를 실행한다.</p>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="section" id="how-it-works" style="padding-top:0">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-num">→</span>
+      <h2 class="section-title">3분이면 <em>팀 완성</em></h2>
+    </div>
+    <div class="how-row">
+      <div class="how-step">
+        <div class="how-num">STEP 01</div>
+        <div class="how-title">한 줄로 설치</div>
+        <div class="how-desc">Claude Code 플러그인 + Phoenix 서버 + MCP 등록까지 자동으로 처리된다.</div>
+        <div class="how-code"><span class="dim">bash &lt;(curl -fsSL </span><span class="cyan">dureclaw.baryon.ai/install</span><span class="dim">)</span></div>
+      </div>
+      <div class="how-arrow">→</div>
+      <div class="how-step">
+        <div class="how-num">STEP 02</div>
+        <div class="how-title">워커 머신 연결</div>
+        <div class="how-desc">다른 머신에서 한 줄 실행. Claude가 자동으로 IP를 감지하고 명령을 만들어준다.</div>
+        <div class="how-code"><span class="dim">PHOENIX=ws://100.x.x.x:4000 <br/>bash &lt;(</span><span class="cyan">…/agent</span><span class="dim">)</span></div>
+      </div>
+      <div class="how-arrow">→</div>
+      <div class="how-step">
+        <div class="how-num">STEP 03</div>
+        <div class="how-title">Claude에게 말하기</div>
+        <div class="how-desc">Claude Code에서 슬래시 명령 하나. 팀 구성부터 태스크 배분까지 Claude가 알아서 한다.</div>
+        <div class="how-code"><span class="cyan">/두레팀</span> <span class="dim">또는 "팀 설정해줘"</span></div>
       </div>
     </div>
   </div>
