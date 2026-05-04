@@ -407,6 +407,54 @@ tr:nth-child(even) td { background: var(--bg2); }
   .how-arrow { transform: rotate(90deg); height: 32px; }
 }
 
+/* DEMO SECTION */
+.demo-video-placeholder {
+  width: 100%; aspect-ratio: 16/9;
+  border: 2px dashed var(--border2); border-radius: 10px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: var(--bg2); margin-bottom: 48px; gap: 10px;
+}
+.demo-video-placeholder .dvp-icon { font-size: 40px; opacity: 0.4; }
+.demo-video-placeholder .dvp-label { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; color: var(--text3); }
+.demo-video-placeholder .dvp-sub { font-size: 11px; color: var(--text3); letter-spacing: 0.5px; }
+
+.demo-scenes { display: flex; flex-direction: column; gap: 0; }
+.demo-scene {
+  display: grid; grid-template-columns: 260px 1fr;
+  border: 1px solid var(--border); border-bottom: none; overflow: hidden;
+}
+.demo-scene:first-child { border-radius: 8px 8px 0 0; }
+.demo-scene:last-child  { border-bottom: 1px solid var(--border); border-radius: 0 0 8px 8px; }
+.demo-scene-shot {
+  border-right: 1px solid var(--border); background: var(--bg3);
+  display: flex; align-items: center; justify-content: center;
+  min-height: 140px; position: relative; overflow: hidden;
+}
+.demo-scene-shot img { width: 100%; height: 100%; object-fit: cover; display: block; cursor: zoom-in; transition: transform 0.2s; }
+.demo-scene-shot img:hover { transform: scale(1.03); }
+.demo-scene-shot .shot-empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px; padding: 20px; width: 100%; height: 100%;
+}
+.demo-scene-shot .shot-empty span { font-size: 22px; opacity: 0.3; }
+.demo-scene-shot .shot-empty p { font-size: 10px; color: var(--text3); text-align: center; letter-spacing: 0.5px; }
+.demo-scene-body { padding: 20px 24px; }
+.demo-scene-meta { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.demo-scene-num {
+  font-family: 'Syne', sans-serif; font-size: 10px; font-weight: 800;
+  letter-spacing: 2px; color: var(--text3);
+}
+.demo-scene-time { font-size: 10px; color: var(--text3); background: var(--bg3); padding: 2px 8px; border-radius: 20px; }
+.demo-scene-title { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; color: var(--white); margin-bottom: 6px; }
+.demo-scene-script { font-size: 12px; color: var(--text2); line-height: 1.7; }
+.demo-scene-script .narr { font-style: italic; color: var(--text3); }
+.demo-scene-script code { background: var(--bg3); padding: 1px 6px; border-radius: 3px; color: var(--green); font-size: 11px; }
+.demo-scene-script .highlight { color: var(--cyan); font-weight: 600; }
+@media (max-width: 700px) {
+  .demo-scene { grid-template-columns: 1fr; }
+  .demo-scene-shot { min-height: 100px; border-right: none; border-bottom: 1px solid var(--border); }
+}
+
 /* FOOTER */
 footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px; }
 .footer-inner { display: flex; align-items: center; justify-content: space-between; }
@@ -451,9 +499,9 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
       <a href="/" class="nav-logo">Dure<span>Claw</span></a>
       <div class="nav-links">
         <a href="#how-it-works">시작하기</a>
+        <a href="#demo">데모</a>
         <a href="#install">설치</a>
         <a href="#platforms">지원 환경</a>
-        <a href="#architecture">아키텍처</a>
         <a href="#screenshots">스크린샷</a>
         <a href="#changelog">Changelog</a>
         <a href="https://github.com/DureClaw/dureclaw/tree/main/docs" target="_blank">문서</a>
@@ -1011,6 +1059,133 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
       </div>
 
     </div>
+  </div>
+</section>
+
+<!-- DEMO SCENARIO -->
+<section class="section" id="demo">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-num">↗</span>
+      <h2 class="section-title">데모 <em>시나리오</em></h2>
+    </div>
+
+    <!-- 영상 placeholder -->
+    <div class="demo-video-placeholder">
+      <div class="dvp-icon">▶</div>
+      <div class="dvp-label">데모 영상 준비 중</div>
+      <div class="dvp-sub">설치 → 워커 연결 → 동시 실행 · ~3분</div>
+    </div>
+
+    <!-- 5-장면 스토리보드 -->
+    <div class="demo-scenes">
+
+      <!-- Scene 1 -->
+      <div class="demo-scene">
+        <div class="demo-scene-shot">
+          <div class="shot-empty"><span>📷</span><p>스크린샷<br/>scene-01.png</p></div>
+        </div>
+        <div class="demo-scene-body">
+          <div class="demo-scene-meta">
+            <span class="demo-scene-num">SCENE 01</span>
+            <span class="demo-scene-time">0:00 – 0:15</span>
+          </div>
+          <div class="demo-scene-title">문제: Claude Code는 창 하나에서만</div>
+          <div class="demo-scene-script">
+            <span class="narr">"Mac에서 Claude Code를 쓰고 있는데 — 옆에 GPU 서버가 그냥 놀고 있어요."</span><br/><br/>
+            Mac 터미널에서 Claude Code 실행 중. 서버 터미널은 idle.
+            두 창을 번갈아 가며 수동으로 SSH → 복붙하는 불편함.
+          </div>
+        </div>
+      </div>
+
+      <!-- Scene 2 -->
+      <div class="demo-scene">
+        <div class="demo-scene-shot">
+          <div class="shot-empty"><span>📷</span><p>스크린샷<br/>scene-02.png</p></div>
+        </div>
+        <div class="demo-scene-body">
+          <div class="demo-scene-meta">
+            <span class="demo-scene-num">SCENE 02</span>
+            <span class="demo-scene-time">0:15 – 0:45</span>
+          </div>
+          <div class="demo-scene-title">한 줄 설치 — 서버 + MCP 자동 등록</div>
+          <div class="demo-scene-script">
+            Mac 터미널에서: <code>bash &lt;(curl -fsSL dureclaw.baryon.ai/install)</code><br/><br/>
+            <span class="highlight">자동 처리:</span> Phoenix 서버 백그라운드 시작 →
+            <code>OAH_SECRET</code> 생성 → Claude Code MCP 등록 →
+            Tailscale IP 감지 → 워커 연결 명령어 출력까지 한 번에.
+          </div>
+        </div>
+      </div>
+
+      <!-- Scene 3 -->
+      <div class="demo-scene">
+        <div class="demo-scene-shot">
+          <div class="shot-empty"><span>📷</span><p>스크린샷<br/>scene-03.png</p></div>
+        </div>
+        <div class="demo-scene-body">
+          <div class="demo-scene-meta">
+            <span class="demo-scene-num">SCENE 03</span>
+            <span class="demo-scene-time">0:45 – 1:05</span>
+          </div>
+          <div class="demo-scene-title">워커 머신에서 한 줄 연결</div>
+          <div class="demo-scene-script">
+            GPU 서버 터미널에서 install.sh가 출력한 명령어 복붙:<br/>
+            <code>PHOENIX=ws://100.x.x.x:4000 bash &lt;(curl -fsSL …/agent)</code><br/><br/>
+            <span class="highlight">✅ builder@gpuserver 연결 완료</span> 메시지.
+            대시보드 <code>http://localhost:4000</code>에서 에이전트 온라인 확인.
+          </div>
+        </div>
+      </div>
+
+      <!-- Scene 4 -->
+      <div class="demo-scene">
+        <div class="demo-scene-shot">
+          <div class="shot-empty"><span>📷</span><p>스크린샷<br/>scene-04.png</p></div>
+        </div>
+        <div class="demo-scene-body">
+          <div class="demo-scene-meta">
+            <span class="demo-scene-num">SCENE 04</span>
+            <span class="demo-scene-time">1:05 – 1:25</span>
+          </div>
+          <div class="demo-scene-title">Claude에게 팀 구성 지시</div>
+          <div class="demo-scene-script">
+            Claude Code 터미널: <code>/두레팀</code> 입력<br/><br/>
+            Claude가 자동으로: 온라인 에이전트 스캔 →
+            Work Key 생성 → 팀 매니페스트 구성 → 역할 배분.<br/><br/>
+            <span class="highlight">팀 현황 출력:</span> orchestrator@mac · builder@gpuserver
+          </div>
+        </div>
+      </div>
+
+      <!-- Scene 5 -->
+      <div class="demo-scene">
+        <div class="demo-scene-shot">
+          <div class="shot-empty"><span>📷</span><p>스크린샷<br/>scene-05.png</p></div>
+        </div>
+        <div class="demo-scene-body">
+          <div class="demo-scene-meta">
+            <span class="demo-scene-num">SCENE 05</span>
+            <span class="demo-scene-time">1:25 – 2:30</span>
+          </div>
+          <div class="demo-scene-title">두 머신이 동시에 — The Magic Moment</div>
+          <div class="demo-scene-script">
+            <span class="narr">"프론트엔드 빌드는 Mac에서, 백엔드 테스트는 서버에서 동시에 돌려줘."</span><br/><br/>
+            <span class="highlight">두 터미널이 동시에 움직인다.</span>
+            Mac: <code>npm run build</code> 실행 중 ·
+            GPU 서버: <code>pytest tests/</code> 병렬 실행.<br/><br/>
+            Claude가 양쪽 결과를 수집해 통합 리포트 출력.
+            전체 소요 시간: 직렬 대비 <strong style="color:var(--green)">~50% 단축</strong>.
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /demo-scenes -->
+
+    <p style="margin-top:16px;font-size:11px;color:var(--text3);text-align:center;letter-spacing:0.5px;">
+      ↑ 스크린샷은 <code>web/screenshots/scene-0N.png</code>으로 추가하면 자동 표시됩니다
+    </p>
   </div>
 </section>
 
