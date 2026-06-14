@@ -137,6 +137,8 @@ interface TaskPayload {
   requires?: string[];
   /** Reassignment retry counter (incremented by server on each reassignment) */
   retry_count?: number;
+  /** Backend override (e.g. "ollama"). Falls back to env/auto-detect if unset. */
+  backend?: string;
 }
 
 // ─── Active task tracking ─────────────────────────────────────────────────────
@@ -702,19 +704,30 @@ async function handleTaskAssign(payload: TaskPayload) {
   } else {
     // ── Direct subprocess path: opencode / zeroclaw / aider / gemini / etc. ──
     try {
-      const result = await runOpenCode(taskId, payload, abort.signal);
+      let result = await runOpenCode(taskId, payload, abort.signal);
+      let usedBackend = resolvedBackend;
+
+      // Reliability fallback: if a non-ollama backend failed and a local ollama
+      // is available, retry once with ollama (self-contained, no auth/TTY). This
+      // rescues headless nodes where e.g. codex fails on a missing-TTY/auth gate.
+      if (result.exitCode !== 0 && resolvedBackend !== "ollama" && AGENT_CAPABILITIES.includes("ollama")) {
+        console.log(`[backend] ${resolvedBackend} failed (exit ${result.exitCode}) — falling back to ollama`);
+        result = await runOpenCode(taskId, { ...payload, backend: "ollama" }, abort.signal);
+        usedBackend = "ollama";
+      }
       activeTasks.delete(taskId);
 
       sendEvent("task.result", {
         task_id: taskId,
         to: payload.from,
-        status: "done",
+        status: result.exitCode === 0 ? "done" : "blocked",
         output: stripAnsi(result.output).slice(-2000),
         exit_code: result.exitCode,
         artifacts: result.artifacts,
+        backend: usedBackend,
       });
 
-      console.log(`[task] ${taskId} completed via ${resolvedBackend} (exit ${result.exitCode})`);
+      console.log(`[task] ${taskId} completed via ${usedBackend} (exit ${result.exitCode})`);
 
     } catch (err) {
       activeTasks.delete(taskId);
@@ -1033,9 +1046,15 @@ function buildAgentCmd(backend: string, prompt: string): string[] {
   }
 }
 
-/** Pick best available backend from detected capabilities. */
+/**
+ * Pick best available backend from detected capabilities.
+ * Local ollama is preferred over codex/aider: on a headless node those launch
+ * interactive flows or need cloud auth and fail unattended, whereas ollama is
+ * self-contained. Cloud coding CLIs (claude/opencode/gemini) still win when
+ * present since they're the strongest when authenticated.
+ */
 function autoSelectBackend(): string {
-  const priority = ["claude-cli", "opencode", "gemini", "codex", "aider", "ollama", "zeroclaw"];
+  const priority = ["claude-cli", "opencode", "gemini", "ollama", "codex", "aider", "zeroclaw"];
   for (const b of priority) {
     if (AGENT_CAPABILITIES.includes(b)) return b;
   }
