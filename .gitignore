@@ -29,3 +29,6 @@ packages/phoenix-server/priv/dist/
 # Local-only docs (not for public repo)
 docs/PROMOTION.md
 image-*.png
+
+# Local Claude Code session data
+.claude/
