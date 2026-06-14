@@ -1,0 +1,56 @@
+# Build Day "Magic Moment" — factory defect detection across a distributed fleet.
+#
+# A defect appears on the line. Three machines spring to life at once:
+#   - an edge node (Pi + camera) flags a suspect,
+#   - a GPU node runs vision inference,
+#   - a Mac traces the shared material lot (genealogy).
+# The fan-in produces a structured SUGGESTION, which a human approves.
+# Approval is a real state transition (where a physical Pi LED/buzzer would fire).
+#
+# Deterministic: same output every run. Drives the REAL Phoenix bus — the
+# dashboard is identical to a physical fleet. Run with:
+#   dureclaw sim --scenario factory-defect          (interactive, on-stage)
+#   dureclaw sim --scenario factory-defect --auto    (unattended backup / CI)
+
+name: factory-defect
+
+fleet:
+  - name: "executor@pi-cam"
+    role: executor
+    latency_ms: 200
+    caps: [camera, gpio, edge]
+    preferred_model: remote-claude
+  - name: "builder@gpu-sim"
+    role: builder
+    latency_ms: 800
+    caps: [nvidia-gpu, vision]
+    preferred_model: ollama-llava
+  - name: "analyst@mac-sim"
+    role: analyst
+    latency_ms: 400
+    caps: [genealogy, mes]
+    preferred_model: claude-sonnet-4-6
+
+events:
+  - trigger: defect_injected
+    lot: "A-2026-1031"
+    fanout:
+      - to: "executor@pi-cam"
+        emits:
+          defect_suspect: true
+          image: scratch.jpg
+          sensor: line-cam-03
+      - to: "builder@gpu-sim"
+        emits:
+          vision_score: 0.88
+          region: "edge-top"
+          model: llava-13b
+      - to: "analyst@mac-sim"
+        emits:
+          shared_material_lot: "R-882"
+          affected_wo: [WO-3301, WO-3302, WO-3307]
+    suggest:
+      defect_type: "외관/스크래치"
+      root_cause: "원자재 LOT R-882"
+      confidence: 0.82
+      action: quarantine

@@ -1,0 +1,20 @@
+{
+  "name": "@dureclaw/sim-agent",
+  "version": "0.4.0",
+  "description": "Virtual fleet simulator — real Phoenix-bus agents driven by deterministic scenarios. Demo safety net + open-sim distribution.",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "dureclaw": "./src/cli.ts"
+  },
+  "scripts": {
+    "sim": "bun run src/cli.ts sim",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "yaml": "^2.6.0"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  }
+}

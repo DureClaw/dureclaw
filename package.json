@@ -14,7 +14,8 @@
     "test:b": "bun test test/mode_b.test.ts",
     "init": "bash scripts/init.sh",
     "agent": "bun run packages/agent-daemon/src/index.ts",
-    "mcp": "bun run packages/oah-mcp/src/index.ts"
+    "mcp": "bun run packages/oah-mcp/src/index.ts",
+    "sim": "bun run packages/sim-agent/src/cli.ts sim"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
