@@ -30,6 +30,7 @@ defmodule HarnessServer.StateStore do
   @task_table :harness_tasks
   @pending_table :harness_pending
   @metrics_table :harness_metrics
+  @eval_table :harness_evals
 
   # ─── Public API ─────────────────────────────────────────────────────────────
 
@@ -87,6 +88,56 @@ defmodule HarnessServer.StateStore do
   def store_task_result(task_id, result) do
     GenServer.call(__MODULE__, {:store_task_result, task_id, result})
   end
+
+  @doc """
+  Record an evaluation run for a work key. This is the eval-loop spine: results
+  from any device that carry a `score` are aggregated here so improvement can be
+  measured across runs and across machines.
+  """
+  def record_eval(work_key, run) when is_map(run) do
+    GenServer.call(__MODULE__, {:record_eval, work_key, run})
+  end
+
+  @doc "All eval runs recorded for a work key, in insertion (time) order."
+  def get_evals(work_key) do
+    case :dets.lookup(@eval_table, work_key) do
+      [{^work_key, runs}] -> runs
+      _ -> []
+    end
+  end
+
+  @doc """
+  Aggregated eval view for a work key: best score, latest vs previous delta,
+  whether the latest run improved, and the best score per device.
+  """
+  def eval_summary(work_key) do
+    case get_evals(work_key) do
+      [] ->
+        %{work_key: work_key, count: 0, runs: []}
+
+      runs ->
+        scores = Enum.map(runs, &score_of/1)
+        latest = List.last(runs)
+        prev = if length(runs) >= 2, do: Enum.at(runs, -2), else: nil
+
+        %{
+          work_key: work_key,
+          count: length(runs),
+          runs: runs,
+          best_score: Enum.max(scores),
+          best: Enum.max_by(runs, &score_of/1),
+          latest: latest,
+          delta: prev && score_of(latest) - score_of(prev),
+          improved: prev && score_of(latest) >= score_of(prev),
+          by_agent_best:
+            runs
+            |> Enum.group_by(&Map.get(&1, "agent", "unknown"))
+            |> Map.new(fn {agent, rs} -> {agent, Enum.map(rs, &score_of/1) |> Enum.max()} end)
+        }
+    end
+  end
+
+  defp score_of(run), do: Map.get(run, "score", 0) * 1.0
 
   @doc "Store a pending task with dependency list."
   def store_pending_task(task_id, task_info) do
@@ -158,6 +209,12 @@ defmodule HarnessServer.StateStore do
         type: :set
       )
 
+    {:ok, _} =
+      :dets.open_file(@eval_table,
+        file: String.to_charlist(Path.join(data_dir, "harness_evals.dets")),
+        type: :set
+      )
+
     :ets.new(@pending_table, [:named_table, :public, read_concurrency: true])
     :ets.new(@metrics_table, [:named_table, :public, read_concurrency: true])
 
@@ -175,6 +232,7 @@ defmodule HarnessServer.StateStore do
     :dets.close(@state_table)
     :dets.close(@mailbox_table)
     :dets.close(@task_table)
+    :dets.close(@eval_table)
     :ok
   end
 
@@ -271,6 +329,18 @@ defmodule HarnessServer.StateStore do
   def handle_call({:store_task_result, task_id, result}, _from, state) do
     existing = fetch_existing_results(task_id)
     :dets.insert(@task_table, {task_id, existing ++ [result]})
+    {:reply, :ok, state}
+  end
+
+  @impl true
+  def handle_call({:record_eval, work_key, run}, _from, state) do
+    existing =
+      case :dets.lookup(@eval_table, work_key) do
+        [{^work_key, runs}] -> runs
+        _ -> []
+      end
+
+    :dets.insert(@eval_table, {work_key, existing ++ [run]})
     {:reply, :ok, state}
   end
 

@@ -158,11 +158,31 @@ defmodule HarnessServer.WorkChannel do
 
     if task_id = Map.get(payload, "task_id") do
       StateStore.store_task_result(task_id, msg)
+      maybe_record_eval(socket.assigns.work_key, task_id, msg)
       maybe_dispatch_unblocked(task_id, socket.assigns.work_key)
     end
 
     broadcast!(socket, "task.result", msg)
     {:reply, {:ok, %{broadcast: true}}, socket}
+  end
+
+  # Aggregate a scored result into the eval loop. Results without a score are
+  # ignored — only measurable runs feed improvement tracking.
+  defp maybe_record_eval(work_key, task_id, msg) do
+    case Map.get(msg, "score") do
+      nil ->
+        :ok
+
+      score ->
+        StateStore.record_eval(work_key, %{
+          "task_id" => task_id,
+          "agent" => Map.get(msg, "from"),
+          "backend" => Map.get(msg, "backend"),
+          "score" => score,
+          "exit_code" => Map.get(msg, "exit_code"),
+          "ts" => Map.get(msg, "ts")
+        })
+    end
   end
 
   defp maybe_dispatch_unblocked(task_id, default_wk) do

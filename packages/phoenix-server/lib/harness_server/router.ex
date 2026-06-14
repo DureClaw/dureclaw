@@ -319,10 +319,33 @@ defmodule HarnessServer.Router do
 
     StateStore.store_task_result(task_id, result)
 
-    wk = StateStore.latest_work_key()
-    if wk, do: HarnessServer.Endpoint.broadcast("work:#{wk}", "task.result", result)
+    wk = Map.get(result, "work_key") || StateStore.latest_work_key()
+
+    if wk do
+      HarnessServer.Endpoint.broadcast("work:#{wk}", "task.result", result)
+
+      # External evaluators / devices can POST a scored result to feed the eval loop.
+      if Map.get(result, "score") != nil do
+        StateStore.record_eval(wk, %{
+          "task_id" => task_id,
+          "agent" => Map.get(result, "from", "http@evaluator"),
+          "backend" => Map.get(result, "backend"),
+          "score" => Map.get(result, "score"),
+          "exit_code" => Map.get(result, "exit_code"),
+          "ts" => Map.get(result, "ts")
+        })
+      end
+    end
 
     send_json(conn, 200, %{ok: true, task_id: task_id})
+  end
+
+  # ── GET /api/eval/:work_key ─────────────────────────────────────────────────
+  # Aggregated eval view: scores from every device for this work key, best run,
+  # latest-vs-previous delta, and per-device best. The eval-loop spine.
+
+  get "/api/eval/:work_key" do
+    send_json(conn, 200, StateStore.eval_summary(work_key))
   end
 
   # ── POST /api/task/:task_id/cancel ──────────────────────────────────────────
