@@ -588,6 +588,13 @@ async function handleTaskAssign(payload: TaskPayload) {
     return;
   }
 
+  // [EVAL] marker — run the instruction, then self-score the result so it feeds
+  // the eval loop. The marker is stripped before execution.
+  const evalMode = payload.instructions.trimStart().toUpperCase().startsWith("[EVAL]");
+  if (evalMode) {
+    payload.instructions = payload.instructions.replace(/^\s*\[eval\]\s*/i, "");
+  }
+
   // Special: [SHELL] task — run shell command directly, no OpenCode/LLM
   if (payload.instructions.trimStart().startsWith("[SHELL]")) {
     await handleShellTask(payload);
@@ -725,6 +732,12 @@ async function handleTaskAssign(payload: TaskPayload) {
       }
       activeTasks.delete(taskId);
 
+      // Self-score for the eval loop (only [EVAL] tasks).
+      const score =
+        evalMode && result.exitCode === 0
+          ? await scoreResult(payload.instructions, result.output, usedBackend)
+          : null;
+
       sendEvent("task.result", {
         task_id: taskId,
         to: payload.from,
@@ -733,9 +746,13 @@ async function handleTaskAssign(payload: TaskPayload) {
         exit_code: result.exitCode,
         artifacts: result.artifacts,
         backend: usedBackend,
+        ...(score != null ? { score } : {}),
       });
 
-      console.log(`[task] ${taskId} completed via ${usedBackend} (exit ${result.exitCode})`);
+      console.log(
+        `[task] ${taskId} completed via ${usedBackend} (exit ${result.exitCode})` +
+          (score != null ? ` — self-score ${score}` : ""),
+      );
 
     } catch (err) {
       activeTasks.delete(taskId);
@@ -1067,6 +1084,55 @@ function autoSelectBackend(): string {
     if (AGENT_CAPABILITIES.includes(b)) return b;
   }
   return "opencode"; // last resort
+}
+
+// ─── Self-evaluation (eval loop) ───────────────────────────────────────────────
+
+/** Run a backend command and capture stdout (used for self-scoring). */
+async function captureCmd(cmd: string[]): Promise<string> {
+  const effectiveDir = (globalThis as Record<string, unknown>)["EFFECTIVE_PROJECT_DIR"] as string ?? PROJECT_DIR;
+  const proc = spawn({ cmd, cwd: effectiveDir, stdout: "pipe", stderr: "pipe", env: process.env });
+  let out = "";
+  const decoder = new TextDecoder();
+  const reader = proc.stdout.getReader();
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      out += decoder.decode(value);
+    }
+  } catch { /* closed */ }
+  await proc.exited;
+  return out;
+}
+
+/** Extract a 0.0–1.0 score from a model's grading reply. */
+function parseScore(s: string): number | null {
+  const m = s.match(/(?:^|[^0-9.])([01](?:\.\d+)?|0?\.\d+)/);
+  if (!m) return null;
+  let v = parseFloat(m[1]!);
+  if (Number.isNaN(v)) return null;
+  if (v > 1) v = v / 100; // tolerate "85" meaning 0.85
+  return Math.max(0, Math.min(1, v));
+}
+
+/**
+ * Self-score a result against its goal — the "judgment" half of the eval loop.
+ * Asks the backend for a single 0.00–1.00 number. Returns null if it can't
+ * produce one (the run is still recorded, just unscored).
+ */
+async function scoreResult(goal: string, output: string, backend: string): Promise<number | null> {
+  try {
+    const prompt =
+      "You are grading a result against a goal. Reply with ONLY one number " +
+      "between 0.00 and 1.00 — no words, no explanation — rating how well the " +
+      `RESULT achieves the GOAL.\n\nGOAL:\n${goal.slice(0, 500)}\n\nRESULT:\n${output.slice(0, 2000)}\n\nScore (0.00-1.00):`;
+    const cmd = buildAgentCmd(backend, prompt);
+    const raw = stripAnsi(await captureCmd(cmd));
+    return parseScore(raw);
+  } catch {
+    return null;
+  }
 }
 
 // ─── System prompt builder ────────────────────────────────────────────────────
