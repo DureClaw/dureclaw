@@ -228,19 +228,27 @@ function flushPending() {
 
 // ─── Heartbeat ───────────────────────────────────────────────────────────────
 
+// Watchdog window must comfortably exceed the heartbeat interval so a healthy
+// connection (whose heartbeat replies reset the watchdog) never trips it, while
+// a dead socket — e.g. after the server restarts behind a Tailscale link that
+// doesn't deliver a prompt FIN — is detected in ~35s instead of 90s. A shorter
+// window means presence recovers in seconds, not a minute and a half.
+const HEARTBEAT_MS = 15_000;
+const WATCHDOG_MS = 35_000;
+
 function resetWatchdog() {
   if (heartbeatWatchdog) clearTimeout(heartbeatWatchdog);
   heartbeatWatchdog = setTimeout(() => {
-    console.warn("[daemon] heartbeat watchdog fired — no server message in 90s, reconnecting");
+    console.warn(`[daemon] heartbeat watchdog fired — no server message in ${WATCHDOG_MS / 1000}s, reconnecting`);
     ws?.close();
-  }, 90_000);
+  }, WATCHDOG_MS);
 }
 
 function startHeartbeat() {
   if (heartbeatTimer) clearInterval(heartbeatTimer);
   heartbeatTimer = setInterval(() => {
     sendRaw([null, nextRef(), "phoenix", "heartbeat", {}]);
-  }, 30_000);
+  }, HEARTBEAT_MS);
   resetWatchdog();
 }
 
