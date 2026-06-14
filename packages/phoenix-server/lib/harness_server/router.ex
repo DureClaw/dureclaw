@@ -291,8 +291,12 @@ defmodule HarnessServer.Router do
       # No dependencies — dispatch immediately
       HarnessServer.Endpoint.broadcast("work:#{wk}", "task.assign", payload)
 
+      # Only queue to the mailbox if the target is OFFLINE. An online agent
+      # already receives the broadcast; enqueuing as well caused the same task
+      # to run twice (broadcast + mailbox poll) and, on failure, a retry storm.
       if to = Map.get(params, "to") do
-        StateStore.enqueue_mailbox(to, payload)
+        online? = Map.has_key?(Presence.list("work:#{wk}"), to)
+        unless online?, do: StateStore.enqueue_mailbox(to, payload)
       end
     else
       # Has dependencies — store as pending

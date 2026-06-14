@@ -358,6 +358,15 @@ function handlePhxMessage([msgJoinRef, ref, topic, event, payload]: PhxMsg) {
         return;
       }
 
+      // A phx_reply is sent for EVERY pushed message (task.progress, task.result,
+      // state.update, …) — not only the channel join. Only the reply whose ref
+      // matches our join ref is the join ack. Without this guard every push ack
+      // was mis-handled as a fresh join: duplicate "[channel] joined" logs and a
+      // redundant flushPending() on each progress event.
+      if (ref !== joinRef) {
+        return;
+      }
+
       if (status === "ok") {
         const resp = response as { work_key?: string; project?: Record<string, unknown> };
         const workKey = resp.work_key ?? WORK_KEY;
@@ -526,8 +535,27 @@ function satisfiesRequirements(required: string[]): boolean {
   return required.every(cap => AGENT_CAPABILITIES.includes(cap));
 }
 
+/**
+ * Task ids this process has already accepted. A task can arrive via BOTH the
+ * channel broadcast and mailbox polling; without this guard each would run the
+ * task, doubling execution (and, for failing tasks, feeding a retry storm).
+ * Bounded so an unattended long-running daemon doesn't leak memory.
+ */
+const handledTasks = new Set<string>();
+
 async function handleTaskAssign(payload: TaskPayload) {
   const taskId = payload.task_id ?? `task-${Date.now()}`;
+
+  // Idempotency: ignore a task we've already accepted (duplicate broadcast +
+  // mailbox delivery, or a stale mailbox entry re-polled after restart).
+  if (handledTasks.has(taskId)) {
+    console.log(`[task] ${taskId} already handled — ignoring duplicate`);
+    return;
+  }
+  handledTasks.add(taskId);
+  if (handledTasks.size > 5000) {
+    for (const t of [...handledTasks].slice(0, 1000)) handledTasks.delete(t);
+  }
 
   // Capability check — reject immediately if we lack required capabilities
   const required = payload.requires;
@@ -681,7 +709,7 @@ async function handleTaskAssign(payload: TaskPayload) {
         task_id: taskId,
         to: payload.from,
         status: "done",
-        output: result.output.slice(-2000),
+        output: stripAnsi(result.output).slice(-2000),
         exit_code: result.exitCode,
         artifacts: result.artifacts,
       });
@@ -765,11 +793,21 @@ async function handleShellTask(payload: TaskPayload) {
     from: AGENT_NAME,
     role: AGENT_ROLE,
     status: exitCode === 0 ? "done" : "blocked",
-    output: output.trim(),
+    output: stripAnsi(output).trim(),
     exit_code: exitCode,
     sys: sysInfo,
     artifacts: [],
   });
+}
+
+/**
+ * Strip ANSI/VT control sequences. CLIs like `ollama run` emit terminal spinner
+ * and cursor escapes that otherwise pollute the captured task output.
+ */
+function stripAnsi(s: string): string {
+  // CSI sequences (incl. private `?` forms), plus stray spinner braille chars.
+  // eslint-disable-next-line no-control-regex
+  return s.replace(/\x1b\[[0-9;?]*[a-zA-Z]/g, "").replace(/[⠀-⣿]/g, "");
 }
 
 // ─── Orchestrate task handler ─────────────────────────────────────────────────
@@ -974,9 +1012,12 @@ function buildAgentCmd(backend: string, prompt: string): string[] {
     case "gemini":
       return [GEMINI_BIN, "-p", prompt];
 
-    // OpenAI Codex CLI  — `codex "<prompt>"`
+    // OpenAI Codex CLI  — `codex exec --skip-git-repo-check "<prompt>"`
+    // Bare `codex "<prompt>"` launches the interactive TUI, which fails in a
+    // headless daemon with "stdin is not a terminal". `exec` is the documented
+    // non-interactive mode; --skip-git-repo-check allows running outside a repo.
     case "codex":
-      return [CODEX_BIN, prompt];
+      return [CODEX_BIN, "exec", "--skip-git-repo-check", prompt];
 
     // Aider  — `aider --message "<prompt>" --yes-always --no-git`
     case "aider":
