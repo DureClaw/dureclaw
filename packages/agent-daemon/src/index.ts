@@ -39,8 +39,9 @@
 import { spawnCompat as spawn } from "./spawn-compat.ts";
 import { hostname } from "os";
 import { execSync } from "child_process";
-import { readFileSync, writeFileSync, mkdirSync } from "fs";
-import { dirname } from "path";
+import { readFileSync, writeFileSync, mkdirSync, unlinkSync } from "fs";
+import { dirname, join } from "path";
+import { tmpdir } from "os";
 import { detectCapabilities, detectPreferredModel } from "./capabilities.ts";
 import { orchestrateGoal } from "./orchestrator.ts";
 
@@ -636,6 +637,12 @@ async function handleTaskAssign(payload: TaskPayload) {
     return;
   }
 
+  // Special: [SCREENSHOT] task — master views this node's screen
+  if (payload.instructions.trimStart().toUpperCase().startsWith("[SCREENSHOT]")) {
+    await handleScreenshotTask(payload);
+    return;
+  }
+
   // [ORCHESTRATE] task — AI decomposes goal and dispatches subtasks
   if (payload.instructions.trimStart().startsWith("[ORCHESTRATE]")) {
     await handleOrchestrateTask(payload);
@@ -935,6 +942,62 @@ async function handleWriteTask(payload: TaskPayload) {
     output,
     exit_code: exitCode,
     sys: { machine: AGENT_MACHINE, agent: AGENT_NAME, os: process.platform, path },
+    artifacts: [],
+  });
+}
+
+/**
+ * [SCREENSHOT] task — capture this node's screen so the master can see it.
+ * Captures to a temp file (avoids stdout/CLIXML pollution), reads it, returns
+ * base64 JPEG in the `image` field. Cross-platform (macOS/Windows/Linux).
+ */
+async function handleScreenshotTask(payload: TaskPayload) {
+  const taskId = payload.task_id ?? `task-${Date.now()}`;
+  const tmp = join(tmpdir(), `oah-screen-${Date.now()}.jpg`);
+  let output = "";
+  let exitCode = 0;
+  let image = "";
+  try {
+    let cmd: string[];
+    if (process.platform === "darwin") {
+      cmd = ["screencapture", "-x", "-t", "jpg", tmp];
+    } else if (process.platform === "win32") {
+      const f = tmp.replace(/\\/g, "\\\\");
+      const ps =
+        "$ErrorActionPreference='Stop'; Add-Type -AssemblyName System.Windows.Forms; Add-Type -AssemblyName System.Drawing; " +
+        "$b=[System.Windows.Forms.SystemInformation]::VirtualScreen; " +
+        "$bmp=New-Object System.Drawing.Bitmap $b.Width,$b.Height; " +
+        "$g=[System.Drawing.Graphics]::FromImage($bmp); $g.CopyFromScreen($b.X,$b.Y,0,0,$bmp.Size); " +
+        `$w=1400; if($bmp.Width -lt $w){$w=$bmp.Width}; $h=[int]($bmp.Height*$w/$bmp.Width); ` +
+        "$sm=New-Object System.Drawing.Bitmap $w,$h; ([System.Drawing.Graphics]::FromImage($sm)).DrawImage($bmp,0,0,$w,$h); " +
+        `$sm.Save('${f}',[System.Drawing.Imaging.ImageFormat]::Jpeg)`;
+      cmd = ["powershell", "-NoProfile", "-Command", ps];
+    } else {
+      cmd = ["sh", "-c", `scrot -o '${tmp}' 2>/dev/null || import -window root '${tmp}' 2>/dev/null || gnome-screenshot -f '${tmp}'`];
+    }
+    const proc = spawn({ cmd, stdout: "pipe", stderr: "pipe" });
+    await proc.exited;
+    const buf = readFileSync(tmp);
+    image = buf.toString("base64");
+    output = `captured ${Math.round(buf.length / 1024)}KB (${process.platform})`;
+    try { unlinkSync(tmp); } catch { /* ignore */ }
+    console.log(`[screenshot] ${taskId}: ${output}`);
+  } catch (err) {
+    output = err instanceof Error ? err.message : String(err);
+    exitCode = 1;
+    console.log(`[screenshot] ${taskId} failed: ${output}`);
+  }
+
+  sendEvent("task.result", {
+    task_id: taskId,
+    to: payload.from ?? "http@controller",
+    from: AGENT_NAME,
+    role: AGENT_ROLE,
+    status: exitCode === 0 ? "done" : "blocked",
+    output,
+    image,
+    image_mime: "image/jpeg",
+    exit_code: exitCode,
     artifacts: [],
   });
 }
