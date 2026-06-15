@@ -37,6 +37,7 @@ jobs:
           cp scripts/rpi_agent.py web/agent.py
           curl -fsSL https://bun.sh/install | bash
           export PATH="$HOME/.bun/bin:$PATH"
+          (cd packages/agent-daemon && bun install --frozen-lockfile 2>/dev/null || bun install)
           bun build packages/agent-daemon/src/index.ts --target=bun --outfile=web/oah-agent.js
 
       - name: Publish scripts as short URLs
