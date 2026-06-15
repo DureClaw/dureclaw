@@ -173,28 +173,29 @@ if (Get-Command bun -ErrorAction SilentlyContinue) {
     exit 1
 }
 
-# ── AI backend auto-detect (pi coding agent preferred) ──────────────────────
+# ── AI backend: brain delegation OR local pi ────────────────────────────────
 
-$BACKEND = "none"
-foreach ($cmd in @("claude", "pi", "opencode", "zeroclaw", "aider")) {
-    if (Get-Command $cmd -ErrorAction SilentlyContinue) {
-        $BACKEND = $cmd; break
+if ($env:BRAIN_URL) {
+    # Brain node: pi auth lives on the master — this PC delegates AI tasks, no local pi
+    $BACKEND = "remote-pi"
+    Write-Host "-> brain delegation mode: AI tasks → $env:BRAIN_URL (skip local pi)"
+} else {
+    $BACKEND = "none"
+    foreach ($cmd in @("claude", "pi", "opencode", "zeroclaw", "aider")) {
+        if (Get-Command $cmd -ErrorAction SilentlyContinue) { $BACKEND = $cmd; break }
     }
-}
-
-# ── Install pi coding agent (if none) ───────────────────────────────────────
-
-if ($BACKEND -eq "none" -and -not (Get-Command pi -ErrorAction SilentlyContinue)) {
-    Write-Host "-> installing pi coding agent..."
-    try {
-        if (Get-Command npm -ErrorAction SilentlyContinue) {
-            npm install -g --ignore-scripts @earendil-works/pi-coding-agent
-        } elseif (Get-Command bun -ErrorAction SilentlyContinue) {
-            bun install -g @earendil-works/pi-coding-agent
+    if ($BACKEND -eq "none" -and -not (Get-Command pi -ErrorAction SilentlyContinue)) {
+        Write-Host "-> installing pi coding agent..."
+        try {
+            if (Get-Command npm -ErrorAction SilentlyContinue) {
+                npm install -g --ignore-scripts @earendil-works/pi-coding-agent
+            } elseif (Get-Command bun -ErrorAction SilentlyContinue) {
+                bun install -g @earendil-works/pi-coding-agent
+            }
+            if (Get-Command pi -ErrorAction SilentlyContinue) { $BACKEND = "pi" }
+        } catch {
+            Write-Host "[warn] pi install failed. Only [SHELL] tasks available."
         }
-        if (Get-Command pi -ErrorAction SilentlyContinue) { $BACKEND = "pi" }
-    } catch {
-        Write-Host "[warn] pi install failed. Only [SHELL] tasks available."
     }
 }
 

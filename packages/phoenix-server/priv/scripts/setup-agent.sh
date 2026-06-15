@@ -244,22 +244,25 @@ if [[ "$USE_NODE" == "true" ]]; then
     fi
   fi
 
-  # ─── pi coding agent (기본 백엔드) ─────────────────────────────────────────
-  command -v npm &>/dev/null && export PATH="$(npm config get prefix 2>/dev/null)/bin:$PATH"
-  export PATH="$HOME/.local/bin:$HOME/.local/share/pi-node/current/bin:$PATH"
-  if ! command -v pi &>/dev/null; then
-    echo "→ pi coding agent 설치 시도 중..."
-    curl -fsSL https://pi.dev/install.sh | sh 2>/dev/null \
-      || (command -v npm &>/dev/null && npm install -g --ignore-scripts @earendil-works/pi-coding-agent 2>/dev/null) \
-      || echo "⚠ pi 설치 실패 (npm 없음/미지원). [SHELL] 태스크만 사용 가능."
+  # ─── 백엔드 결정 ────────────────────────────────────────────────────────────
+  if [[ -n "${BRAIN_URL:-}" ]]; then
+    BACKEND="remote-pi"
+    echo "→ 브레인 위임 모드: AI 태스크를 ${BRAIN_URL} 로 위임 (pi 설치 생략)"
+  else
     command -v npm &>/dev/null && export PATH="$(npm config get prefix 2>/dev/null)/bin:$PATH"
-  fi
-
-  # 백엔드 결정 — pi 기본, ZeroClaw 있으면 우선
-  BACKEND="pi"
-  if command -v zeroclaw &>/dev/null; then
-    BACKEND="zeroclaw"
-    echo "→ ZeroClaw 감지됨 — AI 백엔드로 사용"
+    export PATH="$HOME/.local/bin:$HOME/.local/share/pi-node/current/bin:$PATH"
+    if ! command -v pi &>/dev/null; then
+      echo "→ pi coding agent 설치 시도 중..."
+      curl -fsSL https://pi.dev/install.sh | sh 2>/dev/null \
+        || (command -v npm &>/dev/null && npm install -g --ignore-scripts @earendil-works/pi-coding-agent 2>/dev/null) \
+        || echo "⚠ pi 설치 실패 (npm 없음/미지원). [SHELL] 태스크만 사용 가능."
+      command -v npm &>/dev/null && export PATH="$(npm config get prefix 2>/dev/null)/bin:$PATH"
+    fi
+    BACKEND="pi"
+    if command -v zeroclaw &>/dev/null; then
+      BACKEND="zeroclaw"
+      echo "→ ZeroClaw 감지됨 — AI 백엔드로 사용"
+    fi
   fi
 
   # ─── oah CLI 설치 ──────────────────────────────────────────────────────────
@@ -299,6 +302,8 @@ CFG
     AGENT_BACKEND="$BACKEND" \
     WORK_KEY="${WK:-}" \
     PROJECT_DIR="$DIR" \
+    BRAIN_URL="${BRAIN_URL:-}" \
+    BRAIN_TOKEN="${BRAIN_TOKEN:-}" \
     node "$JS_BUNDLE"
 fi
 
