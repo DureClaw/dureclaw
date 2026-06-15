@@ -1,0 +1,84 @@
+# DureClaw heterogeneous fleet — a self-contained multi-arch demo.
+#
+# Runs the Phoenix server plus real agent daemons on three architectures, all on
+# one Docker network. This is the containerized form of a physical fleet (unlike
+# packages/sim-agent which fakes workers): each agent is the REAL daemon.
+#
+#   docker compose -f docker-compose.fleet.yml up --build
+#   curl -H "Authorization: Bearer dureclaw-fleet-demo" http://localhost:4001/api/presence
+#
+# Note on platforms:
+#   - linux/amd64   → a generic x86 Linux server (qemu on Apple Silicon)
+#   - linux/arm64   → a Raspberry Pi 4/5 (64-bit) — native on Apple Silicon
+#
+#   NOT containerizable here:
+#   - Pi 32-bit (armv7) / Zero W (armv6): Bun ships no 32-bit ARM build, so the
+#     daemon can't run there. These are "local hands" nodes — drive them as a
+#     thin proxy from a parent, per the edge-node design.
+#   - Windows: Docker Desktop on macOS only runs Linux containers. A Windows
+#     node needs a Windows host (or WSL2 running the Linux daemon); add it as an
+#     external agent pointing at this server's published port.
+
+x-agent-env: &agent-env
+  STATE_SERVER: ws://dureclaw:4000
+  OAH_SECRET: dureclaw-fleet-demo
+  WORK_KEY: LN-20260615-fleet
+  AGENT_BACKEND: none
+
+services:
+  dureclaw:
+    build:
+      context: ./packages/phoenix-server
+      dockerfile: Dockerfile
+    ports:
+      - "4001:4000"
+    environment:
+      PORT: 4000
+      HOST: 0.0.0.0
+      # No Tailscale inside a container → bind all interfaces explicitly,
+      # else the server falls back to 127.0.0.1 and agents can't reach it.
+      OAH_BIND_IP: 0.0.0.0
+      OAH_DATA_DIR: /data
+      OAH_SECRET: dureclaw-fleet-demo
+    volumes:
+      - fleet-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:4000/api/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  agent-linux-x86:
+    build:
+      context: .
+      dockerfile: packages/agent-daemon/Dockerfile
+    platform: linux/amd64
+    environment:
+      <<: *agent-env
+      AGENT_ROLE: builder
+      AGENT_NAME: builder@linux-x86
+      AGENT_MACHINE: linux-x86
+    depends_on:
+      dureclaw:
+        condition: service_healthy
+    restart: unless-stopped
+
+  agent-pi64:
+    build:
+      context: .
+      dockerfile: packages/agent-daemon/Dockerfile
+    platform: linux/arm64
+    environment:
+      <<: *agent-env
+      AGENT_ROLE: executor
+      AGENT_NAME: executor@pi64
+      AGENT_MACHINE: pi64
+    depends_on:
+      dureclaw:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  fleet-data:

@@ -19,7 +19,9 @@ COPY priv priv
 RUN mix release harness_server
 
 # ── Stage 2: Runtime ─────────────────────────────────────────────────────────
-FROM alpine:3.20 AS runtime
+# Match the builder's base so the crypto NIF's OpenSSL ABI lines up
+# (a bare alpine:3.x ships a different OpenSSL → "symbol not found" at boot).
+FROM elixir:1.17-alpine AS runtime
 
 RUN apk add --no-cache libstdc++ openssl ncurses-libs bash curl
 
@@ -38,4 +40,5 @@ VOLUME ["/data"]
 HEALTHCHECK --interval=10s --timeout=5s --start-period=15s --retries=3 \
   CMD curl -sf http://localhost:$PORT/api/health || exit 1
 
-CMD ["bin/harness_server", "foreground"]
+# `foreground` is the old distillery verb; mix releases use `start`.
+CMD ["bin/harness_server", "start"]

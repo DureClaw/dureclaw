@@ -1,0 +1,12 @@
+**/node_modules
+.git
+.claude
+.opencode
+packages/phoenix-server/_build
+packages/phoenix-server/deps
+packages/phoenix-server/data
+packages/phoenix-server/priv/dist
+dist
+web/screenshots
+*.dets
+erl_crash.dump
