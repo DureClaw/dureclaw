@@ -39,7 +39,8 @@
 import { spawnCompat as spawn } from "./spawn-compat.ts";
 import { hostname } from "os";
 import { execSync } from "child_process";
-import { readFileSync } from "fs";
+import { readFileSync, writeFileSync, mkdirSync } from "fs";
+import { dirname } from "path";
 import { detectCapabilities, detectPreferredModel } from "./capabilities.ts";
 import { orchestrateGoal } from "./orchestrator.ts";
 
@@ -629,6 +630,12 @@ async function handleTaskAssign(payload: TaskPayload) {
     return;
   }
 
+  // Special: [WRITE] task — master creates a file on this node (remote deploy)
+  if (payload.instructions.trimStart().toUpperCase().startsWith("[WRITE")) {
+    await handleWriteTask(payload);
+    return;
+  }
+
   // [ORCHESTRATE] task — AI decomposes goal and dispatches subtasks
   if (payload.instructions.trimStart().startsWith("[ORCHESTRATE]")) {
     await handleOrchestrateTask(payload);
@@ -879,6 +886,52 @@ async function handleShellTask(payload: TaskPayload) {
     output: stripAnsi(output).trim(),
     exit_code: exitCode,
     sys: sysInfo,
+    artifacts: [],
+  });
+}
+
+/**
+ * [WRITE] task — the master creates a file on this node (remote file deploy).
+ * Format:
+ *   [WRITE] <path>\n<text content...>          — UTF-8 text
+ *   [WRITE:b64] <path>\n<base64 content>        — binary (decoded)
+ * Parent dirs are created. Pairs with [SHELL] to deploy-and-run on any node.
+ */
+async function handleWriteTask(payload: TaskPayload) {
+  const taskId = payload.task_id ?? `task-${Date.now()}`;
+  const raw = payload.instructions.trimStart();
+  const isB64 = /^\[WRITE:b64\]/i.test(raw);
+  const instr = raw.replace(/^\[WRITE(:b64)?\]\s*/i, "");
+  const nl = instr.indexOf("\n");
+  const path = (nl < 0 ? instr : instr.slice(0, nl)).trim();
+  const body = nl < 0 ? "" : instr.slice(nl + 1);
+
+  let output = "";
+  let exitCode = 0;
+  try {
+    if (!path) throw new Error("no path given — usage: [WRITE] <path>\\n<content>");
+    const dir = dirname(path);
+    if (dir && dir !== ".") mkdirSync(dir, { recursive: true });
+    const data: string | Buffer = isB64 ? Buffer.from(body, "base64") : body;
+    writeFileSync(path, data);
+    const bytes = isB64 ? (data as Buffer).length : Buffer.byteLength(body);
+    output = `wrote ${bytes} bytes → ${path}`;
+    console.log(`[write] ${taskId}: ${output}`);
+  } catch (err) {
+    output = err instanceof Error ? err.message : String(err);
+    exitCode = 1;
+    console.log(`[write] ${taskId} failed: ${output}`);
+  }
+
+  sendEvent("task.result", {
+    task_id: taskId,
+    to: payload.from ?? "http@controller",
+    from: AGENT_NAME,
+    role: AGENT_ROLE,
+    status: exitCode === 0 ? "done" : "blocked",
+    output,
+    exit_code: exitCode,
+    sys: { machine: AGENT_MACHINE, agent: AGENT_NAME, os: process.platform, path },
     artifacts: [],
   });
 }
