@@ -41,6 +41,7 @@ input,select,button{font-family:inherit;font-size:12px}
 .appr-goal{font-size:16px;color:var(--tx);font-style:italic;margin-bottom:10px;line-height:1.45}
 .appr-meta{font-size:12px;color:var(--t2);margin-bottom:14px}
 .appr-meta b{color:var(--tx)}
+.appr-wiki{font-size:13px;color:var(--t2);line-height:1.55;background:rgba(0,0,0,.25);border-left:3px solid var(--am);border-radius:6px;padding:10px 14px;margin-bottom:12px;max-height:220px;overflow:auto;white-space:pre-wrap}
 .appr-acts{display:flex;gap:10px;max-width:520px}
 .b-ok{flex:1;padding:10px;background:var(--gn);color:#04121f;border:0;border-radius:7px;font-weight:700;cursor:pointer;font-size:13px}
 .b-no{flex:1;padding:10px;background:transparent;color:var(--rd);border:1px solid var(--rd);border-radius:7px;cursor:pointer;font-size:13px}
@@ -51,9 +52,12 @@ input,select,button{font-family:inherit;font-size:12px}
 .stages{display:flex;align-items:stretch}
 .stage{flex:1;padding:12px 10px;border-radius:8px;background:var(--bg3);text-align:center;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--t3);border:1px solid var(--bd)}
 .stage b{display:block;font-size:13px;margin-top:6px;text-transform:none;letter-spacing:0;color:var(--tx);font-weight:500}
-.stage.cur.read{border-color:var(--cy);animation:pulse-cy 1.4s infinite}
-.stage.cur.suggest{border-color:var(--pu);animation:pulse-pu 1.4s infinite}
-.stage.cur.approve{border-color:var(--am);animation:pulse-am 1.4s infinite}
+.stage.cur.observe{border-color:var(--cy);animation:pulse-cy 1.4s infinite}
+.stage.cur.synthesize{border-color:var(--cy);animation:pulse-cy 1.4s infinite}
+.stage.cur.frame{border-color:var(--pu);animation:pulse-pu 1.4s infinite}
+.stage.cur.wiki{border-color:var(--pu);animation:pulse-pu 1.4s infinite}
+.stage.cur.learn{border-color:var(--am);animation:pulse-am 1.4s infinite}
+.stage{font-size:9px}.stage b{font-size:12px}.arrow{padding:0 6px;font-size:13px}
 .stage.done{opacity:.7;border-color:var(--gn)}
 .stage.done .st-h::after{content:' ✓';color:var(--gn)}
 .arrow{display:flex;align-items:center;padding:0 12px;color:var(--t3);font-size:16px}
@@ -90,13 +94,13 @@ textarea.inp{resize:vertical;min-height:60px}
 .flow{display:flex;flex-direction:column;gap:0}
 .flow-item{display:flex;gap:10px;padding:7px 0;border-left:2px solid var(--bd2);padding-left:12px;margin-left:6px;position:relative}
 .flow-item::before{content:'';position:absolute;left:-5px;top:12px;width:8px;height:8px;border-radius:50%;background:var(--bd2)}
-.flow-item.read::before{background:var(--cy)}
-.flow-item.suggest::before{background:var(--pu)}
-.flow-item.approve::before{background:var(--gn)}
-.flow-stage{font-size:9px;letter-spacing:1px;text-transform:uppercase;width:64px;flex-shrink:0;padding-top:2px}
-.flow-item.read .flow-stage{color:var(--cy)}
-.flow-item.suggest .flow-stage{color:var(--pu)}
-.flow-item.approve .flow-stage{color:var(--gn)}
+.flow-item.observe::before{background:var(--cy)}
+.flow-item.wiki::before{background:var(--pu)}
+.flow-item.learn::before{background:var(--gn)}
+.flow-stage{font-size:10px;letter-spacing:.5px;width:48px;flex-shrink:0;padding-top:2px}
+.flow-item.observe .flow-stage{color:var(--cy)}
+.flow-item.wiki .flow-stage{color:var(--pu)}
+.flow-item.learn .flow-stage{color:var(--gn)}
 .flow-body{font-size:11px;color:var(--t2);flex:1;min-width:0}
 .flow-body b{color:var(--tx)}
 .flow-ts{font-size:9px;color:var(--t3)}
@@ -167,9 +171,9 @@ textarea.inp{resize:vertical;min-height:60px}
   <!-- CENTER: dispatch + flow -->
   <div class="col">
     <div class="card">
-      <div class="card-h">평가 디스패치 — read → suggest → approve</div>
+      <div class="card-h">학습 루프 디스패치 — 관측 → 종합 → 목적화 → 지식화 → 학습·선택</div>
       <div class="card-b">
-        <div class="field"><label>목표 (이 산출물을 만들고 동료가 채점) — 시나리오 선택</label>
+        <div class="field"><label>목적 (이 상황에서 달성할 것 — 노드들이 지식화하고 사람이 학습) — 시나리오 선택</label>
           <div class="presets">
             <span class="preset" onclick="setGoal(this)" data-g="현장 Pi 카메라가 포착한 부품 이미지에서 외관 스크래치 불량 여부를 판정하고, 결함 위치와 신뢰도(0~1)를 제시하라.">📷 엣지 비전 판정</span>
             <span class="preset" onclick="setGoal(this)" data-g="LOT A-2026-1031의 스크래치 불량을 분석해 결함 유형·근본 원인(의심 원자재 LOT 포함)·조치(격리/재작업)를 한 단락으로 제안하라.">🏭 MES 불량 분석</span>
@@ -187,14 +191,14 @@ textarea.inp{resize:vertical;min-height:60px}
     </div>
     <div class="card">
       <div class="card-h">흐름 타임라인</div>
-      <div class="card-b"><div class="flow" id="flow"><div class="empty">디스패치하면 read→suggest→approve 단계가 여기 표시됩니다</div></div></div>
+      <div class="card-b"><div class="flow" id="flow"><div class="empty">디스패치하면 관측→종합→목적화→지식화→학습 단계가 여기 표시됩니다</div></div></div>
     </div>
   </div>
 
   <!-- RIGHT: RSI measurement -->
   <div class="col">
     <div class="card">
-      <div class="card-h">RSI 측정 — 합의 (suggest)</div>
+      <div class="card-h">RSI 측정 — 합의 (지식화)</div>
       <div class="card-b" id="consensus"><div class="empty">평가 합의 없음</div></div>
     </div>
     <div class="card">
@@ -218,7 +222,10 @@ const H=()=>TOKEN?{Authorization:'Bearer '+TOKEN}:{};
 let selWk=new URLSearchParams(location.search).get('work_key')||null;
 let agents=[],wks=[],evalCache={},ws=null,ref=1,hbTimer=null,connected=false;
 let activeEval=null;
-const STAGES=['read','suggest','approve','done'];
+// 5-stage learning loop: 관측→종합→목적화→지식화→학습·선택. 사람은 승인자가 아니라 학습자.
+const STAGES=['observe','synthesize','frame','wiki','learn','done'];
+const STAGE_KO={observe:'관측',synthesize:'종합',frame:'목적화',wiki:'지식화',learn:'학습·선택'};
+const wikiDraft={}; // eval_id -> 실행 노드가 만든 위키 초안(분석 본문). 사람이 이걸 읽고 학습.
 const log=[];
 
 function setConn(on,label){const c=$('conn');c.className='conn'+(on?' on':'');$('conn-l').textContent=label}
@@ -292,12 +299,15 @@ async function refreshEval(){
 function renderApproval(con,st){
   const el=$('approval');
   const pend=Object.entries(con).filter(([eid])=>!st['decision_'+eid]);
-  const html=pend.map(([eid,c])=>`<div class="appr">
-    <div class="appr-h">⏳ 승인 대기 — 무엇을 승인하나요?</div>
-    <div class="appr-goal">“${E(c.goal||'(목표 정보 없음)')}”</div>
-    <div class="appr-meta"><b>${E(c.graded||'?')}</b> 의 산출물 · 합의 <b>${c.mean}</b> · ${c.votes}명 독립 평가 [${(c.evaluators||[]).map(E).join(', ')}] · 편차 ${c.min}–${c.max}</div>
-    <div class="appr-acts"><button class="b-ok" onclick="decide('${E(eid)}',true)">✓ 승인</button><button class="b-no" onclick="decide('${E(eid)}',false)">✗ 반려</button></div>
-  </div>`).join('');
+  const html=pend.map(([eid,c])=>{
+    const draft=wikiDraft[eid];
+    return `<div class="appr">
+    <div class="appr-h">📖 학습·선택 — 위키 초안을 읽고 학습하세요 (승인이 아니라 학습)</div>
+    <div class="appr-goal">목적: “${E(c.goal||'(목적 정보 없음)')}”</div>
+    ${draft?`<div class="appr-wiki">${E(draft)}</div>`:'<div class="appr-meta" style="font-style:italic;opacity:.7">위키 초안 본문 수집 대기…</div>'}
+    <div class="appr-meta">초안 작성 <b>${E(c.graded||'?')}</b> · 동료 지식화 합의 <b>${c.mean}</b> · ${c.votes}명 독립 평가 [${(c.evaluators||[]).map(E).join(', ')}] · 편차 ${c.min}–${c.max}</div>
+    <div class="appr-acts"><button class="b-ok" onclick="decide('${E(eid)}',true)">✓ 학습 완료 · 채택</button><button class="b-no" onclick="decide('${E(eid)}',false)">↻ 보류 (다시 학습)</button></div>
+  </div>`;}).join('');
   if(el.dataset.sig!==html){el.innerHTML=html;el.dataset.sig=html}
 }
 
@@ -309,7 +319,7 @@ function renderConsensus(con,st){
     return `<div class="consensus${dec?' decided':''}">
       <div class="cons-goal">“${E((c.goal||'').slice(0,80))}”</div>
       <div class="cons-meta"><span class="cons-score">${c.mean}</span> · ${c.votes}표 · ${E(c.graded||'')}
-      ${dec?`<span class="chip ${dec.status==='approved'?'ok':'no'}">${dec.status==='approved'?'승인됨':'반려됨'}</span>`:'<span class="chip">대기</span>'}</div>
+      ${dec?`<span class="chip ${dec.status==='approved'?'ok':'no'}">${dec.status==='approved'?'채택됨(학습)':'보류'}</span>`:'<span class="chip">학습 대기</span>'}</div>
     </div>`;
   }).join('');
 }
@@ -326,13 +336,13 @@ function renderFlow(ev,st){
   const el=$('flow');const items=[];
   const runs=(ev.runs||[]).slice(-12);
   for(const r of runs){
-    if(r.evaluator) items.push({stage:'suggest',cls:'suggest',body:`<b>${E(r.evaluator)}</b> 가 ${E(r.agent)} 채점 → <b>${r.score}</b>`,ts:r.ts});
-    else items.push({stage:'read',cls:'read',body:`<b>${E(r.agent)}</b> self-score <b>${r.score}</b>`,ts:r.ts});
+    if(r.evaluator) items.push({stage:'지식화',cls:'wiki',body:`<b>${E(r.evaluator)}</b> 가 ${E(r.agent)} 초안 지식화 채점 → <b>${r.score}</b>`,ts:r.ts});
+    else items.push({stage:'관측',cls:'observe',body:`<b>${E(r.agent)}</b> 관측·종합 → 초안 (self <b>${r.score}</b>)`,ts:r.ts});
   }
   Object.entries(st).filter(([k])=>k.startsWith('decision_')).forEach(([k,d])=>{
-    items.push({stage:'approve',cls:'approve',body:`<b>${E(d.decided_by)}</b> ${d.status==='approved'?'승인':'반려'} (합의 ${(d.consensus||{}).mean??'?'})`,ts:d.ts});
+    items.push({stage:'학습',cls:'learn',body:`<b>${E(d.decided_by)}</b> ${d.status==='approved'?'학습 완료·채택':'보류'} (합의 ${(d.consensus||{}).mean??'?'})`,ts:d.ts});
   });
-  if(!items.length){el.innerHTML='<div class="empty">디스패치하면 read→suggest→approve 단계가 여기 표시됩니다</div>';return}
+  if(!items.length){el.innerHTML='<div class="empty">디스패치하면 관측→종합→목적화→지식화→학습 단계가 여기 표시됩니다</div>';return}
   items.sort((a,b)=>(a.ts||'').localeCompare(b.ts||''));
   el.innerHTML=items.slice(-14).map(i=>`<div class="flow-item ${i.cls}">
     <span class="flow-stage">${i.stage}</span><div class="flow-body">${i.body}<div class="flow-ts">${E((i.ts||'').slice(11,19))}</div></div></div>`).join('');
@@ -340,22 +350,27 @@ function renderFlow(ev,st){
 
 function setGoal(el){$('d-goal').value=el.dataset.g;$('d-goal').focus()}
 
-// ── Active eval progress (READ→SUGGEST→APPROVE, live) ──
+// ── Active learning loop (관측→종합→목적화→지식화→학습, live) ──
 function renderActiveEval(){
   const el=$('active-eval');if(!el)return;
   if(!activeEval){if(el.dataset.sig){el.innerHTML='';el.dataset.sig=''}return;}
   const a=activeEval,si=STAGES.indexOf(a.stage);
   const cls=s=>{const i=STAGES.indexOf(s);return i<si?'done':(i===si?'cur':'')};
   const sg=Object.entries(a.scores);
-  const ev=a.evaluators.length?`${sg.length}/${a.evaluators.length} 채점`:'self-score';
+  const ev=a.evaluators.length?`${sg.length}/${a.evaluators.length}`:'self';
+  const box=(s,head,body)=>`<div class="stage ${s} ${cls(s)}"><span class="st-h">${head}</span><b>${body}</b></div>`;
   const h=`<div class="active">
-    <div class="active-goal">▶ 진행 중 — “${E(a.goal)}”</div>
+    <div class="active-goal">▶ 학습 루프 진행 중 — “${E(a.goal)}”</div>
     <div class="stages">
-      <div class="stage read ${cls('read')}"><span class="st-h">READ</span><b>${E(a.to)} 실행</b></div>
+      ${box('observe','관측 OBSERVE',E(a.to)+' 신호·실행')}
       <div class="arrow">→</div>
-      <div class="stage suggest ${cls('suggest')}"><span class="st-h">SUGGEST · ${ev}</span><b>${sg.map(([k,v])=>`<span class="sg-score">${E(k.split('@')[0])} ${v}</span>`).join('')||'채점 대기'}</b></div>
+      ${box('synthesize','종합 SYNTHESIZE',a.synthesized?'상황 종합 완료':'종합 중')}
       <div class="arrow">→</div>
-      <div class="stage approve ${cls('approve')}"><span class="st-h">APPROVE</span><b>${a.stage==='done'?'결정 완료':'사람 승인 대기'}</b></div>
+      ${box('frame','목적화 FRAME',a.evaluators.length?'동료에 목적 전달':'목적 수립')}
+      <div class="arrow">→</div>
+      ${box('wiki','지식화 WIKI·'+ev,sg.map(([k,v])=>`<span class="sg-score">${E(k.split('@')[0])} ${v}</span>`).join('')||'교차검증 대기')}
+      <div class="arrow">→</div>
+      ${box('learn','학습·선택 LEARN',a.stage==='done'?'학습 완료':(a.stage==='learn'?'사람 학습 대기':'대기'))}
     </div>
   </div>`;
   if(el.dataset.sig!==h){el.innerHTML=h;el.dataset.sig=h}
@@ -365,21 +380,25 @@ function updateActive(event,p){
   if(event==='task.result'){
     if(p.event==='decision'&&p.task_id===a.taskId){a.stage='done';renderActiveEval();
       setTimeout(()=>{if(activeEval&&activeEval.taskId===p.task_id){activeEval=null;renderActiveEval()}},8000);return}
-    if(p.eval_id===a.taskId&&p.evaluator){a.scores[p.evaluator]=p.score;
-      a.stage=Object.keys(a.scores).length>=Math.max(1,a.evaluators.length)?'approve':'suggest';renderActiveEval();return}
-    if(p.task_id===a.taskId){if(a.evaluators.length){a.stage='suggest'}else{a.scores['self']=p.score;a.stage='approve'}renderActiveEval();return}
+    // 동료 지식화 채점 결과 도착 (관측·종합·목적화 끝, 지식화 진행)
+    if(p.eval_id===a.taskId&&p.evaluator){a.synthesized=true;a.scores[p.evaluator]=p.score;
+      a.stage=Object.keys(a.scores).length>=Math.max(1,a.evaluators.length)?'learn':'wiki';renderActiveEval();return}
+    // 실행 노드의 산출물(위키 초안) 도착 = 관측→종합 완료
+    if(p.task_id===a.taskId){a.synthesized=true;if(p.output)wikiDraft[a.taskId]=String(p.output).slice(0,1800);
+      if(a.evaluators.length){a.stage='frame'}else{a.scores['self']=p.score;a.stage='learn'}renderActiveEval();return}
   }
-  if(event==='task.assign'&&p.to&&a.evaluators.includes(p.to)){a.stage='suggest';renderActiveEval()}
+  // 동료에게 [GRADE] 디스패치 = 목적화 단계
+  if(event==='task.assign'&&p.to&&a.evaluators.includes(p.to)){if(STAGES.indexOf(a.stage)<STAGES.indexOf('frame'))a.stage='frame';renderActiveEval()}
 }
 async function dispatchEval(){
   const goal=$('d-goal').value.trim();const to=$('d-to').value;
   const evs=[...$('d-evals').selectedOptions].map(o=>o.value).filter(v=>v!==to);
-  if(!goal||!to){$('d-msg').textContent='목표와 실행 에이전트 필요';return}
+  if(!goal||!to){$('d-msg').textContent='목적과 실행 에이전트 필요';return}
   const body={task_id:'ui-'+Date.now(),to,role:'builder',work_key:selWk,instructions:'[EVAL] '+goal};
   if(evs.length)body.evaluator=evs.join(',');
-  activeEval={taskId:body.task_id,goal,to,evaluators:evs,scores:{},stage:'read'};
+  activeEval={taskId:body.task_id,goal,to,evaluators:evs,scores:{},synthesized:false,stage:'observe'};
   renderActiveEval();
-  $('d-msg').textContent='디스패치됨 — 진행 패널에서 단계 확인';
+  $('d-msg').textContent='디스패치됨 — 진행 패널에서 5단계 확인';
   try{await fetch('/api/task',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},H()),body:JSON.stringify(body)});}catch(e){$('d-msg').textContent='실패'}
 }
 
@@ -403,6 +422,8 @@ function connectWs(){
     ws.onopen=()=>{subscribe();hbTimer=setInterval(()=>{try{ws.send(JSON.stringify([null,String(ref++),'phoenix','heartbeat',{}]))}catch(e){}},30000)};
     ws.onmessage=ev=>{try{const[,,topic,event,p]=JSON.parse(ev.data);if(event==='phx_reply'||event==='heartbeat')return;
       const m=p?.message||p?.task_id||p?.agent||p?.from||'';addEv(event,m);
+      // 실행 노드 산출물(위키 초안) 캐시 — 학습·선택 패널이 본문을 보여주도록
+      if(event==='task.result'&&p&&p.task_id&&p.output&&!p.evaluator&&!p.event)wikiDraft[p.task_id]=String(p.output).slice(0,1800);
       updateActive(event,p);
       if(event==='task.result'||event==='task.approval_requested')refreshEval();
     }catch(e){}};
