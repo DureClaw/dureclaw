@@ -911,7 +911,10 @@ async function handleWriteTask(payload: TaskPayload) {
   try {
     if (!path) throw new Error("no path given — usage: [WRITE] <path>\\n<content>");
     const dir = dirname(path);
-    if (dir && dir !== ".") mkdirSync(dir, { recursive: true });
+    if (dir && dir !== ".") {
+      try { mkdirSync(dir, { recursive: true }); }
+      catch (e) { if ((e as { code?: string })?.code !== "EEXIST") throw e; } // Bun: recursive mkdir on existing dir
+    }
     const data: string | Buffer = isB64 ? Buffer.from(body, "base64") : body;
     writeFileSync(path, data);
     const bytes = isB64 ? (data as Buffer).length : Buffer.byteLength(body);
