@@ -892,6 +892,9 @@ defmodule HarnessServer.Router do
           <div class="stat"><span class="stat-n p" id="s-active">0</span><span class="stat-l">진행 중</span></div>
         </div>
 
+        <!-- APPROVAL GATE (full-width banner; appears only when something awaits approval) -->
+        <div id="approvals"></div>
+
         <!-- CONTENT -->
         <div class="content">
           <div class="panels">
@@ -1169,7 +1172,6 @@ defmodule HarnessServer.Router do
             </div>
             <div style="padding:6px 12px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;gap:4px;flex-wrap:wrap" id="log-filter-bar" style="display:none">
             </div>
-            <div id="approvals"></div>
             <div class="log-list" id="log-list"><div class="empty"><div class="empty-icon">📋</div>대기 중...</div></div>
           </div>
         </div><!-- /content -->
