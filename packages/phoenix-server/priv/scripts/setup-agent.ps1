@@ -20,7 +20,7 @@ $OutputEncoding           = [System.Text.Encoding]::UTF8
 try { chcp 65001 | Out-Null } catch {}
 
 $ErrorActionPreference = "Stop"
-$OAH_BASE   = "https://open-agent-harness.baryon.ai"
+$OAH_BASE   = "https://dureclaw.baryon.ai"
 $OAH_DIR    = "$HOME\.oah"
 $JS_BUNDLE  = "$HOME\.oah-agent.js"
 $OAH_CONFIG = "$OAH_DIR\config"

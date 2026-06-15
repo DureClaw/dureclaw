@@ -31,6 +31,13 @@ jobs:
         run: |
           cp packages/agent-daemon/src/index.ts web/agent-daemon.ts
           cp packages/ctl/src/index.ts web/ctl.ts
+          # Serve agent artifacts from Pages (no R2/CF token needed):
+          #   dureclaw.baryon.ai/oah-agent.js  → bundled daemon (brain-capable)
+          #   dureclaw.baryon.ai/agent.py      → RPi/Pi Zero python agent
+          cp scripts/rpi_agent.py web/agent.py
+          curl -fsSL https://bun.sh/install | bash
+          export PATH="$HOME/.bun/bin:$PATH"
+          bun build packages/agent-daemon/src/index.ts --target=bun --outfile=web/oah-agent.js
 
       - name: Publish scripts as short URLs
         run: |
@@ -58,14 +65,6 @@ jobs:
           wrangler r2 object put open-agent-harness/agent.py \
             --file scripts/rpi_agent.py \
             --content-type "text/x-python" \
-            --remote
-          # open-agent-harness.baryon.ai/oah-agent.js → bundled agent daemon (bun target)
-          curl -fsSL https://bun.sh/install | bash
-          export PATH="$HOME/.bun/bin:$PATH"
-          bun build packages/agent-daemon/src/index.ts --target=bun --outfile=oah-agent.js
-          wrangler r2 object put open-agent-harness/oah-agent.js \
-            --file oah-agent.js \
-            --content-type "text/javascript" \
             --remote
 
       - name: Setup Pages

@@ -20,7 +20,7 @@ if "%PROJECT_DIR%"=="" set PROJECT_DIR=%USERPROFILE%
 
 set OAH_DIR=%USERPROFILE%\.oah
 set JS_BUNDLE=%USERPROFILE%\.oah-agent.js
-set OAH_BASE=https://open-agent-harness.baryon.ai
+set OAH_BASE=https://dureclaw.baryon.ai
 
 set HTTP_BASE=%PHOENIX%
 set HTTP_BASE=!HTTP_BASE:ws://=http://!

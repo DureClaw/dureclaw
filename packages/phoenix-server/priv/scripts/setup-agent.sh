@@ -2,12 +2,12 @@
 # oah-agent — open-agent-harness agent daemon launcher
 #
 # 사용법:
-#   bash <(curl -fsSL https://open-agent-harness.baryon.ai/setup-agent.sh)
+#   bash <(curl -fsSL https://dureclaw.baryon.ai/setup-agent.sh)
 #   PHOENIX=ws://... ROLE=builder bash <(curl -fsSL ...)
 
 set -euo pipefail
 
-OAH_BASE="https://open-agent-harness.baryon.ai"
+OAH_BASE="https://dureclaw.baryon.ai"
 EXE="$HOME/.oah-agent"
 OAH_DIR="$HOME/.oah"
 OAH_CONFIG="$OAH_DIR/config"
