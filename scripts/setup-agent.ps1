@@ -27,23 +27,60 @@ $OAH_CONFIG = "$OAH_DIR\config"
 
 New-Item -ItemType Directory -Force -Path $OAH_DIR | Out-Null
 
-# ── Discover server ─────────────────────────────────────────────────────────
+# ── Discover server (zero-config) ─────────────────────────────────────────────
+# No $PHOENIX given → auto-find: (1) mDNS oah.local on the LAN,
+# (2) scan online Tailscale peers for one running DureClaw on :4000.
 
-if (-not $Phoenix) {
-    # try oah.local
+function Test-OahServer($base) {
     try {
-        $r = Invoke-RestMethod "http://oah.local:4000/api/health" -TimeoutSec 5
-        if ($r.ok) { $Phoenix = "ws://oah.local:4000"; Write-Host "-> connected to oah.local" }
+        $r = Invoke-RestMethod "$base/api/health" -TimeoutSec 3
+        if ($r.ok) { return $r }
     } catch {}
+    return $null
+}
+
+# (1) LAN — mDNS oah.local
+if (-not $Phoenix) {
+    Write-Host "-> discovering: trying oah.local (LAN mDNS)..."
+    $r = Test-OahServer "http://oah.local:4000"
+    if ($r) { $Phoenix = "ws://oah.local:4000"; Write-Host "-> found oah.local (v$($r.version))" }
+}
+
+# (2) Tailscale — scan online peers' :4000 (broadcast can't cross WireGuard, so we probe)
+if (-not $Phoenix) {
+    $tsExe = (Get-Command tailscale -ErrorAction SilentlyContinue).Source
+    if (-not $tsExe -and (Test-Path "C:\Program Files\Tailscale\tailscale.exe")) {
+        $tsExe = "C:\Program Files\Tailscale\tailscale.exe"
+    }
+    if ($tsExe) {
+        Write-Host "-> discovering: scanning Tailscale peers..."
+        try {
+            $status = (& $tsExe status --json 2>$null | Out-String) | ConvertFrom-Json
+            $ips = @()
+            foreach ($p in $status.Peer.PSObject.Properties.Value) {
+                if ($p.Online -and $p.TailscaleIPs) {
+                    $v4 = $p.TailscaleIPs | Where-Object { $_ -like "100.*" } | Select-Object -First 1
+                    if ($v4) { $ips += @{ ip = $v4; name = $p.HostName } }
+                }
+            }
+            foreach ($e in $ips) {
+                $r = Test-OahServer "http://$($e.ip):4000"
+                if ($r) { $Phoenix = "ws://$($e.ip):4000"; Write-Host "-> found DureClaw on $($e.name) ($($e.ip), v$($r.version))"; break }
+            }
+        } catch {}
+    }
 }
 
 if (-not $Phoenix) {
     Write-Host ""
-    Write-Host "PHOENIX address required. Set the server address and re-run:"
-    Write-Host "  `$env:PHOENIX=`"ws://<server-ip>:4000`"; iex (irm https://dureclaw.baryon.ai/agent.ps1)"
+    Write-Host "No server found automatically. Set the address and re-run:"
+    Write-Host "  `$env:PHOENIX=`"ws://<server>:4000`"; iex (irm https://dureclaw.baryon.ai/agent.ps1)"
     Write-Host ""
-    Write-Host "Find the server IP on the server (Mac/Linux):"
-    Write-Host "  Tailscale: tailscale ip -4      LAN: ipconfig getifaddr en0"
+    Write-Host "On the server, get its address:"
+    Write-Host "  Tailscale name :  tailscale status      (e.g. ws://hostname:4000)"
+    Write-Host "  Tailscale IP   :  tailscale ip -4"
+    Write-Host "  LAN IP         :  ipconfig getifaddr en0   (macOS)"
+    Write-Host "Tip: same LAN auto-works via mDNS; remote needs THIS PC on the tailnet (tailscale up)."
     exit 1
 }
 
