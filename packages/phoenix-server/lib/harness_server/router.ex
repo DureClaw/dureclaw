@@ -284,6 +284,7 @@ defmodule HarnessServer.Router do
       "role" => Map.get(params, "role", "builder"),
       "to" => Map.get(params, "to"),
       "instructions" => Map.get(params, "instructions", ""),
+      "evaluator" => Map.get(params, "evaluator"),
       "work_key" => wk
     }
 

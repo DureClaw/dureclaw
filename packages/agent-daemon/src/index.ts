@@ -143,6 +143,8 @@ interface TaskPayload {
   retry_count?: number;
   /** Backend override (e.g. "ollama"). Falls back to env/auto-detect if unset. */
   backend?: string;
+  /** For [EVAL]: delegate grading to this peer agent instead of self-scoring. */
+  evaluator?: string;
 }
 
 // ─── Active task tracking ─────────────────────────────────────────────────────
@@ -599,6 +601,12 @@ async function handleTaskAssign(payload: TaskPayload) {
     payload.instructions = payload.instructions.replace(/^\s*\[eval\]\s*/i, "");
   }
 
+  // [GRADE] task — peer evaluation delegated by another agent.
+  if (payload.instructions.trimStart().toUpperCase().startsWith("[GRADE]")) {
+    await handleGradeTask(payload);
+    return;
+  }
+
   // Special: [SHELL] task — run shell command directly, no OpenCode/LLM
   if (payload.instructions.trimStart().startsWith("[SHELL]")) {
     await handleShellTask(payload);
@@ -736,11 +744,23 @@ async function handleTaskAssign(payload: TaskPayload) {
       }
       activeTasks.delete(taskId);
 
-      // Self-score for the eval loop (only [EVAL] tasks).
-      const score =
-        evalMode && result.exitCode === 0
-          ? await scoreResult(payload.instructions, result.output, usedBackend)
-          : null;
+      // Eval loop (only [EVAL] tasks). With an evaluator, delegate grading to a
+      // peer (agent-to-agent dialog); otherwise self-score.
+      let score: number | null = null;
+      if (evalMode && result.exitCode === 0) {
+        if (payload.evaluator) {
+          console.log(`[eval] ${taskId} → asking ${payload.evaluator} to grade (peer eval)`);
+          sendEvent("task.assign", {
+            task_id: `${taskId}-grade`,
+            to: payload.evaluator,
+            from: AGENT_NAME,
+            work_key: WORK_KEY,
+            instructions: `[GRADE]\nGRADED_AGENT: ${AGENT_NAME}\nGOAL:\n${payload.instructions}\nRESULT:\n${result.output.slice(0, 1500)}`,
+          });
+        } else {
+          score = await scoreResult(payload.instructions, result.output, usedBackend);
+        }
+      }
 
       sendEvent("task.result", {
         task_id: taskId,
@@ -1172,6 +1192,33 @@ async function scoreResult(goal: string, output: string, backend: string): Promi
   } catch {
     return null;
   }
+}
+
+/**
+ * [GRADE] task — peer evaluation. Another agent delegated its result here for an
+ * INDEPENDENT score (agent-to-agent dialog, no self-grading bias). Parse the
+ * goal/result out of the instruction, score it, and reply with the verdict.
+ */
+async function handleGradeTask(payload: TaskPayload): Promise<void> {
+  const taskId = payload.task_id ?? `grade-${Date.now()}`;
+  const instr = payload.instructions;
+  const graded = instr.match(/GRADED_AGENT:\s*(.+)/)?.[1]?.trim() ?? "unknown";
+  const goal = instr.match(/GOAL:\s*([\s\S]*?)\nRESULT:/)?.[1]?.trim() ?? "";
+  const result = instr.match(/RESULT:\s*([\s\S]*)$/)?.[1]?.trim() ?? "";
+  const requested = payload.backend ?? AGENT_BACKEND;
+  const backend = requested === "auto" ? autoSelectBackend() : requested;
+  const score = await scoreResult(goal, result, backend);
+  console.log(`[grade] ${AGENT_NAME} independently graded ${graded} → ${score}`);
+  sendEvent("task.result", {
+    task_id: taskId,
+    to: payload.from,
+    from: AGENT_NAME,
+    status: "done",
+    score: score ?? 0,
+    graded,
+    evaluator: AGENT_NAME,
+    output: `peer-graded ${graded}: ${score ?? "n/a"}`,
+  });
 }
 
 // ─── System prompt builder ────────────────────────────────────────────────────

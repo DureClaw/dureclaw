@@ -174,9 +174,12 @@ defmodule HarnessServer.WorkChannel do
         :ok
 
       score ->
+        # For a peer evaluation the score belongs to the GRADED agent's output,
+        # with the evaluator recorded separately (agent-to-agent dialog).
         StateStore.record_eval(work_key, %{
           "task_id" => task_id,
-          "agent" => Map.get(msg, "from"),
+          "agent" => Map.get(msg, "graded") || Map.get(msg, "from"),
+          "evaluator" => Map.get(msg, "evaluator"),
           "backend" => Map.get(msg, "backend"),
           "score" => score,
           "exit_code" => Map.get(msg, "exit_code"),
