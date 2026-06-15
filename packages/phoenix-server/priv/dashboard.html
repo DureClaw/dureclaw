@@ -44,6 +44,24 @@ input,select,button{font-family:inherit;font-size:12px}
 .appr-acts{display:flex;gap:10px;max-width:520px}
 .b-ok{flex:1;padding:10px;background:var(--gn);color:#04121f;border:0;border-radius:7px;font-weight:700;cursor:pointer;font-size:13px}
 .b-no{flex:1;padding:10px;background:transparent;color:var(--rd);border:1px solid var(--rd);border-radius:7px;cursor:pointer;font-size:13px}
+/* active eval progress */
+#active-eval{padding:0 16px}
+.active{margin:14px 0;padding:16px 18px;background:linear-gradient(135deg,#08222e,#131c2e);border:1px solid var(--cy);border-radius:10px}
+.active-goal{font-size:15px;color:var(--tx);font-style:italic;margin-bottom:14px}
+.stages{display:flex;align-items:stretch}
+.stage{flex:1;padding:12px 10px;border-radius:8px;background:var(--bg3);text-align:center;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--t3);border:1px solid var(--bd)}
+.stage b{display:block;font-size:13px;margin-top:6px;text-transform:none;letter-spacing:0;color:var(--tx);font-weight:500}
+.stage.cur.read{border-color:var(--cy);animation:pulse-cy 1.4s infinite}
+.stage.cur.suggest{border-color:var(--pu);animation:pulse-pu 1.4s infinite}
+.stage.cur.approve{border-color:var(--am);animation:pulse-am 1.4s infinite}
+.stage.done{opacity:.7;border-color:var(--gn)}
+.stage.done .st-h::after{content:' ✓';color:var(--gn)}
+.arrow{display:flex;align-items:center;padding:0 12px;color:var(--t3);font-size:16px}
+.sg-score{display:inline-block;font-size:10px;background:var(--bg);padding:2px 7px;border-radius:4px;margin:2px;color:var(--pu);animation:pop .3s ease}
+@keyframes pulse-cy{0%,100%{box-shadow:0 0 6px rgba(56,189,248,.15)}50%{box-shadow:0 0 22px rgba(56,189,248,.4)}}
+@keyframes pulse-pu{0%,100%{box-shadow:0 0 6px rgba(167,139,250,.15)}50%{box-shadow:0 0 22px rgba(167,139,250,.45)}}
+@keyframes pulse-am{0%,100%{box-shadow:0 0 6px rgba(251,191,36,.15)}50%{box-shadow:0 0 22px rgba(251,191,36,.45)}}
+@keyframes pop{0%{transform:scale(.6);opacity:0}100%{transform:scale(1);opacity:1}}
 /* layout */
 .grid{display:grid;grid-template-columns:300px 1fr 340px;gap:16px;padding:16px}
 .col{display:flex;flex-direction:column;gap:16px;min-width:0}
@@ -130,6 +148,7 @@ textarea.inp{resize:vertical;min-height:60px}
   <div class="kpi"><span class="kpi-n p" id="k-avg">–</span><span class="kpi-l">평균 합의점수</span></div>
 </div>
 
+<div id="active-eval"></div>
 <div id="approval"></div>
 
 <main class="grid">
@@ -198,6 +217,8 @@ if(TOKEN){try{localStorage.setItem('oah_token',TOKEN)}catch(e){}$('token').value
 const H=()=>TOKEN?{Authorization:'Bearer '+TOKEN}:{};
 let selWk=new URLSearchParams(location.search).get('work_key')||null;
 let agents=[],wks=[],evalCache={},ws=null,ref=1,hbTimer=null,connected=false;
+let activeEval=null;
+const STAGES=['read','suggest','approve','done'];
 const log=[];
 
 function setConn(on,label){const c=$('conn');c.className='conn'+(on?' on':'');$('conn-l').textContent=label}
@@ -318,13 +339,47 @@ function renderFlow(ev,st){
 }
 
 function setGoal(el){$('d-goal').value=el.dataset.g;$('d-goal').focus()}
+
+// ── Active eval progress (READ→SUGGEST→APPROVE, live) ──
+function renderActiveEval(){
+  const el=$('active-eval');if(!el)return;
+  if(!activeEval){if(el.dataset.sig){el.innerHTML='';el.dataset.sig=''}return;}
+  const a=activeEval,si=STAGES.indexOf(a.stage);
+  const cls=s=>{const i=STAGES.indexOf(s);return i<si?'done':(i===si?'cur':'')};
+  const sg=Object.entries(a.scores);
+  const ev=a.evaluators.length?`${sg.length}/${a.evaluators.length} 채점`:'self-score';
+  const h=`<div class="active">
+    <div class="active-goal">▶ 진행 중 — “${E(a.goal)}”</div>
+    <div class="stages">
+      <div class="stage read ${cls('read')}"><span class="st-h">READ</span><b>${E(a.to)} 실행</b></div>
+      <div class="arrow">→</div>
+      <div class="stage suggest ${cls('suggest')}"><span class="st-h">SUGGEST · ${ev}</span><b>${sg.map(([k,v])=>`<span class="sg-score">${E(k.split('@')[0])} ${v}</span>`).join('')||'채점 대기'}</b></div>
+      <div class="arrow">→</div>
+      <div class="stage approve ${cls('approve')}"><span class="st-h">APPROVE</span><b>${a.stage==='done'?'결정 완료':'사람 승인 대기'}</b></div>
+    </div>
+  </div>`;
+  if(el.dataset.sig!==h){el.innerHTML=h;el.dataset.sig=h}
+}
+function updateActive(event,p){
+  if(!activeEval||!p)return;const a=activeEval;
+  if(event==='task.result'){
+    if(p.event==='decision'&&p.task_id===a.taskId){a.stage='done';renderActiveEval();
+      setTimeout(()=>{if(activeEval&&activeEval.taskId===p.task_id){activeEval=null;renderActiveEval()}},8000);return}
+    if(p.eval_id===a.taskId&&p.evaluator){a.scores[p.evaluator]=p.score;
+      a.stage=Object.keys(a.scores).length>=Math.max(1,a.evaluators.length)?'approve':'suggest';renderActiveEval();return}
+    if(p.task_id===a.taskId){if(a.evaluators.length){a.stage='suggest'}else{a.scores['self']=p.score;a.stage='approve'}renderActiveEval();return}
+  }
+  if(event==='task.assign'&&p.to&&a.evaluators.includes(p.to)){a.stage='suggest';renderActiveEval()}
+}
 async function dispatchEval(){
   const goal=$('d-goal').value.trim();const to=$('d-to').value;
   const evs=[...$('d-evals').selectedOptions].map(o=>o.value).filter(v=>v!==to);
   if(!goal||!to){$('d-msg').textContent='목표와 실행 에이전트 필요';return}
   const body={task_id:'ui-'+Date.now(),to,role:'builder',work_key:selWk,instructions:'[EVAL] '+goal};
   if(evs.length)body.evaluator=evs.join(',');
-  $('d-msg').textContent='디스패치됨 — 실행+채점 대기…';
+  activeEval={taskId:body.task_id,goal,to,evaluators:evs,scores:{},stage:'read'};
+  renderActiveEval();
+  $('d-msg').textContent='디스패치됨 — 진행 패널에서 단계 확인';
   try{await fetch('/api/task',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},H()),body:JSON.stringify(body)});}catch(e){$('d-msg').textContent='실패'}
 }
 
@@ -348,6 +403,7 @@ function connectWs(){
     ws.onopen=()=>{subscribe();hbTimer=setInterval(()=>{try{ws.send(JSON.stringify([null,String(ref++),'phoenix','heartbeat',{}]))}catch(e){}},30000)};
     ws.onmessage=ev=>{try{const[,,topic,event,p]=JSON.parse(ev.data);if(event==='phx_reply'||event==='heartbeat')return;
       const m=p?.message||p?.task_id||p?.agent||p?.from||'';addEv(event,m);
+      updateActive(event,p);
       if(event==='task.result'||event==='task.approval_requested')refreshEval();
     }catch(e){}};
     ws.onclose=()=>{clearInterval(hbTimer);setTimeout(connectWs,4000)};
