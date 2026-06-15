@@ -622,6 +622,14 @@ defmodule HarnessServer.Router do
     .tab.active{color:var(--cyan);border-bottom-color:var(--cyan)}
     .tab-content{display:none;flex:1;overflow-y:auto;padding:16px}
     .tab-content.active{display:flex;flex-direction:column;gap:12px}
+    /* approval gate cards */
+    .appr-card{margin:10px 12px;padding:12px;background:var(--bg3);border:1px solid var(--amber);border-radius:8px;animation:slide-in .25s ease}
+    .appr-h{font-weight:700;color:var(--amber);margin-bottom:6px;font-size:11px;letter-spacing:1px;text-transform:uppercase}
+    .appr-body{font-size:11px;color:var(--text2);line-height:1.7}
+    .appr-body b{color:var(--text)}
+    .appr-acts{display:flex;gap:6px;margin-top:10px}
+    .btn-appr{flex:1;padding:7px;background:var(--green);color:#0f172a;border:0;border-radius:6px;font-weight:700;cursor:pointer;font-size:11px}
+    .btn-rej{flex:1;padding:7px;background:transparent;color:var(--red);border:1px solid var(--red);border-radius:6px;cursor:pointer;font-size:11px}
     /* right panel: event log */
     .log-panel{width:340px;flex-shrink:0;border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
     .lp-h{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0}
@@ -1161,6 +1169,7 @@ defmodule HarnessServer.Router do
             </div>
             <div style="padding:6px 12px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;gap:4px;flex-wrap:wrap" id="log-filter-bar" style="display:none">
             </div>
+            <div id="approvals"></div>
             <div class="log-list" id="log-list"><div class="empty"><div class="empty-icon">📋</div>대기 중...</div></div>
           </div>
         </div><!-- /content -->
@@ -1990,7 +1999,48 @@ defmodule HarnessServer.Router do
     }
 
     poll();
+    // ── Approval gate: show eval consensus awaiting human decision ───────────────
+    async function refreshApprovals(){
+      const el=id('approvals'); if(!el)return;
+      if(!selWk){el.innerHTML='';return;}
+      try{
+        const [er,sr]=await Promise.all([
+          fetch(`/api/eval/${encodeURIComponent(selWk)}`),
+          fetch(`/api/state/${encodeURIComponent(selWk)}`)
+        ]);
+        if(!er.ok){el.innerHTML='';return;}
+        const con=(await er.json()).consensus||{};
+        const st=sr.ok?await sr.json():{};
+        const pend=Object.entries(con).filter(([eid])=>!st['decision_'+eid]);
+        if(!pend.length){el.innerHTML='';return;}
+        el.innerHTML=pend.map(([eid,c])=>`
+          <div class="appr-card">
+            <div class="appr-h">⏳ 승인 대기</div>
+            <div class="appr-body">
+              <div><b>${e(c.graded||'?')}</b> 산출물</div>
+              <div>합의 <b>${c.mean}</b> · ${c.votes}표 [${(c.evaluators||[]).map(x=>e(x)).join(', ')}]</div>
+            </div>
+            <div class="appr-acts">
+              <button class="btn-appr" onclick="decideEval('${e(eid)}',true)">✓ 승인</button>
+              <button class="btn-rej" onclick="decideEval('${e(eid)}',false)">✗ 반려</button>
+            </div>
+          </div>`).join('');
+      }catch(err){}
+    }
+    async function decideEval(eid,ok){
+      try{
+        await fetch(`/api/eval/${encodeURIComponent(selWk)}/approve`,{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({eval_id:eid,approved:ok,decided_by:'dashboard'})
+        });
+      }catch(err){}
+      refreshApprovals();
+    }
+    window.decideEval=decideEval;
+
     setInterval(poll,POLL);
+    setInterval(refreshApprovals,3000);
+    refreshApprovals();
     connectWs();
     if(location.hash) applyHash();
     </script>
