@@ -153,7 +153,10 @@ textarea.inp{resize:vertical;min-height:60px}
 .ev-tag.task-result{background:rgba(52,211,153,.15);color:var(--gn)}
 .ev-tag.task-progress{background:rgba(56,189,248,.12);color:var(--cy)}
 .ev-tag.agent-hello,.ev-tag.system{background:var(--bg3);color:var(--t2)}
-.ev-msg{color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ev-msg{color:var(--t2);white-space:pre-wrap;word-break:break-word}
+.ev{flex-direction:column;gap:2px}
+.ev-row{display:flex;gap:10px;align-items:baseline}
+.ev-detail{margin:1px 0 4px;padding:6px 9px;background:var(--bg);border-left:2px solid var(--bd2);border-radius:4px;font-size:10px;color:var(--t3);white-space:pre-wrap;word-break:break-all;max-height:280px;overflow:auto}
 @media(max-width:1100px){.grid{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
@@ -475,11 +478,15 @@ async function decide(eid,ok){
 }
 
 // ── event stream (WS) ──
-function addEv(tag,msg){
-  log.unshift({t:new Date().toLocaleTimeString('ko',{hour:'2-digit',minute:'2-digit',second:'2-digit'}),tag,msg});
-  if(log.length>120)log.pop();
+function addEv(tag,msg,raw){
+  let detail='';
+  try{ if(raw!==undefined) detail=JSON.stringify(raw,null,1); }catch(e){}
+  log.unshift({t:new Date().toLocaleTimeString('ko',{hour:'2-digit',minute:'2-digit',second:'2-digit'}),tag,msg,detail});
+  if(log.length>200)log.pop();
   $('ev-count').textContent=log.length;
-  $('stream').innerHTML=log.slice(0,60).map(e=>`<div class="ev"><span class="ev-ts">${e.t}</span><span class="ev-tag ${e.tag.replace(/[._]/g,'-')}">${E(e.tag)}</span><span class="ev-msg">${E(e.msg)}</span></div>`).join('');
+  $('stream').innerHTML=log.slice(0,80).map(e=>`<div class="ev">
+    <div class="ev-row"><span class="ev-ts">${e.t}</span><span class="ev-tag ${e.tag.replace(/[._]/g,'-')}">${E(e.tag)}</span><span class="ev-msg">${E(e.msg)}</span></div>
+    ${e.detail?`<pre class="ev-detail">${E(e.detail)}</pre>`:''}</div>`).join('');
 }
 function subscribe(){if(ws&&ws.readyState===1){try{ws.send(JSON.stringify([String(ref),String(ref++),'work:'+selWk,'phx_join',{role:'observer',agent:'dashboard'}]))}catch(e){}}}
 function connectWs(){
@@ -491,7 +498,7 @@ function connectWs(){
       // task.result 는 출력 본문(시그널 내용)을 우선 표시 — 센서/엣지 모니터링
       const who=p?.from?`${p.from}: `:'';
       const m=(event==='task.result'&&p?.output)?who+String(p.output):(p?.message||p?.task_id||p?.agent||p?.from||'');
-      addEv(event,m);
+      addEv(event,m,p);
       // 실행 노드 산출물(위키 초안) 캐시 — 학습·선택 패널이 본문을 보여주도록
       if(event==='task.result'&&p&&p.task_id&&p.output&&!p.evaluator&&!p.event)wikiDraft[p.task_id]=String(p.output).slice(0,1800);
       updateActive(event,p);
