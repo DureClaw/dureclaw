@@ -1230,6 +1230,7 @@ async function handleGradeTask(payload: TaskPayload): Promise<void> {
     graded,
     evaluator: AGENT_NAME,
     eval_id: evalId,
+    goal: goal.slice(0, 200),
     output: `peer-graded ${graded}: ${score ?? "n/a"}`,
   });
 }

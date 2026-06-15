@@ -150,6 +150,7 @@ defmodule HarnessServer.StateStore do
       {eval_id,
        %{
          graded: rs |> hd() |> Map.get("agent"),
+         goal: rs |> Enum.find_value(&Map.get(&1, "goal")),
          votes: length(scores),
          evaluators: Enum.map(rs, &Map.get(&1, "evaluator")),
          mean: Float.round(Enum.sum(scores) / length(scores), 3),

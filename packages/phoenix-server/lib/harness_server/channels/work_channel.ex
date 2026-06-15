@@ -181,6 +181,7 @@ defmodule HarnessServer.WorkChannel do
           "agent" => Map.get(msg, "graded") || Map.get(msg, "from"),
           "evaluator" => Map.get(msg, "evaluator"),
           "eval_id" => Map.get(msg, "eval_id"),
+          "goal" => Map.get(msg, "goal"),
           "backend" => Map.get(msg, "backend"),
           "score" => score,
           "exit_code" => Map.get(msg, "exit_code"),

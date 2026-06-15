@@ -625,7 +625,9 @@ defmodule HarnessServer.Router do
     /* approval gate cards */
     .appr-card{margin:10px 12px;padding:12px;background:var(--bg3);border:1px solid var(--amber);border-radius:8px;animation:slide-in .25s ease}
     .appr-h{font-weight:700;color:var(--amber);margin-bottom:6px;font-size:11px;letter-spacing:1px;text-transform:uppercase}
+    .appr-goal{font-size:14px;color:var(--text);margin:2px 0 8px;font-style:italic;line-height:1.5}
     .appr-body{font-size:11px;color:var(--text2);line-height:1.7}
+    .wki-more{padding:8px 12px;font-size:10px;color:var(--text3);text-align:center;font-style:italic}
     .appr-body b{color:var(--text)}
     .appr-acts{display:flex;gap:6px;margin-top:10px}
     .btn-appr{flex:1;padding:7px;background:var(--green);color:#0f172a;border:0;border-radius:6px;font-weight:700;cursor:pointer;font-size:11px}
@@ -1367,8 +1369,14 @@ defmodule HarnessServer.Router do
       id('s-wks').textContent=wks.length;
       const el=id('wk-list');
       if(!wks.length){el.innerHTML='<div class="empty"><div class="empty-icon">🔑</div>없음</div>';return;}
-      if(!selWk&&wks.length)selWk=wks[wks.length-1];
-      el.innerHTML=wks.slice().reverse().map(wk=>{
+      const active=new Set((typeof allAgents!=='undefined'?allAgents:[]).map(a=>a.work_key).filter(Boolean));
+      // 자동선택: 에이전트가 붙어있는 활성 work key 우선, 없으면 최신
+      if(!selWk&&wks.length)selWk=[...active].find(w=>wks.includes(w))||wks[wks.length-1];
+      // 표시: 활성 + 최근 4개 + 현재 선택만 (안 쓰는 지난 항목은 숨김)
+      const recent=wks.slice(-4);
+      const show=wks.filter(w=>active.has(w)||recent.includes(w)||w===selWk);
+      const hidden=wks.length-show.length;
+      el.innerHTML=show.slice().reverse().map(wk=>{
         const m=wkMeta[wk]||{};
         const goal=m.goal||'';
         const dir=m.project_dir||'';
@@ -1382,7 +1390,7 @@ defmodule HarnessServer.Router do
           ${goal?`<div class="wki-goal">${e(goal)}</div>`:''}
           ${dir?`<div class="wki-dir">📁 ${e(dir)}</div>`:''}
         </div>`;
-      }).join('');
+      }).join('')+(hidden>0?`<div class="wki-more">지난 항목 ${hidden}개 숨김</div>`:'');
       updateDpWkSelect(wks);
     }
 
@@ -2004,29 +2012,31 @@ defmodule HarnessServer.Router do
     // ── Approval gate: show eval consensus awaiting human decision ───────────────
     async function refreshApprovals(){
       const el=id('approvals'); if(!el)return;
-      if(!selWk){el.innerHTML='';return;}
+      // Only touch the DOM when content actually changes — prevents the 3s flicker.
+      const set=(h)=>{if(el.dataset.sig!==h){el.innerHTML=h;el.dataset.sig=h;}};
+      if(!selWk){set('');return;}
       try{
         const [er,sr]=await Promise.all([
           fetch(`/api/eval/${encodeURIComponent(selWk)}`),
           fetch(`/api/state/${encodeURIComponent(selWk)}`)
         ]);
-        if(!er.ok){el.innerHTML='';return;}
+        if(!er.ok){set('');return;}
         const con=(await er.json()).consensus||{};
         const st=sr.ok?await sr.json():{};
         const pend=Object.entries(con).filter(([eid])=>!st['decision_'+eid]);
-        if(!pend.length){el.innerHTML='';return;}
-        el.innerHTML=pend.map(([eid,c])=>`
+        set(pend.map(([eid,c])=>`
           <div class="appr-card">
-            <div class="appr-h">⏳ 승인 대기</div>
+            <div class="appr-h">⏳ 승인 대기 — 무엇을 승인하나요?</div>
+            <div class="appr-goal">“${e(c.goal||'(목표 정보 없음)')}”</div>
             <div class="appr-body">
-              <div><b>${e(c.graded||'?')}</b> 산출물</div>
-              <div>합의 <b>${c.mean}</b> · ${c.votes}표 [${(c.evaluators||[]).map(x=>e(x)).join(', ')}]</div>
+              <b>${e(c.graded||'?')}</b> 의 산출물 · 합의 점수 <b>${c.mean}</b>
+              · ${c.votes}명 독립 평가 [${(c.evaluators||[]).map(x=>e(x)).join(', ')}]
             </div>
             <div class="appr-acts">
               <button class="btn-appr" onclick="decideEval('${e(eid)}',true)">✓ 승인</button>
               <button class="btn-rej" onclick="decideEval('${e(eid)}',false)">✗ 반려</button>
             </div>
-          </div>`).join('');
+          </div>`).join(''));
       }catch(err){}
     }
     async function decideEval(eid,ok){
