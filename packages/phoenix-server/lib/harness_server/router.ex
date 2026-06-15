@@ -350,15 +350,18 @@ defmodule HarnessServer.Router do
   end
 
   # ── POST /api/eval/:work_key/approve ────────────────────────────────────────
-  # Human approval gate: a person approves/rejects an eval consensus (suggest),
-  # turning the agents' measurement into a recorded decision (read→suggest→approve).
-  # Body: {"eval_id": "...", "approved": true, "decided_by": "alice"}
+  # Final stage of the 5-stage learning loop (학습·선택). A person learns from the
+  # peer-vetted wiki draft and either 채택(adopts) or 보류(defers). On adoption the
+  # probabilistic output is deterministically crystallized into a reusable skill —
+  # replayable without re-inference. The loop closes: 선택 → 결정론적 가치.
+  # Body: {"eval_id","approved","decided_by","wiki": adopted draft body}
 
   post "/api/eval/:work_key/approve" do
     params = conn.body_params
     eval_id = Map.get(params, "eval_id")
     approved = Map.get(params, "approved", true)
     by = Map.get(params, "decided_by", "human")
+    wiki = Map.get(params, "wiki", "")
 
     consensus =
       StateStore.eval_summary(work_key)
@@ -375,13 +378,32 @@ defmodule HarnessServer.Router do
 
     StateStore.update(work_key, %{"decision_#{eval_id}" => decision})
 
+    # 채택 → 결정론적 결정화 (no LLM): adopted draft becomes a frozen skill/playbook.
+    skill = if approved, do: crystallize_skill(work_key, eval_id, consensus, wiki, by), else: nil
+
     HarnessServer.Endpoint.broadcast(
       "work:#{work_key}",
       "task.result",
       Map.merge(decision, %{"event" => "decision", "from" => by, "task_id" => eval_id})
     )
 
-    send_json(conn, 200, %{ok: true, decision: decision})
+    if skill do
+      HarnessServer.Endpoint.broadcast(
+        "work:#{work_key}",
+        "skill.created",
+        Map.merge(skill, %{"event" => "skill.created", "from" => by, "task_id" => eval_id})
+      )
+    end
+
+    send_json(conn, 200, %{ok: true, decision: decision, skill: skill})
+  end
+
+  # ── GET /api/skills/:work_key ───────────────────────────────────────────────
+  # Crystallized deterministic skills/playbooks learned & adopted for this work key.
+
+  get "/api/skills/:work_key" do
+    skills = StateStore.get_skills(work_key)
+    send_json(conn, 200, %{work_key: work_key, count: length(skills), skills: skills})
   end
 
   # ── POST /api/task/:task_id/cancel ──────────────────────────────────────────
@@ -524,6 +546,108 @@ defmodule HarnessServer.Router do
     conn
     |> Plug.Conn.put_resp_content_type("application/json")
     |> Plug.Conn.send_resp(status, Jason.encode!(body))
+  end
+
+  # ── Deterministic crystallization ───────────────────────────────────────────
+  # Freeze an adopted, peer-vetted draft into a reusable skill: a structured DETS
+  # record + a Claude Code SKILL.md on disk. Pure templating, no inference — same
+  # input always yields the same artifact, so the learned value is deterministic.
+
+  defp crystallize_skill(work_key, eval_id, consensus, wiki, by) do
+    c = consensus || %{}
+    goal = (c["goal"] || c[:goal] || "") |> to_string()
+    body = (wiki || "") |> to_string() |> String.trim()
+    slug = slugify(eval_id)
+    ts = DateTime.utc_now() |> DateTime.to_iso8601()
+
+    base = %{
+      "name" => "learned-#{slug}",
+      "eval_id" => eval_id,
+      "work_key" => work_key,
+      "trigger" => goal,
+      "procedure" => body,
+      "consensus" => c["mean"] || c[:mean],
+      "votes" => c["votes"] || c[:votes],
+      "graded" => c["graded"] || c[:graded],
+      "evaluators" => c["evaluators"] || c[:evaluators] || [],
+      "adopted_by" => by,
+      "adopted_at" => ts
+    }
+
+    # Materialize the SKILL.md first, then persist the record WITH its file path.
+    skill = Map.put(base, "file", write_skill_file(slug, base))
+    StateStore.record_skill(work_key, skill)
+    skill
+  end
+
+  defp slugify(s) do
+    s
+    |> to_string()
+    |> String.downcase()
+    |> String.replace(~r/[^a-z0-9가-힣]+/u, "-")
+    |> String.trim("-")
+    |> String.slice(0, 60)
+    |> case do
+      "" -> "skill"
+      v -> v
+    end
+  end
+
+  defp write_skill_file(slug, skill) do
+    dir = System.get_env("OAH_SKILLS_DIR", Path.expand("../../skills/learned"))
+    target = Path.join(dir, slug)
+
+    try do
+      File.mkdir_p!(target)
+      File.write!(Path.join(target, "SKILL.md"), skill_md(skill))
+      Path.relative_to_cwd(Path.join(target, "SKILL.md"))
+    rescue
+      e -> "write-failed: #{Exception.message(e)}"
+    end
+  end
+
+  defp skill_md(s) do
+    evs = (s["evaluators"] || []) |> Enum.map(&to_string/1) |> Enum.join(", ")
+
+    """
+    ---
+    name: #{s["name"]}
+    description: #{one_line(s["trigger"])} — DureClaw 함대가 학습·채택한 결정론적 플레이북
+    metadata:
+      source: dureclaw-learning-loop
+      work_key: #{s["work_key"]}
+      eval_id: #{s["eval_id"]}
+      consensus: #{s["consensus"]}
+      votes: #{s["votes"]}
+      adopted_by: #{s["adopted_by"]}
+      adopted_at: #{s["adopted_at"]}
+    ---
+
+    # #{one_line(s["trigger"])}
+
+    > 이 스킬은 DureClaw 5단계 학습 루프(관측→종합→목적화→지식화→학습·선택)에서
+    > 동료 노드 다수결 합의(#{s["consensus"]}, #{s["votes"]}표)를 거쳐 사람이 **채택**한
+    > 산출물을 결정론적으로 결정화한 것입니다. LLM 재추론 없이 동일 상황에 재적용하세요.
+
+    ## 트리거 (이 상황에서 사용)
+
+    #{s["trigger"]}
+
+    ## 절차 · 지식 (채택된 위키 본문)
+
+    #{s["procedure"]}
+
+    ## 출처 (provenance)
+
+    - Work Key: `#{s["work_key"]}` · eval_id: `#{s["eval_id"]}`
+    - 초안 작성: #{s["graded"]}
+    - 동료 평가: #{evs} (합의 #{s["consensus"]}, #{s["votes"]}표)
+    - 채택: #{s["adopted_by"]} @ #{s["adopted_at"]}
+    """
+  end
+
+  defp one_line(s) do
+    s |> to_string() |> String.split("\n", parts: 2) |> List.first() |> String.slice(0, 80)
   end
 
   defp get_server_host(conn) do

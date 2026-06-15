@@ -32,3 +32,6 @@ image-*.png
 
 # Local Claude Code session data
 .claude/
+
+# DureClaw 학습 루프가 런타임에 생성하는 결정론적 스킬 (채택 시 자동 생성)
+skills/learned/

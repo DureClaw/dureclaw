@@ -31,6 +31,7 @@ defmodule HarnessServer.StateStore do
   @pending_table :harness_pending
   @metrics_table :harness_metrics
   @eval_table :harness_evals
+  @skill_table :harness_skills
 
   # ─── Public API ─────────────────────────────────────────────────────────────
 
@@ -162,6 +163,29 @@ defmodule HarnessServer.StateStore do
 
   defp score_of(run), do: Map.get(run, "score", 0) * 1.0
 
+  # ─── Learned skills (deterministic crystallization) ──────────────────────────
+  # When a human completes learning (채택), the adopted, peer-vetted output is
+  # frozen into a deterministic skill/playbook — replayable without re-inference.
+  # This is the RSI loop closing: probabilistic exploration → deterministic value.
+
+  @doc "Record a crystallized skill for a work key (newest last)."
+  def record_skill(work_key, skill) when is_map(skill) do
+    GenServer.call(__MODULE__, {:record_skill, work_key, skill})
+  end
+
+  @doc "All crystallized skills for a work key, newest first."
+  def get_skills(work_key) do
+    case :dets.lookup(@skill_table, work_key) do
+      [{^work_key, skills}] -> Enum.reverse(skills)
+      _ -> []
+    end
+  end
+
+  @doc "Count of crystallized skills across all work keys."
+  def skill_count do
+    dets_to_list(@skill_table) |> Enum.map(fn {_k, v} -> length(v) end) |> Enum.sum()
+  end
+
   @doc "Store a pending task with dependency list."
   def store_pending_task(task_id, task_info) do
     GenServer.call(__MODULE__, {:store_pending_task, task_id, task_info})
@@ -238,6 +262,12 @@ defmodule HarnessServer.StateStore do
         type: :set
       )
 
+    {:ok, _} =
+      :dets.open_file(@skill_table,
+        file: String.to_charlist(Path.join(data_dir, "harness_skills.dets")),
+        type: :set
+      )
+
     :ets.new(@pending_table, [:named_table, :public, read_concurrency: true])
     :ets.new(@metrics_table, [:named_table, :public, read_concurrency: true])
 
@@ -256,6 +286,7 @@ defmodule HarnessServer.StateStore do
     :dets.close(@mailbox_table)
     :dets.close(@task_table)
     :dets.close(@eval_table)
+    :dets.close(@skill_table)
     :ok
   end
 
@@ -364,6 +395,21 @@ defmodule HarnessServer.StateStore do
       end
 
     :dets.insert(@eval_table, {work_key, existing ++ [run]})
+    {:reply, :ok, state}
+  end
+
+  @impl true
+  def handle_call({:record_skill, work_key, skill}, _from, state) do
+    existing =
+      case :dets.lookup(@skill_table, work_key) do
+        [{^work_key, skills}] -> skills
+        _ -> []
+      end
+
+    # upsert by eval_id — re-adoption refreshes the skill instead of duplicating
+    eid = Map.get(skill, "eval_id")
+    kept = Enum.reject(existing, &(Map.get(&1, "eval_id") == eid))
+    :dets.insert(@skill_table, {work_key, kept ++ [skill]})
     {:reply, :ok, state}
   end
 
