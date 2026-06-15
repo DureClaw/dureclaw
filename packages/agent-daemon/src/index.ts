@@ -748,15 +748,20 @@ async function handleTaskAssign(payload: TaskPayload) {
       // peer (agent-to-agent dialog); otherwise self-score.
       let score: number | null = null;
       if (evalMode && result.exitCode === 0) {
-        if (payload.evaluator) {
-          console.log(`[eval] ${taskId} → asking ${payload.evaluator} to grade (peer eval)`);
-          sendEvent("task.assign", {
-            task_id: `${taskId}-grade`,
-            to: payload.evaluator,
-            from: AGENT_NAME,
-            work_key: WORK_KEY,
-            instructions: `[GRADE]\nGRADED_AGENT: ${AGENT_NAME}\nGOAL:\n${payload.instructions}\nRESULT:\n${result.output.slice(0, 1500)}`,
-          });
+        const peers = peerEvaluators(payload);
+        if (peers.length > 0) {
+          // Agent-to-agent: ask each peer to grade independently; the server
+          // averages their votes into a consensus (majority/quorum).
+          console.log(`[eval] ${taskId} → ${peers.length} peer(s) grading: ${peers.join(", ")}`);
+          for (const peer of peers) {
+            sendEvent("task.assign", {
+              task_id: `${taskId}-grade-${peer}`,
+              to: peer,
+              from: AGENT_NAME,
+              work_key: WORK_KEY,
+              instructions: `[GRADE]\nEVAL_ID: ${taskId}\nGRADED_AGENT: ${AGENT_NAME}\nGOAL:\n${payload.instructions}\nRESULT:\n${result.output.slice(0, 1500)}`,
+            });
+          }
         } else {
           score = await scoreResult(payload.instructions, result.output, usedBackend);
         }
@@ -1199,9 +1204,16 @@ async function scoreResult(goal: string, output: string, backend: string): Promi
  * INDEPENDENT score (agent-to-agent dialog, no self-grading bias). Parse the
  * goal/result out of the instruction, score it, and reply with the verdict.
  */
+/** Parse the evaluator list (comma-separated) for a peer evaluation. */
+function peerEvaluators(payload: TaskPayload): string[] {
+  if (!payload.evaluator) return [];
+  return payload.evaluator.split(",").map((s) => s.trim()).filter(Boolean);
+}
+
 async function handleGradeTask(payload: TaskPayload): Promise<void> {
   const taskId = payload.task_id ?? `grade-${Date.now()}`;
   const instr = payload.instructions;
+  const evalId = instr.match(/EVAL_ID:\s*(.+)/)?.[1]?.trim();
   const graded = instr.match(/GRADED_AGENT:\s*(.+)/)?.[1]?.trim() ?? "unknown";
   const goal = instr.match(/GOAL:\s*([\s\S]*?)\nRESULT:/)?.[1]?.trim() ?? "";
   const result = instr.match(/RESULT:\s*([\s\S]*)$/)?.[1]?.trim() ?? "";
@@ -1217,6 +1229,7 @@ async function handleGradeTask(payload: TaskPayload): Promise<void> {
     score: score ?? 0,
     graded,
     evaluator: AGENT_NAME,
+    eval_id: evalId,
     output: `peer-graded ${graded}: ${score ?? "n/a"}`,
   });
 }

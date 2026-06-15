@@ -132,9 +132,31 @@ defmodule HarnessServer.StateStore do
           by_agent_best:
             runs
             |> Enum.group_by(&Map.get(&1, "agent", "unknown"))
-            |> Map.new(fn {agent, rs} -> {agent, Enum.map(rs, &score_of/1) |> Enum.max()} end)
+            |> Map.new(fn {agent, rs} -> {agent, Enum.map(rs, &score_of/1) |> Enum.max()} end),
+          consensus: consensus_by_eval(runs)
         }
     end
+  end
+
+  # Group peer evaluations by their source [EVAL] task and average the votes —
+  # a majority/quorum consensus across independent evaluators.
+  defp consensus_by_eval(runs) do
+    runs
+    |> Enum.filter(&Map.get(&1, "eval_id"))
+    |> Enum.group_by(&Map.get(&1, "eval_id"))
+    |> Map.new(fn {eval_id, rs} ->
+      scores = Enum.map(rs, &score_of/1)
+
+      {eval_id,
+       %{
+         graded: rs |> hd() |> Map.get("agent"),
+         votes: length(scores),
+         evaluators: Enum.map(rs, &Map.get(&1, "evaluator")),
+         mean: Float.round(Enum.sum(scores) / length(scores), 3),
+         min: Enum.min(scores),
+         max: Enum.max(scores)
+       }}
+    end)
   end
 
   defp score_of(run), do: Map.get(run, "score", 0) * 1.0
