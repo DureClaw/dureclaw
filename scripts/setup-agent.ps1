@@ -173,26 +173,28 @@ if (Get-Command bun -ErrorAction SilentlyContinue) {
     exit 1
 }
 
-# ── AI 백엔드 자동 탐지 ────────────────────────────────────────────────────────
+# ── AI backend auto-detect (pi coding agent preferred) ──────────────────────
 
 $BACKEND = "none"
-foreach ($cmd in @("claude", "opencode", "zeroclaw", "aider")) {
+foreach ($cmd in @("claude", "pi", "opencode", "zeroclaw", "aider")) {
     if (Get-Command $cmd -ErrorAction SilentlyContinue) {
         $BACKEND = $cmd; break
     }
 }
 
-# ── OpenCode 설치 (없으면) ─────────────────────────────────────────────────────
+# ── Install pi coding agent (if none) ───────────────────────────────────────
 
-$env:PATH = "$HOME\.opencode\bin;$env:PATH"
-if ($BACKEND -eq "none" -and -not (Get-Command opencode -ErrorAction SilentlyContinue)) {
-    Write-Host "-> installing OpenCode..."
+if ($BACKEND -eq "none" -and -not (Get-Command pi -ErrorAction SilentlyContinue)) {
+    Write-Host "-> installing pi coding agent..."
     try {
-        iex (irm https://opencode.ai/install.ps1)
-        $env:PATH = "$HOME\.opencode\bin;$env:PATH"
-        if (Get-Command opencode -ErrorAction SilentlyContinue) { $BACKEND = "opencode" }
+        if (Get-Command npm -ErrorAction SilentlyContinue) {
+            npm install -g --ignore-scripts @earendil-works/pi-coding-agent
+        } elseif (Get-Command bun -ErrorAction SilentlyContinue) {
+            bun install -g @earendil-works/pi-coding-agent
+        }
+        if (Get-Command pi -ErrorAction SilentlyContinue) { $BACKEND = "pi" }
     } catch {
-        Write-Host "[warn] OpenCode install failed. Only [SHELL] tasks available."
+        Write-Host "[warn] pi install failed. Only [SHELL] tasks available."
     }
 }
 

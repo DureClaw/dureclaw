@@ -10,7 +10,7 @@ Phoenix 5-tuple protocol: [join_ref, ref, topic, event, payload]
   NAME          에이전트 이름 (기본: {ROLE}@{hostname})
   WK            Work Key (없으면 자동 발견)
   PROJECT_DIR   작업 디렉토리 (기본: $HOME)
-  AGENT_BACKEND AI 백엔드 강제 지정 (claude|opencode|aider|zeroclaw|auto)
+  AGENT_BACKEND AI 백엔드 강제 지정 (claude|pi|opencode|aider|zeroclaw|auto)
 """
 
 import asyncio
@@ -76,7 +76,7 @@ WK_POLL_INTERVAL = 2      # seconds
 def detect_backend() -> str:
     if AGENT_BACKEND != "auto":
         return AGENT_BACKEND
-    for cmd in ("claude", "opencode", "zeroclaw", "aider"):
+    for cmd in ("claude", "pi", "opencode", "zeroclaw", "aider"):
         try:
             subprocess.run(["which", cmd], capture_output=True, check=True)
             return cmd
@@ -315,7 +315,7 @@ class PhoenixAgent:
                 "from": NAME,
                 "role": ROLE,
                 "status": "blocked",
-                "output": "No AI backend available. Install claude, opencode, or aider.",
+                "output": "No AI backend available. Install claude, pi, or aider.",
                 "exit_code": 1,
             })
             return
@@ -328,6 +328,8 @@ class PhoenixAgent:
             # AI 백엔드별 커맨드 구성
             if backend == "claude":
                 cmd_args = ["claude", "--print", "--no-markdown", instructions]
+            elif backend in ("pi", "pi-agent"):
+                cmd_args = ["pi", "-p", instructions]
             elif backend == "opencode":
                 cmd_args = ["opencode", "run", "--message", instructions,
                             "--cwd", PROJECT_DIR]

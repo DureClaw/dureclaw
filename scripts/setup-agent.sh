@@ -329,19 +329,20 @@ if [[ "$USE_NODE" == "true" ]]; then
     fi
   fi
 
-  # ─── OpenCode (선택) ───────────────────────────────────────────────────────
-  export PATH="$HOME/.opencode/bin:$PATH"
-  if ! command -v opencode &>/dev/null; then
-    echo "→ OpenCode 설치 시도 중..."
-    if curl -fsSL https://opencode.ai/install | bash 2>/dev/null; then
-      export PATH="$HOME/.opencode/bin:$PATH"
-    else
-      echo "⚠ OpenCode 설치 실패 (미지원 아키텍처). [SHELL] 태스크만 사용 가능."
-    fi
+  # ─── pi coding agent (기본 백엔드) ─────────────────────────────────────────
+  # pi.dev/install.sh 는 npm 글로벌 prefix 에 설치 → 해당 bin 을 PATH 에 노출
+  command -v npm &>/dev/null && export PATH="$(npm config get prefix 2>/dev/null)/bin:$PATH"
+  export PATH="$HOME/.local/bin:$HOME/.local/share/pi-node/current/bin:$PATH"
+  if ! command -v pi &>/dev/null; then
+    echo "→ pi coding agent 설치 시도 중..."
+    curl -fsSL https://pi.dev/install.sh | sh 2>/dev/null \
+      || (command -v npm &>/dev/null && npm install -g --ignore-scripts @earendil-works/pi-coding-agent 2>/dev/null) \
+      || echo "⚠ pi 설치 실패 (npm 없음/미지원). [SHELL] 태스크만 사용 가능."
+    command -v npm &>/dev/null && export PATH="$(npm config get prefix 2>/dev/null)/bin:$PATH"
   fi
 
-  # ZeroClaw 감지 — 설치되어 있으면 AGENT_BACKEND=zeroclaw 자동 설정
-  BACKEND="opencode"
+  # 백엔드 결정 — pi 기본, ZeroClaw 있으면 우선
+  BACKEND="pi"
   if command -v zeroclaw &>/dev/null; then
     BACKEND="zeroclaw"
     echo "→ ZeroClaw 감지됨 — AI 백엔드로 사용"
@@ -461,13 +462,15 @@ else
   fi
 fi
 
-# ─── 3. OpenCode ──────────────────────────────────────────────────────────────
+# ─── 3. pi coding agent ─────────────────────────────────────────────────────
 
-export PATH="$HOME/.opencode/bin:$PATH"
-if ! command -v opencode &>/dev/null; then
-  echo "→ OpenCode 설치 중..."
-  curl -fsSL https://opencode.ai/install | bash
-  export PATH="$HOME/.opencode/bin:$PATH"
+command -v npm &>/dev/null && export PATH="$(npm config get prefix 2>/dev/null)/bin:$PATH"
+export PATH="$HOME/.local/bin:$HOME/.local/share/pi-node/current/bin:$PATH"
+if ! command -v pi &>/dev/null; then
+  echo "→ pi coding agent 설치 중..."
+  curl -fsSL https://pi.dev/install.sh | sh \
+    || (command -v npm &>/dev/null && npm install -g --ignore-scripts @earendil-works/pi-coding-agent)
+  command -v npm &>/dev/null && export PATH="$(npm config get prefix 2>/dev/null)/bin:$PATH"
 fi
 
 # ─── 4. Work Key ──────────────────────────────────────────────────────────────
