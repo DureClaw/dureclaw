@@ -84,7 +84,7 @@ Agent 도구를 사용하여:
 ```
 [SHELL] <bash>      → 에이전트 머신에서 직접 실행
 [CLAUDE] <prompt>   → claude CLI 실행
-[OPENCODE] <prompt> → opencode 실행
+[PI] <prompt>       → pi coding agent 실행
 <일반 텍스트>        → 에이전트 AI가 처리
 ```
 

@@ -353,7 +353,7 @@ Work Key 상태 업데이트.
 |--------|----------|------|
 | `[SHELL]` | bash 직접 실행 | `[SHELL] npm run build` |
 | `[CLAUDE]` | claude CLI | `[CLAUDE] 이 파일을 리팩토링해줘` |
-| `[OPENCODE]` | opencode CLI | `[OPENCODE] fix the failing tests` |
+| `[PI]` | pi coding agent | `[PI] fix the failing tests` |
 | `[GEMINI]` | gemini CLI | `[GEMINI] 코드 리뷰 해줘` |
 | `[AIDER]` | aider CLI | `[AIDER] refactor auth module` |
 | `[ORCHESTRATE]` | 서브 태스크 분해 | `[ORCHESTRATE] 앱 전체 빌드 및 테스트` |

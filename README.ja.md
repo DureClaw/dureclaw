@@ -172,7 +172,7 @@ Claude がサーバー IP を自動検出し、OS／アーキテクチャ別の 
 ③ oah-agent（ワーカー、各マシン）
      PHOENIX=ws://host:4000 ROLE=builder bash <(curl -fsSL .../setup-agent.sh)
    → WebSocket 接続 → task.assign 受信
-   → AI バックエンド実行（claude / opencode / gemini / aider / codex）
+   → AI バックエンド実行（claude / pi / gemini / aider / codex）
    → task.result 返送
 ```
 
@@ -261,18 +261,18 @@ Phoenix Server              ws://host:4000
 |--------------|--------------|
 | macOS Apple Silicon | `✅ darwin-arm64 バイナリダウンロード完了` → `→ サーバー起動 · ws://100.x.x.x:4000` |
 | Linux x86_64（GPU サーバー） | `✅ linux-x86_64 エージェントインストール完了` → `✅ claude-cli 検出` → `→ builder@gpu-server 接続完了` |
-| Raspberry Pi 4/5 | `✅ linux-arm64 エージェントインストール完了` → `✅ opencode 検出` → `→ executor@raspberrypi 接続完了` |
+| Raspberry Pi 4/5 | `✅ linux-arm64 エージェントインストール完了` → `✅ pi 検出` → `→ executor@raspberrypi 接続完了` |
 | Raspberry Pi Zero W | `✅ Python エージェントモード (armv6)` → `⚠ aider 軽量モード` → `→ executor@zero-w 接続完了 (WiFi)` |
-| Windows（PowerShell） | `✅ opencode npm インストール完了` → `→ builder@DESKTOP-WIN 接続完了` |
+| Windows（PowerShell） | `✅ pi npm インストール完了` → `→ builder@DESKTOP-WIN 接続完了` |
 
 ### エージェントロール
 
 | ロール | AI バックエンド | タスク例 |
 |--------|-------------|---------|
-| `builder` | claude-cli / opencode / codex | `[SHELL] make build` → コード作成・ビルド |
+| `builder` | claude-cli / pi / codex | `[SHELL] make build` → コード作成・ビルド |
 | `tester` | claude-cli / aider | `[SHELL] pytest tests/` → テスト実行・検証 |
 | `analyst` | claude-cli / gemini | コード分析・レビュー・バグ検出 |
-| `executor` | aider / opencode | 軽量コマンド実行 · RPi Zero W に最適 |
+| `executor` | aider / pi | 軽量コマンド実行 · RPi Zero W に最適 |
 
 **タスクディスパッチ & マルチエージェント状況（6台デバイス同時接続）**
 

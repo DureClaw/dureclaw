@@ -687,7 +687,7 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
           <div class="t-bar"><span class="t-dot" style="background:#ff5f57"></span><span class="t-dot" style="background:#febc2e"></span><span class="t-dot" style="background:#28c840"></span></div>
           <div><span class="t-prompt">$ </span><span class="t-cmd">ROLE=executor bash &lt;(curl -fsSL https://dureclaw.baryon.ai/agent)</span></div>
           <div><span class="t-ok">✅ linux-arm64 에이전트 설치 완료</span></div>
-          <div><span class="t-ok">✅ opencode 감지됨</span></div>
+          <div><span class="t-ok">✅ pi 감지됨</span></div>
           <div><span class="t-ok">→ executor@raspberrypi 연결 완료</span></div>
         </div>
         <div class="platform-status" style="margin-top:8px"><span class="dot"></span>완전 지원 · executor 역할 최적</div>
@@ -723,7 +723,7 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
           <div class="t-bar"><span class="t-dot" style="background:#ff5f57"></span><span class="t-dot" style="background:#febc2e"></span><span class="t-dot" style="background:#28c840"></span></div>
           <div><span class="t-prompt">PS&gt; </span><span class="t-cmd">irm https://dureclaw.baryon.ai/agent.ps1 | iex</span></div>
           <div><span class="t-dim">→ 서버 자동 탐색 (oah.local · Tailscale 피어)</span></div>
-          <div><span class="t-ok">✅ opencode 설치 완료</span></div>
+          <div><span class="t-ok">✅ pi 설치 완료</span></div>
           <div><span class="t-ok">→ builder@DESKTOP-WIN 연결 완료</span></div>
         </div>
         <div class="platform-status" style="margin-top:8px"><span class="dot"></span>워커 지원 · PowerShell 설치 스크립트</div>
@@ -770,7 +770,7 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
 <span class="c3">③ oah-agent</span> <span class="dim">(워커, 각 머신)</span>
      <span class="dim">PHOENIX=ws://host:4000 ROLE=builder bash &lt;(curl -fsSL https://dureclaw.baryon.ai/agent)</span>
    <span class="arrow">→</span> WebSocket 연결 <span class="arrow">→</span> task.assign 수신
-   <span class="arrow">→</span> AI 백엔드 실행 <span class="dim">(claude / opencode / gemini / aider / codex)</span>
+   <span class="arrow">→</span> AI 백엔드 실행 <span class="dim">(claude / pi / gemini / aider / codex)</span>
    <span class="arrow">→</span> task.result 반환</pre>
     </div>
   </div>

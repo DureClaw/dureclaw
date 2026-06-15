@@ -137,8 +137,8 @@ curl http://localhost:4000/api/health
 curl -fsSL https://bun.sh/install | bash
 source ~/.zshrc
 
-# 2. OpenCode 설치 (없으면)
-curl -fsSL https://opencode.ai/install | bash
+# 2. pi coding agent 설치 (없으면)
+curl -fsSL https://pi.dev/install.sh | sh
 
 # 3. 코드 복사
 # 방법 A: git clone
@@ -167,8 +167,8 @@ bun run src/index.ts
 curl -fsSL https://bun.sh/install | bash
 source ~/.bashrc
 
-# 2. OpenCode 설치
-curl -fsSL https://opencode.ai/install | bash
+# 2. pi coding agent 설치
+curl -fsSL https://pi.dev/install.sh | sh
 
 # 3. 코드 복사
 git clone <repo-url> ~/open-agent-harness
@@ -199,8 +199,8 @@ chmod +x ~/start-builder.sh
 curl -fsSL https://bun.sh/install | bash
 source ~/.bashrc
 
-# 2. OpenCode 설치
-curl -fsSL https://opencode.ai/install | bash
+# 2. pi coding agent 설치
+curl -fsSL https://pi.dev/install.sh | sh
 
 # 3. 코드 복사
 git clone <repo-url> ~/open-agent-harness
