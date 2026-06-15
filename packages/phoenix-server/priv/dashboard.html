@@ -65,6 +65,9 @@ input,select,button{font-family:inherit;font-size:12px}
 .field label{display:block;font-size:10px;letter-spacing:1px;color:var(--t3);text-transform:uppercase;margin-bottom:4px}
 .field input,.field textarea,.field select{width:100%}
 textarea.inp{resize:vertical;min-height:60px}
+.presets{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.preset{font-size:11px;padding:5px 10px;border-radius:6px;background:var(--bg3);border:1px solid var(--bd2);color:var(--t2);cursor:pointer}
+.preset:hover{border-color:var(--cy);color:var(--cy)}
 /* flow timeline */
 .flow{display:flex;flex-direction:column;gap:0}
 .flow-item{display:flex;gap:10px;padding:7px 0;border-left:2px solid var(--bd2);padding-left:12px;margin-left:6px;position:relative}
@@ -147,8 +150,14 @@ textarea.inp{resize:vertical;min-height:60px}
     <div class="card">
       <div class="card-h">평가 디스패치 — read → suggest → approve</div>
       <div class="card-b">
-        <div class="field"><label>목표 (이 산출물을 만들고 동료가 채점)</label>
-          <textarea class="inp" id="d-goal" placeholder="예) 분산 시스템을 한 문장으로 설명하라"></textarea></div>
+        <div class="field"><label>목표 (이 산출물을 만들고 동료가 채점) — 시나리오 선택</label>
+          <div class="presets">
+            <span class="preset" onclick="setGoal(this)" data-g="현장 Pi 카메라가 포착한 부품 이미지에서 외관 스크래치 불량 여부를 판정하고, 결함 위치와 신뢰도(0~1)를 제시하라.">📷 엣지 비전 판정</span>
+            <span class="preset" onclick="setGoal(this)" data-g="LOT A-2026-1031의 스크래치 불량을 분석해 결함 유형·근본 원인(의심 원자재 LOT 포함)·조치(격리/재작업)를 한 단락으로 제안하라.">🏭 MES 불량 분석</span>
+            <span class="preset" onclick="setGoal(this)" data-g="결함 LOT의 공통 원자재 LOT을 역추적해 영향받는 작업지시(WO) 목록과 격리 범위를 제시하라.">🔗 LOT 계보 추적</span>
+            <span class="preset" onclick="setGoal(this)" data-g="이번 실험 run의 결과가 직전 베이스라인 대비 개선됐는지 핵심 지표와 근거를 들어 판정하라.">🔬 오토리서치 개선 판정</span>
+          </div>
+          <textarea class="inp" id="d-goal" placeholder="시나리오 칩을 누르거나 직접 입력 — 예) LOT A-2026-1031 스크래치 불량 분석"></textarea></div>
         <div style="display:flex;gap:10px">
           <div class="field" style="flex:1"><label>실행 에이전트</label><select class="inp" id="d-to"></select></div>
           <div class="field" style="flex:1"><label>평가자 (다중 선택 = 다수결)</label><select class="inp" id="d-evals" multiple size="3"></select></div>
@@ -308,6 +317,7 @@ function renderFlow(ev,st){
     <span class="flow-stage">${i.stage}</span><div class="flow-body">${i.body}<div class="flow-ts">${E((i.ts||'').slice(11,19))}</div></div></div>`).join('');
 }
 
+function setGoal(el){$('d-goal').value=el.dataset.g;$('d-goal').focus()}
 async function dispatchEval(){
   const goal=$('d-goal').value.trim();const to=$('d-to').value;
   const evs=[...$('d-evals').selectedOptions].map(o=>o.value).filter(v=>v!==to);
