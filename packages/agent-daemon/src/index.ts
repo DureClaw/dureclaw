@@ -485,7 +485,9 @@ function handlePhxMessage([msgJoinRef, ref, topic, event, payload]: PhxMsg) {
       const p = payload as unknown as TaskPayload;
       const to = p.to;
       if (!to || to === AGENT_NAME || to === "broadcast") {
-        handleTaskAssign(p);
+        // never let one bad task crash the daemon
+        Promise.resolve(handleTaskAssign(p)).catch((e) =>
+          console.error(`[task] handler error: ${e instanceof Error ? e.message : e}`));
       }
       break;
     }
@@ -579,6 +581,13 @@ const handledTasks = new Set<string>();
 
 async function handleTaskAssign(payload: TaskPayload) {
   const taskId = payload.task_id ?? `task-${Date.now()}`;
+
+  // Defensive: a task.assign without instructions (malformed/stale broadcast)
+  // must not crash the daemon. Ignore it.
+  if (typeof payload.instructions !== "string" || !payload.instructions.trim()) {
+    console.log(`[task] ${taskId} has no instructions — ignoring`);
+    return;
+  }
 
   // Idempotency: ignore a task we've already accepted (duplicate broadcast +
   // mailbox delivery, or a stale mailbox entry re-polled after restart).
@@ -1796,7 +1805,8 @@ async function pollMailbox() {
       if (!tid || seenMailboxTasks.has(tid) || activeTasks.has(tid)) continue;
       seenMailboxTasks.add(tid);
       console.log(`[mailbox] received task ${tid} via polling`);
-      handleTaskAssign(msg);
+      Promise.resolve(handleTaskAssign(msg)).catch((e) =>
+        console.error(`[mailbox] handler error: ${e instanceof Error ? e.message : e}`));
     }
   } catch { /* server unreachable, will retry */ }
 }
