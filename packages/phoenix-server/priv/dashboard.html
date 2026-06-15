@@ -140,7 +140,12 @@ textarea.inp{resize:vertical;min-height:60px}
 .wk-pill.sel{border-color:var(--cy);color:var(--cy);background:rgba(56,189,248,.08)}
 .wk-more{font-size:10px;color:var(--t3);align-self:center}
 /* event stream */
-.stream{margin:0 16px 16px;max-height:220px;overflow-y:auto}
+.vtabs{display:flex;gap:8px;padding:8px 16px 0}
+.vtab{padding:9px 20px;background:var(--bg2);border:1px solid var(--bd);border-radius:8px 8px 0 0;color:var(--t2);cursor:pointer;font-size:13px;font-family:inherit}
+.vtab:hover{color:var(--tx)}
+.vtab.active{border-color:var(--cy);color:var(--cy);background:var(--bg3);font-weight:700}
+.stream-card{border-color:rgba(56,189,248,.35)}
+#stream{max-height:72vh;overflow-y:auto}
 .ev{display:flex;gap:10px;padding:5px 0;border-bottom:1px solid var(--bg3);font-size:11px}
 .ev-ts{color:var(--t3);flex-shrink:0;font-size:10px}
 .ev-tag{font-size:9px;padding:1px 6px;border-radius:4px;flex-shrink:0;text-transform:uppercase;letter-spacing:.5px}
@@ -171,7 +176,12 @@ textarea.inp{resize:vertical;min-height:60px}
 <div id="active-eval"></div>
 <div id="approval"></div>
 
-<main class="grid">
+<div class="vtabs">
+  <button class="vtab active" data-v="dash" onclick="showView('dash')">📊 대시보드 · RSI</button>
+  <button class="vtab" data-v="live" onclick="showView('live')">📡 라이브 모니터</button>
+</div>
+
+<main id="view-dash" class="grid">
   <!-- LEFT: fleet -->
   <div class="col">
     <div class="card">
@@ -228,9 +238,11 @@ textarea.inp{resize:vertical;min-height:60px}
   </div>
 </main>
 
-<div class="card stream">
-  <div class="card-h">이벤트 스트림 <span class="chip" id="ev-count">0</span></div>
-  <div class="card-b" id="stream"><div class="empty">대기 중…</div></div>
+<div id="view-live" style="display:none">
+  <div class="card stream-card" style="margin:16px">
+    <div class="card-h"><span>📡 라이브 시그널 — 버스 이벤트 스트림 (전체 폭)</span><span class="chip" id="ev-count">0</span></div>
+    <div class="card-b" id="stream"><div class="empty">대기 중…</div></div>
+  </div>
 </div>
 
 <script>
@@ -391,6 +403,13 @@ function renderFlow(ev,st){
 
 function setGoal(el){$('d-goal').value=el.dataset.g;$('d-goal').focus()}
 
+// 상위 뷰 전환 — 📊 대시보드(RSI) / 📡 라이브 모니터(전체 폭)
+function showView(v){
+  document.querySelectorAll('.vtab').forEach(b=>b.classList.toggle('active',b.dataset.v===v));
+  $('view-dash').style.display=v==='dash'?'':'none';
+  $('view-live').style.display=v==='live'?'':'none';
+}
+
 // ── 5-stage learning loop — always visible (idle=reference, live=lit) ──
 function renderActiveEval(){
   const el=$('active-eval');if(!el)return;
@@ -469,7 +488,10 @@ function connectWs(){
     ws=new WebSocket(url);
     ws.onopen=()=>{subscribe();hbTimer=setInterval(()=>{try{ws.send(JSON.stringify([null,String(ref++),'phoenix','heartbeat',{}]))}catch(e){}},30000)};
     ws.onmessage=ev=>{try{const[,,topic,event,p]=JSON.parse(ev.data);if(event==='phx_reply'||event==='heartbeat')return;
-      const m=p?.message||p?.task_id||p?.agent||p?.from||'';addEv(event,m);
+      // task.result 는 출력 본문(시그널 내용)을 우선 표시 — 센서/엣지 모니터링
+      const who=p?.from?`${p.from}: `:'';
+      const m=(event==='task.result'&&p?.output)?who+String(p.output):(p?.message||p?.task_id||p?.agent||p?.from||'');
+      addEv(event,m);
       // 실행 노드 산출물(위키 초안) 캐시 — 학습·선택 패널이 본문을 보여주도록
       if(event==='task.result'&&p&&p.task_id&&p.output&&!p.evaluator&&!p.event)wikiDraft[p.task_id]=String(p.output).slice(0,1800);
       updateActive(event,p);
