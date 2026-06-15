@@ -1132,6 +1132,11 @@ defmodule HarnessServer.Router do
     </div><!-- /app -->
 
     <script>
+    // ── Auth: token from ?token= or saved; attach to all /api calls + WS ─────────
+    const OAH_TOKEN=new URLSearchParams(location.search).get('token')||(()=>{try{return localStorage.getItem('oah_token')||''}catch(e){return''}})();
+    if(OAH_TOKEN){try{localStorage.setItem('oah_token',OAH_TOKEN)}catch(e){}}
+    const _origFetch=window.fetch;
+    window.fetch=(u,o={})=>{if(typeof u==='string'&&u.startsWith('/api/')&&OAH_TOKEN){o.headers=Object.assign({},o.headers||{},{Authorization:'Bearer '+OAH_TOKEN})}return _origFetch(u,o)};
     // ── State ───────────────────────────────────────────────────────────────────
     let selWk=null, selAgent=null, activeWkStatus='created';
     let allAgents=[], wkList=[], taskMap=new Map(), log=[], fileChanges=[], chatLog=[];
@@ -1840,7 +1845,7 @@ defmodule HarnessServer.Router do
 
     function connectWs(){
       const proto=location.protocol==='https:'?'wss':'ws';
-      ws=new WebSocket(`${proto}://${location.host}/socket/websocket?vsn=2.0.0&agent_name=dashboard@browser&role=observer`);
+      ws=new WebSocket(`${proto}://${location.host}/socket/websocket?vsn=2.0.0&agent_name=dashboard@browser&role=observer${OAH_TOKEN?'&token='+encodeURIComponent(OAH_TOKEN):''}`);
       ws.onopen=()=>{
         wsReconnectDelay=1000;wsJoinedTopics.clear();
         if(wsHbTimer)clearInterval(wsHbTimer);

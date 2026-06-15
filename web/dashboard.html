@@ -252,6 +252,7 @@ nav {
         </div>
         <div class="server-form">
           <input class="server-input" id="server-url" type="text" placeholder="http://localhost:4000" value="http://localhost:4000"/>
+          <input class="server-input" id="token" type="password" placeholder="OAH_SECRET (token)" autocomplete="off"/>
           <button class="connect-btn" onclick="connectServer()">연결</button>
         </div>
       </div>
@@ -342,6 +343,12 @@ nav {
 <script>
 const POLL_INTERVAL = 3000; // 3초
 let serverUrl = '';
+let authToken = '';
+
+// Authorization header for a token-protected server (OAH_SECRET).
+function authHeaders() {
+  return authToken ? { Authorization: 'Bearer ' + authToken } : {};
+}
 let pollTimer = null;
 let progressTimer = null;
 let selectedWk = null;
@@ -376,6 +383,9 @@ function connectServer() {
   const url = document.getElementById('server-url').value.trim().replace(/\/$/, '');
   if (!url) return;
   serverUrl = url;
+  authToken = document.getElementById('token').value.trim();
+  try { localStorage.setItem('oah_token', authToken); } catch (e) {}
+  connected = false;
   setStatus('connecting', '연결 중...');
   if (pollTimer) clearInterval(pollTimer);
   poll();
@@ -387,8 +397,8 @@ async function poll() {
   if (!serverUrl) return;
   try {
     const [presRes, wkRes] = await Promise.all([
-      fetch(`${serverUrl}/api/presence`, { signal: AbortSignal.timeout(4000) }),
-      fetch(`${serverUrl}/api/work-keys`, { signal: AbortSignal.timeout(4000) }),
+      fetch(`${serverUrl}/api/presence`, { headers: authHeaders(), signal: AbortSignal.timeout(4000) }),
+      fetch(`${serverUrl}/api/work-keys`, { headers: authHeaders(), signal: AbortSignal.timeout(4000) }),
     ]);
 
     if (!presRes.ok || !wkRes.ok) throw new Error('HTTP error');
@@ -478,7 +488,7 @@ function selectWk(wk) {
 async function loadWkState(wk) {
   if (!serverUrl) return;
   try {
-    const res = await fetch(`${serverUrl}/api/state/${encodeURIComponent(wk)}`, { signal: AbortSignal.timeout(3000) });
+    const res = await fetch(`${serverUrl}/api/state/${encodeURIComponent(wk)}`, { headers: authHeaders(), signal: AbortSignal.timeout(3000) });
     if (!res.ok) return;
     const data = await res.json();
     const state = data.state || data || {};
@@ -556,7 +566,8 @@ let ref = 1;
 
 function connectWs() {
   if (!serverUrl) return;
-  const wsUrl = serverUrl.replace(/^http/, 'ws') + '/socket/websocket?vsn=2.0.0';
+  const wsUrl = serverUrl.replace(/^http/, 'ws') + '/socket/websocket?vsn=2.0.0'
+    + (authToken ? '&token=' + encodeURIComponent(authToken) : '');
   try {
     ws = new WebSocket(wsUrl);
     ws.onopen = () => {
@@ -588,6 +599,15 @@ function connectWs() {
     ws.onerror = () => ws.close();
   } catch {}
 }
+
+// Prefill token (?token= or saved) and work_key (?work_key=) from the URL.
+const _params = new URLSearchParams(location.search);
+let _savedToken = '';
+try { _savedToken = localStorage.getItem('oah_token') || ''; } catch (e) {}
+const _tok = _params.get('token') || _savedToken;
+if (_tok) document.getElementById('token').value = _tok;
+const _wk = _params.get('work_key');
+if (_wk) selectedWk = _wk;
 
 // Auto-connect if hash provided: dashboard.html#http://server:4000
 const hashUrl = location.hash.slice(1);
