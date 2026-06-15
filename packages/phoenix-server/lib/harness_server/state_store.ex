@@ -402,8 +402,12 @@ defmodule HarnessServer.StateStore do
     |> Enum.reduce(%{}, fn {key, _}, acc ->
       case String.split(to_string(key), "-") do
         ["LN", date, seq] ->
-          n = String.to_integer(seq)
-          Map.update(acc, date, n, &max(&1, n))
+          # Tolerate non-numeric counters (e.g. a manual LN-…-smoke key) — a
+          # bad parse here used to crash StateStore.init and take down boot.
+          case Integer.parse(seq) do
+            {n, ""} -> Map.update(acc, date, n, &max(&1, n))
+            _ -> acc
+          end
 
         _ ->
           acc
