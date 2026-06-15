@@ -539,6 +539,13 @@ defmodule HarnessServer.Router do
   # Features: task dispatch, WK create/edit/state, task history,
   #           agent detail + mailbox, event log, real-time WS.
   defp dashboard_html do
+    case File.read(Path.join(:code.priv_dir(:harness_server), "dashboard.html")) do
+      {:ok, html} -> html
+      _ -> dashboard_html_inline()
+    end
+  end
+
+  defp dashboard_html_inline do
     ~S"""
     <!DOCTYPE html>
     <html lang="ko">
