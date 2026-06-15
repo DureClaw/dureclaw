@@ -27,8 +27,9 @@
  *   AGENT_ROLE     orchestrator|planner|builder|verifier|reviewer
  *   AGENT_MACHINE  machine label (default: hostname)
  *   WORK_KEY       Active Work Key (LN-YYYYMMDD-XXX). Auto-created if omitted.
- *   PROJECT_DIR    Working directory for OpenCode (default: process.cwd())
- *   OPENCODE_BIN   Path to opencode binary (default: opencode)
+ *   PROJECT_DIR    Working directory for the coding agent (default: process.cwd())
+ *   PI_BIN         Path to pi coding-agent binary (default: pi)
+ *   OPENCODE_BIN   Path to opencode binary (legacy fallback; default: opencode)
  */
 
 import { spawnCompat as spawn } from "./spawn-compat.ts";
@@ -66,6 +67,7 @@ const AGENT_MACHINE = process.env.AGENT_MACHINE ?? hostname();
 let AGENT_ROLE = process.env.AGENT_ROLE ?? "orchestrator";
 let AGENT_NAME = process.env.AGENT_NAME ?? `${AGENT_ROLE}@${AGENT_MACHINE}`;
 const PROJECT_DIR = process.env.PROJECT_DIR ?? process.cwd();
+const PI_BIN          = process.env.PI_BIN          ?? "pi";
 const OPENCODE_BIN    = process.env.OPENCODE_BIN    ?? "opencode";
 const ZEROCLAW_BIN    = process.env.ZEROCLAW_BIN    ?? "zeroclaw";
 const CLAUDE_BIN      = process.env.CLAUDE_BIN      ?? "claude";
@@ -1061,7 +1063,7 @@ async function runOpenCode(
 
 /**
  * Priority order for "auto":
- *   claude-cli > opencode > gemini > codex > aider > zeroclaw
+ *   claude-cli > pi > opencode > gemini > codex > aider > zeroclaw
  * Each backend's CLI interface is different — map to correct argv.
  */
 function buildAgentCmd(backend: string, prompt: string): string[] {
@@ -1074,7 +1076,12 @@ function buildAgentCmd(backend: string, prompt: string): string[] {
     case "claude":
       return [CLAUDE_BIN, "-p", prompt];
 
-    // OpenCode  — `opencode run "<prompt>"`
+    // Pi coding agent (@earendil-works/pi-coding-agent)  — `pi -p "<prompt>"`
+    case "pi":
+    case "pi-agent":
+      return [PI_BIN, "-p", prompt];
+
+    // OpenCode  — `opencode run "<prompt>"` (legacy fallback; pi is now default)
     case "opencode":
       return [OPENCODE_BIN, "run", "--format", "default", prompt];
 
@@ -1102,8 +1109,8 @@ function buildAgentCmd(backend: string, prompt: string): string[] {
       return [OLLAMA_BIN, "run", OLLAMA_MODEL, "--nowordwrap", prompt];
 
     default:
-      console.warn(`[backend] unknown backend "${resolved}", falling back to opencode`);
-      return [OPENCODE_BIN, "run", "--format", "default", prompt];
+      console.warn(`[backend] unknown backend "${resolved}", falling back to pi`);
+      return [PI_BIN, "-p", prompt];
   }
 }
 
@@ -1111,15 +1118,15 @@ function buildAgentCmd(backend: string, prompt: string): string[] {
  * Pick best available backend from detected capabilities.
  * Local ollama is preferred over codex/aider: on a headless node those launch
  * interactive flows or need cloud auth and fail unattended, whereas ollama is
- * self-contained. Cloud coding CLIs (claude/opencode/gemini) still win when
+ * self-contained. Cloud coding CLIs (claude/pi/gemini) still win when
  * present since they're the strongest when authenticated.
  */
 function autoSelectBackend(): string {
-  const priority = ["claude-cli", "opencode", "gemini", "ollama", "codex", "aider", "zeroclaw"];
+  const priority = ["claude-cli", "pi", "opencode", "gemini", "ollama", "codex", "aider", "zeroclaw"];
   for (const b of priority) {
     if (AGENT_CAPABILITIES.includes(b)) return b;
   }
-  return "opencode"; // last resort
+  return "pi"; // last resort
 }
 
 // ─── Remote inference (local hands, remote brain) ──────────────────────────────

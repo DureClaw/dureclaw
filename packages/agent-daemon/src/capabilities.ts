@@ -77,8 +77,9 @@ function hasRpiSpeakerphone(): boolean {
  *   2. gemini CLI or GEMINI_API_KEY → "gemini-2.5-pro"
  *   3. ollama local → "ollama:${OLLAMA_MODEL}"
  *   4. claude-cli → "claude-sonnet-4-6"
- *   5. opencode → "opencode/auto"
- *   6. fallback → "claude-haiku-4-5"
+ *   5. pi coding agent → "pi/auto"
+ *   6. opencode → "opencode/auto" (legacy)
+ *   7. fallback → "claude-haiku-4-5"
  *
  * This field is broadcast in presence metadata so the orchestrator can
  * route tasks to the most capable available model — matching the
@@ -89,6 +90,7 @@ export function detectPreferredModel(): string {
   if (process.env.GEMINI_API_KEY || has("gemini")) return "gemini-2.5-pro";
   if (has("ollama")) return `ollama:${process.env.OLLAMA_MODEL ?? "gemma4"}`;
   if (has("claude")) return "claude-sonnet-4-6";
+  if (has("pi")) return "pi/auto";
   if (has("opencode")) return "opencode/auto";
   return "claude-haiku-4-5";
 }
@@ -104,7 +106,8 @@ export function detectCapabilities(): string[] {
   if (ram !== null) caps.push(`ram:${ram}g`);
 
   // AI backends
-  if (has("opencode"))       caps.push("opencode");
+  if (has("pi"))             caps.push("pi");             // Pi coding agent
+  if (has("opencode"))       caps.push("opencode");       // OpenCode (legacy)
   if (has("zeroclaw"))       caps.push("zeroclaw");
   if (has("claude"))         caps.push("claude-cli");    // Claude Code CLI
   if (has("gemini"))         caps.push("gemini");        // Google Gemini CLI
