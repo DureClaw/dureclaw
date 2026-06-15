@@ -65,6 +65,10 @@ NAME = os.environ.get("NAME") or os.environ.get("AGENT_NAME") or f"{ROLE}@{HOSTN
 WK   = os.environ.get("WK")  or os.environ.get("WORK_KEY") or ""
 PROJECT_DIR = os.environ.get("PROJECT_DIR") or os.path.expanduser("~")
 AGENT_BACKEND = os.environ.get("AGENT_BACKEND") or "auto"
+# Brain node: delegate AI tasks to the master's authenticated pi (no local backend
+# needed — ideal for armv6 Pi Zero, which can't run pi locally).
+BRAIN_URL = os.environ.get("BRAIN_URL") or ""
+BRAIN_TOKEN = os.environ.get("BRAIN_TOKEN") or ""
 
 HEARTBEAT_INTERVAL = 30   # seconds
 MAX_RECONNECT_DELAY = 30  # seconds
@@ -76,6 +80,8 @@ WK_POLL_INTERVAL = 2      # seconds
 def detect_backend() -> str:
     if AGENT_BACKEND != "auto":
         return AGENT_BACKEND
+    if BRAIN_URL:
+        return "remote-pi"   # 키 없는 위임: 마스터 pi 가 실행
     for cmd in ("claude", "pi", "opencode", "zeroclaw", "aider"):
         try:
             subprocess.run(["which", cmd], capture_output=True, check=True)
@@ -85,6 +91,17 @@ def detect_backend() -> str:
     return "none"
 
 DETECTED_BACKEND = detect_backend()
+
+
+def brain_exec(prompt: str) -> str:
+    """Delegate to the master's authenticated pi via POST /brain/exec (blocking)."""
+    headers = {"Content-Type": "application/json"}
+    if BRAIN_TOKEN:
+        headers["Authorization"] = "Bearer " + BRAIN_TOKEN
+    req = Request(BRAIN_URL.rstrip("/") + "/brain/exec",
+                  data=json.dumps({"prompt": prompt}).encode(), headers=headers)
+    with urlopen(req, timeout=180) as r:
+        return json.loads(r.read()).get("output", "")
 
 # ─── 헬퍼 ─────────────────────────────────────────────────────────────────────
 
@@ -325,34 +342,40 @@ class PhoenixAgent:
         exit_code = 0
 
         try:
-            # AI 백엔드별 커맨드 구성
-            if backend == "claude":
-                cmd_args = ["claude", "--print", "--no-markdown", instructions]
-            elif backend in ("pi", "pi-agent"):
-                cmd_args = ["pi", "-p", instructions]
-            elif backend == "opencode":
-                cmd_args = ["opencode", "run", "--message", instructions,
-                            "--cwd", PROJECT_DIR]
-            elif backend == "zeroclaw":
-                cmd_args = ["zeroclaw", "agent", "-m", instructions]
-            elif backend == "aider":
-                cmd_args = ["aider", "--message", instructions,
-                            "--yes", "--no-git",
-                            "--working-dir", PROJECT_DIR]
+            if backend == "remote-pi":
+                # 브레인 위임: 마스터의 인증된 pi 가 실행 (로컬 백엔드 불필요)
+                # run_in_executor: Python 3.7+ 호환 (to_thread 는 3.9+)
+                loop = asyncio.get_event_loop()
+                output = await loop.run_in_executor(None, brain_exec, instructions)
             else:
-                cmd_args = [backend, instructions]
+                # AI 백엔드별 커맨드 구성
+                if backend == "claude":
+                    cmd_args = ["claude", "--print", "--no-markdown", instructions]
+                elif backend in ("pi", "pi-agent"):
+                    cmd_args = ["pi", "-p", instructions]
+                elif backend == "opencode":
+                    cmd_args = ["opencode", "run", "--message", instructions,
+                                "--cwd", PROJECT_DIR]
+                elif backend == "zeroclaw":
+                    cmd_args = ["zeroclaw", "agent", "-m", instructions]
+                elif backend == "aider":
+                    cmd_args = ["aider", "--message", instructions,
+                                "--yes", "--no-git",
+                                "--working-dir", PROJECT_DIR]
+                else:
+                    cmd_args = [backend, instructions]
 
-            proc = await asyncio.create_subprocess_exec(
-                *cmd_args,
-                cwd=PROJECT_DIR,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.STDOUT,
-            )
-            active_tasks[task_id] = proc
-            stdout, _ = await proc.communicate()
-            exit_code = proc.returncode or 0
-            raw = stdout.decode(errors="replace").strip()
-            output = clean_zeroclaw_output(raw) if backend == "zeroclaw" else raw
+                proc = await asyncio.create_subprocess_exec(
+                    *cmd_args,
+                    cwd=PROJECT_DIR,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.STDOUT,
+                )
+                active_tasks[task_id] = proc
+                stdout, _ = await proc.communicate()
+                exit_code = proc.returncode or 0
+                raw = stdout.decode(errors="replace").strip()
+                output = clean_zeroclaw_output(raw) if backend == "zeroclaw" else raw
         except Exception as e:
             output = str(e)
             exit_code = 1

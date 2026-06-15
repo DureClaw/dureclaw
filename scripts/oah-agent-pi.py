@@ -9,7 +9,8 @@ full agent-daemon, so it shows up in the fleet and can participate in tasks and
 peer evaluation.
 
 Env: STATE_SERVER (host:port), OAH_SECRET, WORK_KEY, AGENT_NAME, AGENT_ROLE,
-     AGENT_MACHINE, OLLAMA_REMOTE_URL, OLLAMA_MODEL
+     AGENT_MACHINE, OLLAMA_REMOTE_URL, OLLAMA_MODEL,
+     BRAIN_URL (master pi endpoint, preferred), BRAIN_TOKEN
 """
 import socket, base64, os, json, time, threading, subprocess, struct, urllib.request, re
 
@@ -22,7 +23,14 @@ ROLE = os.environ.get("AGENT_ROLE", "executor")
 MACHINE = os.environ.get("AGENT_MACHINE", "pi-zero")
 OLLAMA = os.environ.get("OLLAMA_REMOTE_URL", "")
 MODEL = os.environ.get("OLLAMA_MODEL", "solar:latest")
+# Brain node: delegate LLM/coding work to the master's authenticated pi
+# (POST /brain/exec). Preferred over remote ollama when set. armv6 can't run pi
+# locally, so this is how a Pi Zero uses pi — keyless, via the master.
+BRAIN = os.environ.get("BRAIN_URL", "")
+BRAIN_TOKEN = os.environ.get("BRAIN_TOKEN", "")
 CAPS = ["edge", "sensor", "gpio", "camera", "os:linux", "arch:armv6l"]
+if BRAIN:
+    CAPS.append("remote-pi")
 
 sock = None
 ref = [0]
@@ -107,7 +115,8 @@ def join():
     joinref[0] = nref()
     send_frame(json.dumps([joinref[0], joinref[0], "work:" + WK, "phx_join", {
         "agent_name": NAME, "role": ROLE, "machine": MACHINE,
-        "capabilities": CAPS, "preferred_model": "remote", "version": "0.4.0-pi"}]))
+        "capabilities": CAPS, "preferred_model": "pi/remote" if BRAIN else "remote",
+        "version": "0.4.0-pi"}]))
     print(f"[pi] joined work:{WK} as {NAME}")
 
 
@@ -129,6 +138,27 @@ def remote_gen(prompt):
         headers={"Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=120) as r:
         return json.loads(r.read()).get("response", "")
+
+
+def brain_exec(prompt):
+    """Delegate to the master's authenticated pi via POST /brain/exec."""
+    if not BRAIN:
+        return ""
+    headers = {"Content-Type": "application/json"}
+    if BRAIN_TOKEN:
+        headers["Authorization"] = "Bearer " + BRAIN_TOKEN
+    req = urllib.request.Request(
+        BRAIN.rstrip("/") + "/brain/exec",
+        data=json.dumps({"prompt": prompt}).encode(), headers=headers)
+    with urllib.request.urlopen(req, timeout=180) as r:
+        return json.loads(r.read()).get("output", "")
+
+
+def infer(prompt):
+    """Unified inference: master pi brain (preferred) → remote ollama."""
+    if BRAIN:
+        return brain_exec(prompt)
+    return remote_gen(prompt)
 
 
 def parse_score(s):
@@ -160,17 +190,17 @@ def handle(p):
             result = _grp(r"RESULT:\s*([\s\S]*)$", instr)
             graded = _grp(r"GRADED_AGENT:\s*(.+)", instr, "?")
             evalid = _grp(r"EVAL_ID:\s*(.+)", instr) or None
-            raw = remote_gen(f"You are grading a result. Reply with ONLY one number 0.00-1.00.\n"
-                             f"GOAL:\n{goal}\n\nRESULT:\n{result[:1500]}\n\nScore:")
+            raw = infer(f"You are grading a result. Reply with ONLY one number 0.00-1.00.\n"
+                        f"GOAL:\n{goal}\n\nRESULT:\n{result[:1500]}\n\nScore:")
             sc = parse_score(raw) or 0
             print(f"[pi] graded {graded} -> {sc}")
             push("task.result", {"task_id": tid, "to": frm, "from": NAME, "status": "done",
                                  "score": sc, "graded": graded, "evaluator": NAME,
                                  "eval_id": evalid, "goal": goal[:200],
                                  "output": f"pi-graded {graded}: {sc}"})
-        else:  # [EVAL] / generic → remote inference
+        else:  # [EVAL] / generic → master pi brain (preferred) or remote ollama
             goal = re.sub(r"^\s*\[eval\]\s*", "", instr, flags=re.I)
-            out = remote_gen(goal)
+            out = infer(goal)
             push("task.result", {"task_id": tid, "to": frm, "from": NAME, "status": "done",
                                  "output": out.strip()[:1500], "exit_code": 0, "backend": "remote-pi"})
     except Exception as e:

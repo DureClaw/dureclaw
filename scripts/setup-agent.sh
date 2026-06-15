@@ -441,6 +441,8 @@ CFG
     WK="${WK:-}" \
     PROJECT_DIR="$DIR" \
     AGENT_BACKEND="${AGENT_BACKEND:-auto}" \
+    BRAIN_URL="${BRAIN_URL:-}" \
+    BRAIN_TOKEN="${BRAIN_TOKEN:-}" \
     python3 "$PY_BUNDLE"
 fi
 
