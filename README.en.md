@@ -185,7 +185,7 @@ Manual one-liners are listed in the [Adding Distributed Sub-Agents — One-Liner
 ③ oah-agent (Worker, each machine)
      PHOENIX=ws://host:4000 ROLE=builder bash <(curl -fsSL .../setup-agent.sh)
    → WebSocket connect → receive task.assign
-   → Execute AI backend (claude / opencode / gemini / aider / codex)
+   → Execute AI backend (claude / pi / gemini / aider / codex)
    → Return task.result
 ```
 
@@ -274,18 +274,18 @@ Key endpoints: `/api/health` · `/api/presence` · `/api/work-keys` · `/api/sta
 |----------|---------------|
 | macOS Apple Silicon | `✅ darwin-arm64 binary downloaded` → `→ server started · ws://100.x.x.x:4000` |
 | Linux x86_64 (GPU server) | `✅ linux-x86_64 agent installed` → `✅ claude-cli detected` → `→ builder@gpu-server connected` |
-| Raspberry Pi 4/5 | `✅ linux-arm64 agent installed` → `✅ opencode detected` → `→ executor@raspberrypi connected` |
+| Raspberry Pi 4/5 | `✅ linux-arm64 agent installed` → `✅ pi detected` → `→ executor@raspberrypi connected` |
 | Raspberry Pi Zero W | `✅ Python agent mode (armv6)` → `⚠ aider lightweight mode` → `→ executor@zero-w connected (WiFi)` |
-| Windows (PowerShell) | `✅ opencode npm installed` → `→ builder@DESKTOP-WIN connected` |
+| Windows (PowerShell) | `✅ pi npm installed` → `→ builder@DESKTOP-WIN connected` |
 
 ### Agent roles
 
 | Role | AI backends | Example task |
 |------|------------|-------------|
-| `builder` | claude-cli / opencode / codex | `[SHELL] make build` → code writing & build |
+| `builder` | claude-cli / pi / codex | `[SHELL] make build` → code writing & build |
 | `tester` | claude-cli / aider | `[SHELL] pytest tests/` → test execution & verification |
 | `analyst` | claude-cli / gemini | code analysis, review, bug detection |
-| `executor` | aider / opencode | lightweight command execution · ideal for RPi Zero W |
+| `executor` | aider / pi | lightweight command execution · ideal for RPi Zero W |
 
 ### Live conversation — natural language → remote execution
 

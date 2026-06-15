@@ -687,7 +687,7 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
           <div class="t-bar"><span class="t-dot" style="background:#ff5f57"></span><span class="t-dot" style="background:#febc2e"></span><span class="t-dot" style="background:#28c840"></span></div>
           <div><span class="t-prompt">$ </span><span class="t-cmd">ROLE=executor bash &lt;(curl -fsSL https://dureclaw.baryon.ai/agent)</span></div>
           <div><span class="t-ok">✅ linux-arm64 에이전트 설치 완료</span></div>
-          <div><span class="t-ok">✅ opencode 감지됨</span></div>
+          <div><span class="t-ok">✅ pi 감지됨</span></div>
           <div><span class="t-ok">→ executor@raspberrypi 연결 완료</span></div>
         </div>
         <div class="platform-status" style="margin-top:8px"><span class="dot"></span>완전 지원 · executor 역할 최적</div>
@@ -723,7 +723,7 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
           <div class="t-bar"><span class="t-dot" style="background:#ff5f57"></span><span class="t-dot" style="background:#febc2e"></span><span class="t-dot" style="background:#28c840"></span></div>
           <div><span class="t-prompt">PS&gt; </span><span class="t-cmd">irm https://dureclaw.baryon.ai/agent.ps1 | iex</span></div>
           <div><span class="t-dim">→ 서버 자동 탐색 (oah.local · Tailscale 피어)</span></div>
-          <div><span class="t-ok">✅ opencode 설치 완료</span></div>
+          <div><span class="t-ok">✅ pi 설치 완료</span></div>
           <div><span class="t-ok">→ builder@DESKTOP-WIN 연결 완료</span></div>
         </div>
         <div class="platform-status" style="margin-top:8px"><span class="dot"></span>워커 지원 · PowerShell 설치 스크립트</div>
@@ -770,7 +770,7 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
 <span class="c3">③ oah-agent</span> <span class="dim">(워커, 각 머신)</span>
      <span class="dim">PHOENIX=ws://host:4000 ROLE=builder bash &lt;(curl -fsSL https://dureclaw.baryon.ai/agent)</span>
    <span class="arrow">→</span> WebSocket 연결 <span class="arrow">→</span> task.assign 수신
-   <span class="arrow">→</span> AI 백엔드 실행 <span class="dim">(claude / opencode / gemini / aider / codex)</span>
+   <span class="arrow">→</span> AI 백엔드 실행 <span class="dim">(claude / pi / gemini / aider / codex)</span>
    <span class="arrow">→</span> task.result 반환</pre>
     </div>
   </div>
@@ -1204,7 +1204,20 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
     <div class="cl-grid">
 
       <div class="cl-card">
-        <div class="cl-card-ver">v0.4.0 <span class="cl-badge">latest</span></div>
+        <div class="cl-card-ver">v0.5.0 <span class="cl-badge">latest</span></div>
+        <div class="cl-card-date">2026-06-16</div>
+        <ul class="cl-items">
+          <li><span class="cl-tag feat">feature</span>5단계 학습 루프 — 관측→종합→목적화→지식화→<b>학습·선택</b> (승인이 아니라 사람이 학습)</li>
+          <li><span class="cl-tag feat">feature</span>결정론적 스킬 결정화 — 채택된 산출물을 재추론 없이 재실행 가능한 <code>SKILL.md</code>로 동결</li>
+          <li><span class="cl-tag feat">feature</span>코딩 백엔드 <b>pi</b> 전환 (<code>@earendil-works/pi-coding-agent</code>) — opencode 대체</li>
+          <li><span class="cl-tag feat">feature</span>브레인 노드 위임 — 마스터 단일 인증, 키 없는 서브노드(Pi Zero 포함)가 마스터 pi로 위임</li>
+          <li><span class="cl-tag feat">feature</span>Windows 무설정 자동탐색 — mDNS(oah.local) + Tailscale 피어 스캔</li>
+          <li><span class="cl-tag fix">fix</span>Windows <code>agent.ps1</code> 출력 인코딩(mojibake) 수정 + 도달성 진단</li>
+        </ul>
+      </div>
+
+      <div class="cl-card">
+        <div class="cl-card-ver">v0.4.0</div>
         <div class="cl-card-date">2025-05-04</div>
         <ul class="cl-items">
           <li><span class="cl-tag sec">security</span>Bearer token auth (OAH_SECRET) — REST + WebSocket 전체 보호</li>

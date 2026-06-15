@@ -172,7 +172,7 @@ Claude 会自动检测服务器 IP，并按 OS / 架构提供 **可直接复制�
 ③ oah-agent（工作节点，各机器）
      PHOENIX=ws://host:4000 ROLE=builder bash <(curl -fsSL .../setup-agent.sh)
    → WebSocket 连接 → 接收 task.assign
-   → 执行 AI 后端（claude / opencode / gemini / aider / codex）
+   → 执行 AI 后端（claude / pi / gemini / aider / codex）
    → 返回 task.result
 ```
 
@@ -261,18 +261,18 @@ Phoenix Server              ws://host:4000
 |------|---------|
 | macOS Apple Silicon | `✅ darwin-arm64 二进制下载完成` → `→ 服务器启动 · ws://100.x.x.x:4000` |
 | Linux x86_64（GPU 服务器） | `✅ linux-x86_64 智能体安装完成` → `✅ 检测到 claude-cli` → `→ builder@gpu-server 连接成功` |
-| Raspberry Pi 4/5 | `✅ linux-arm64 智能体安装完成` → `✅ 检测到 opencode` → `→ executor@raspberrypi 连接成功` |
+| Raspberry Pi 4/5 | `✅ linux-arm64 智能体安装完成` → `✅ 检测到 pi` → `→ executor@raspberrypi 连接成功` |
 | Raspberry Pi Zero W | `✅ Python 智能体模式 (armv6)` → `⚠ aider 轻量模式` → `→ executor@zero-w 连接成功 (WiFi)` |
-| Windows（PowerShell） | `✅ opencode npm 安装完成` → `→ builder@DESKTOP-WIN 连接成功` |
+| Windows（PowerShell） | `✅ pi npm 安装完成` → `→ builder@DESKTOP-WIN 连接成功` |
 
 ### 智能体角色
 
 | 角色 | AI 后端 | 任务示例 |
 |------|---------|---------|
-| `builder` | claude-cli / opencode / codex | `[SHELL] make build` → 代码编写 & 构建 |
+| `builder` | claude-cli / pi / codex | `[SHELL] make build` → 代码编写 & 构建 |
 | `tester` | claude-cli / aider | `[SHELL] pytest tests/` → 测试执行 & 验证 |
 | `analyst` | claude-cli / gemini | 代码分析·审查·缺陷检测 |
-| `executor` | aider / opencode | 轻量命令执行 · 树莓派 Zero W 最优 |
+| `executor` | aider / pi | 轻量命令执行 · 树莓派 Zero W 最优 |
 
 **任务调度 & 多智能体状态（6台设备同时连接）**
 

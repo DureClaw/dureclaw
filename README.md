@@ -185,7 +185,7 @@ Claude가 서버 IP를 감지해 **바로 복사·실행 가능한 한 줄 명�
 ③ oah-agent (워커, 각 머신)
      PHOENIX=ws://host:4000 ROLE=builder bash <(curl -fsSL .../setup-agent.sh)
    → WebSocket 연결 → task.assign 수신
-   → AI 백엔드 실행 (claude / opencode / gemini / aider)
+   → AI 백엔드 실행 (claude / pi / gemini / aider)
    → task.result 반환
 ```
 
@@ -295,12 +295,12 @@ PHOENIX=ws://SERVER_IP:4000 ROLE=tester WK=LN-20260418-001 bash <(curl -fsSL htt
 
 | OS | 아키텍처 | 자동 선택 에이전트 | AI 백엔드 |
 |----|---------|-----------------|---------|
-| macOS | arm64 (Apple Silicon) | 네이티브 바이너리 | claude-cli · opencode · gemini |
-| macOS | x64 (Intel) | 네이티브 바이너리 | claude-cli · opencode |
-| Linux | x64 · arm64 | 네이티브 바이너리 | claude-cli · opencode · ollama |
+| macOS | arm64 (Apple Silicon) | 네이티브 바이너리 | claude-cli · pi · gemini |
+| macOS | x64 (Intel) | 네이티브 바이너리 | claude-cli · pi |
+| Linux | x64 · arm64 | 네이티브 바이너리 | claude-cli · pi · ollama |
 | Linux | armv7l (RPi 4/5) | Node.js + oah-agent.js | zeroclaw · claude-cli |
 | Linux | armv6l (RPi Zero W) | Python + agent.py | zeroclaw (경량) |
-| Windows | x64 | PowerShell / CMD | claude-cli · opencode |
+| Windows | x64 | PowerShell / CMD | claude-cli · pi |
 
 ### 구성도
 
@@ -336,18 +336,18 @@ Phoenix Server              ws://host:4000
 |--------|----------|
 | macOS Apple Silicon | `✅ darwin-arm64 바이너리 다운로드 완료` → `→ 서버 시작 · ws://100.x.x.x:4000` |
 | Linux x86_64 (GPU 서버) | `✅ linux-x86_64 에이전트 설치 완료` → `✅ claude-cli 감지됨` → `→ builder@gpu-server 연결 완료` |
-| Raspberry Pi 4/5 | `✅ linux-arm64 에이전트 설치 완료` → `✅ opencode 감지됨` → `→ executor@raspberrypi 연결 완료` |
+| Raspberry Pi 4/5 | `✅ linux-arm64 에이전트 설치 완료` → `✅ pi 감지됨` → `→ executor@raspberrypi 연결 완료` |
 | Raspberry Pi Zero W | `✅ Python 에이전트 모드 (armv6)` → `⚠ aider 경량 모드` → `→ executor@zero-w 연결 완료 (WiFi)` |
-| Windows (PowerShell) | `✅ opencode npm 설치 완료` → `→ builder@DESKTOP-WIN 연결 완료` |
+| Windows (PowerShell) | `✅ pi npm 설치 완료` → `→ builder@DESKTOP-WIN 연결 완료` |
 
 ### 에이전트 역할별
 
 | Role | AI 백엔드 | 실행 예시 |
 |------|----------|---------|
-| `builder` | claude-cli / opencode / codex | `[SHELL] make build` → 코드 작성·빌드 |
+| `builder` | claude-cli / pi / codex | `[SHELL] make build` → 코드 작성·빌드 |
 | `tester` | claude-cli / aider | `[SHELL] pytest tests/` → 테스트 실행·검증 |
 | `analyst` | claude-cli / gemini | 코드 분석·리뷰·버그 탐지 |
-| `executor` | aider / opencode | 경량 명령 실행 · RPi Zero W 최적 |
+| `executor` | aider / pi | 경량 명령 실행 · RPi Zero W 최적 |
 
 ### 실제 대화 — 자연어 → 원격 실행
 
@@ -649,7 +649,7 @@ DureClaw는 [Anthropic Managed Agents](https://docs.anthropic.com/en/docs/agents
 | `GEMINI_API_KEY` 또는 `gemini` CLI | `gemini-2.5-pro` |
 | `ollama` CLI | `ollama:${OLLAMA_MODEL}` |
 | `claude` CLI | `claude-sonnet-4-6` |
-| `opencode` CLI | `opencode/auto` |
+| `pi` CLI | `pi/auto` |
 | 기본값 | `claude-haiku-4-5` |
 
 ---

@@ -78,13 +78,15 @@ if ! command -v bun &>/dev/null; then
   export PATH="$HOME/.bun/bin:$PATH"
 fi
 
-# ─── OpenCode 설치 확인 ─────────────────────────────────────────────────────
+# ─── pi coding agent 설치 확인 ──────────────────────────────────────────────
 
-export PATH="$HOME/.opencode/bin:$PATH"
-if ! command -v opencode &>/dev/null; then
-  echo "→ OpenCode 설치 중..."
-  curl -fsSL https://opencode.ai/install | bash
-  export PATH="$HOME/.opencode/bin:$PATH"
+command -v npm &>/dev/null && export PATH="$(npm config get prefix 2>/dev/null)/bin:$PATH"
+export PATH="$HOME/.local/bin:$HOME/.local/share/pi-node/current/bin:$PATH"
+if ! command -v pi &>/dev/null; then
+  echo "→ pi coding agent 설치 중..."
+  curl -fsSL https://pi.dev/install.sh | sh \
+    || (command -v npm &>/dev/null && npm install -g --ignore-scripts @earendil-works/pi-coding-agent)
+  command -v npm &>/dev/null && export PATH="$(npm config get prefix 2>/dev/null)/bin:$PATH"
 fi
 
 # ─── daemon.ts 최신 버전 확인 (자동 업데이트) ───────────────────────────────

@@ -27,8 +27,13 @@
  *   AGENT_ROLE     orchestrator|planner|builder|verifier|reviewer
  *   AGENT_MACHINE  machine label (default: hostname)
  *   WORK_KEY       Active Work Key (LN-YYYYMMDD-XXX). Auto-created if omitted.
- *   PROJECT_DIR    Working directory for OpenCode (default: process.cwd())
- *   OPENCODE_BIN   Path to opencode binary (default: opencode)
+ *   PROJECT_DIR    Working directory for the coding agent (default: process.cwd())
+ *   PI_BIN         Path to pi coding-agent binary (default: pi)
+ *   OPENCODE_BIN   Path to opencode binary (legacy fallback; default: opencode)
+ *   BRAIN_URL      Sub-node: master pi endpoint to delegate AI tasks (keyless node)
+ *   BRAIN_TOKEN    Shared fleet token for brain auth (Bearer)
+ *   BRAIN_SERVE    Master: "1" to serve local pi as the fleet brain
+ *   PI_BRAIN_PORT  Master brain server port (default: 4111)
  */
 
 import { spawnCompat as spawn } from "./spawn-compat.ts";
@@ -66,6 +71,7 @@ const AGENT_MACHINE = process.env.AGENT_MACHINE ?? hostname();
 let AGENT_ROLE = process.env.AGENT_ROLE ?? "orchestrator";
 let AGENT_NAME = process.env.AGENT_NAME ?? `${AGENT_ROLE}@${AGENT_MACHINE}`;
 const PROJECT_DIR = process.env.PROJECT_DIR ?? process.cwd();
+const PI_BIN          = process.env.PI_BIN          ?? "pi";
 const OPENCODE_BIN    = process.env.OPENCODE_BIN    ?? "opencode";
 const ZEROCLAW_BIN    = process.env.ZEROCLAW_BIN    ?? "zeroclaw";
 const CLAUDE_BIN      = process.env.CLAUDE_BIN      ?? "claude";
@@ -78,10 +84,20 @@ const OLLAMA_MODEL    = process.env.OLLAMA_MODEL    ?? "gemma4";
 // the agent loop local but routes inference to a remote ollama over HTTP, so it
 // needs no model and no ollama binary of its own. Set AGENT_BACKEND=remote.
 const OLLAMA_REMOTE_URL = process.env.OLLAMA_REMOTE_URL ?? "";
+// "Brain node" delegation: only the master holds pi auth. Sub-nodes set BRAIN_URL
+// to the master's token-gated pi endpoint and delegate whole AI/coding tasks there
+// (backend "remote-pi"); their local [SHELL]/sensor work still runs locally. The
+// master runs the endpoint with BRAIN_SERVE=1 (its single pi auth serves the fleet).
+const BRAIN_URL       = process.env.BRAIN_URL       ?? "";
+const BRAIN_TOKEN     = process.env.BRAIN_TOKEN     ?? "";
+const BRAIN_SERVE     = process.env.BRAIN_SERVE === "1" || process.env.BRAIN_SERVE === "true";
+const BRAIN_PORT      = Number(process.env.PI_BRAIN_PORT ?? 4111);
 // "auto" = pick best available from capabilities at runtime
 const AGENT_BACKEND   = process.env.AGENT_BACKEND   ?? "auto";
 const AGENT_CAPABILITIES = detectCapabilities();
-const AGENT_PREFERRED_MODEL = detectPreferredModel();
+// Brain client: advertise that this node delegates AI tasks to the master's pi.
+if (BRAIN_URL && !AGENT_CAPABILITIES.includes("remote-pi")) AGENT_CAPABILITIES.push("remote-pi");
+const AGENT_PREFERRED_MODEL = BRAIN_URL ? "pi/remote" : detectPreferredModel();
 
 // Normalise server URL: always keep ws:// for WS, derive http:// for REST
 const WS_BASE = STATE_SERVER_RAW.replace(/^http/, "ws").replace(/\/$/, "");
@@ -969,11 +985,17 @@ async function runOpenCode(
   payload: TaskPayload,
   signal: AbortSignal,
 ): Promise<OpenCodeResult> {
-  // Remote-inference backend: no local subprocess, just an HTTP call to ollama.
+  // Remote-inference backends: no local subprocess, just an HTTP call.
   const requested = payload.backend ?? AGENT_BACKEND;
-  if ((requested === "auto" ? autoSelectBackend() : requested) === "remote") {
+  const resolvedReq = requested === "auto" ? autoSelectBackend() : requested;
+  if (resolvedReq === "remote") {
     console.log(`[backend] using: remote (${OLLAMA_REMOTE_URL} · ${OLLAMA_MODEL})`);
     return runRemoteOllama(taskId, payload);
+  }
+  // Brain node: delegate the whole task to the master's authenticated pi.
+  if (resolvedReq === "remote-pi") {
+    console.log(`[backend] using: remote-pi (brain ${BRAIN_URL})`);
+    return runRemoteBrain(taskId, payload);
   }
 
   const timeout = payload.timeout_ms ?? 300_000; // 5min default
@@ -1061,7 +1083,7 @@ async function runOpenCode(
 
 /**
  * Priority order for "auto":
- *   claude-cli > opencode > gemini > codex > aider > zeroclaw
+ *   claude-cli > pi > opencode > gemini > codex > aider > zeroclaw
  * Each backend's CLI interface is different — map to correct argv.
  */
 function buildAgentCmd(backend: string, prompt: string): string[] {
@@ -1074,7 +1096,12 @@ function buildAgentCmd(backend: string, prompt: string): string[] {
     case "claude":
       return [CLAUDE_BIN, "-p", prompt];
 
-    // OpenCode  — `opencode run "<prompt>"`
+    // Pi coding agent (@earendil-works/pi-coding-agent)  — `pi -p "<prompt>"`
+    case "pi":
+    case "pi-agent":
+      return [PI_BIN, "-p", prompt];
+
+    // OpenCode  — `opencode run "<prompt>"` (legacy fallback; pi is now default)
     case "opencode":
       return [OPENCODE_BIN, "run", "--format", "default", prompt];
 
@@ -1102,8 +1129,8 @@ function buildAgentCmd(backend: string, prompt: string): string[] {
       return [OLLAMA_BIN, "run", OLLAMA_MODEL, "--nowordwrap", prompt];
 
     default:
-      console.warn(`[backend] unknown backend "${resolved}", falling back to opencode`);
-      return [OPENCODE_BIN, "run", "--format", "default", prompt];
+      console.warn(`[backend] unknown backend "${resolved}", falling back to pi`);
+      return [PI_BIN, "-p", prompt];
   }
 }
 
@@ -1111,15 +1138,18 @@ function buildAgentCmd(backend: string, prompt: string): string[] {
  * Pick best available backend from detected capabilities.
  * Local ollama is preferred over codex/aider: on a headless node those launch
  * interactive flows or need cloud auth and fail unattended, whereas ollama is
- * self-contained. Cloud coding CLIs (claude/opencode/gemini) still win when
+ * self-contained. Cloud coding CLIs (claude/pi/gemini) still win when
  * present since they're the strongest when authenticated.
  */
 function autoSelectBackend(): string {
-  const priority = ["claude-cli", "opencode", "gemini", "ollama", "codex", "aider", "zeroclaw"];
+  // Brain node: if a master pi endpoint is configured, delegate AI tasks there
+  // (this node holds no provider auth — it's a keyless hand).
+  if (BRAIN_URL) return "remote-pi";
+  const priority = ["claude-cli", "pi", "opencode", "gemini", "ollama", "codex", "aider", "zeroclaw"];
   for (const b of priority) {
     if (AGENT_CAPABILITIES.includes(b)) return b;
   }
-  return "opencode"; // last resort
+  return "pi"; // last resort
 }
 
 // ─── Remote inference (local hands, remote brain) ──────────────────────────────
@@ -1146,6 +1176,81 @@ async function runRemoteOllama(taskId: string, payload: TaskPayload): Promise<Op
     console.log(`[task] ${taskId} remote inference failed: ${err}`);
     return { output: err instanceof Error ? err.message : String(err), exitCode: 1, artifacts: [] };
   }
+}
+
+/**
+ * Brain-node delegation: POST the task to the master's token-gated pi endpoint
+ * and return its output. The sub-node holds no provider auth; the master's single
+ * authenticated pi does the coding work. See startBrainServer (the master side).
+ */
+async function runRemoteBrain(taskId: string, payload: TaskPayload): Promise<OpenCodeResult> {
+  try {
+    const url = BRAIN_URL.replace(/\/$/, "");
+    const res = await fetch(`${url}/brain/exec`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(BRAIN_TOKEN ? { Authorization: `Bearer ${BRAIN_TOKEN}` } : {}),
+      },
+      body: JSON.stringify({ prompt: buildSystemPrompt(payload), task_id: taskId }),
+    });
+    if (!res.ok) throw new Error(`brain ${res.status}`);
+    const data = (await res.json()) as { output?: string; exit_code?: number };
+    return { output: data.output ?? "", exitCode: data.exit_code ?? 0, artifacts: [] };
+  } catch (err) {
+    console.log(`[task] ${taskId} brain delegation failed: ${err}`);
+    return { output: err instanceof Error ? err.message : String(err), exitCode: 1, artifacts: [] };
+  }
+}
+
+/**
+ * Master side of brain-node delegation. Exposes the local authenticated pi over
+ * a token-gated HTTP endpoint so keyless fleet nodes can delegate AI tasks here.
+ * Enable with BRAIN_SERVE=1 (requires BRAIN_TOKEN). Bun-only (the master runs Bun).
+ */
+function startBrainServer(): void {
+  if (!BRAIN_SERVE) return;
+  if (!BRAIN_TOKEN) {
+    console.warn("[brain] BRAIN_SERVE set but BRAIN_TOKEN empty — refusing to serve");
+    return;
+  }
+  const BunRef = (globalThis as Record<string, unknown>)["Bun"] as
+    | { serve: (opts: unknown) => unknown }
+    | undefined;
+  if (!BunRef?.serve) {
+    console.warn("[brain] Bun.serve unavailable (node runtime?) — brain server disabled");
+    return;
+  }
+  BunRef.serve({
+    port: BRAIN_PORT,
+    hostname: "0.0.0.0",
+    idleTimeout: 255,
+    async fetch(req: Request): Promise<Response> {
+      const url = new URL(req.url);
+      if (url.pathname === "/brain/health") {
+        return Response.json({ ok: true, backend: autoSelectBackend(), agent: AGENT_NAME });
+      }
+      if (req.method !== "POST" || url.pathname !== "/brain/exec") {
+        return new Response("not found", { status: 404 });
+      }
+      if ((req.headers.get("authorization") ?? "") !== `Bearer ${BRAIN_TOKEN}`) {
+        return new Response("unauthorized", { status: 401 });
+      }
+      const body = (await req.json().catch(() => ({}))) as { prompt?: string; backend?: string };
+      const prompt = body.prompt ?? "";
+      if (!prompt) return new Response(JSON.stringify({ error: "no prompt" }), { status: 400 });
+      // backend "auto" here resolves to the master's local pi/claude — never remote-pi
+      const backend = body.backend && body.backend !== "remote-pi" ? body.backend : "pi";
+      console.log(`[brain] exec (${prompt.length} chars) via ${backend}`);
+      try {
+        const output = await captureCmd(buildAgentCmd(backend, prompt));
+        return Response.json({ output, exit_code: 0 });
+      } catch (err) {
+        return Response.json({ output: String(err), exit_code: 1 }, { status: 500 });
+      }
+    },
+  });
+  console.log(`[brain] serving authenticated pi on :${BRAIN_PORT} (token-gated, fleet brain)`);
 }
 
 // ─── Self-evaluation (eval loop) ───────────────────────────────────────────────
@@ -1591,6 +1696,7 @@ console.log(`
 `);
 
 connect();
+startBrainServer();
 
 // Start mailbox polling after a brief delay to let WebSocket settle
 setTimeout(() => {

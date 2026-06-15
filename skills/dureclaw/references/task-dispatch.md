@@ -155,7 +155,7 @@ curl -s -X POST http://localhost:4000/api/task \
 ```
 [SHELL] <bash 명령>          — 쉘 직접 실행
 [CLAUDE] <프롬프트>           — claude-cli 실행
-[OPENCODE] <프롬프트>         — opencode 실행
+[PI] <프롬프트>               — pi coding agent 실행
 [AIDER] <프롬프트>            — aider 실행
 [GEMINI] <프롬프트>           — gemini CLI 실행
 <일반 텍스트>                 — 에이전트 기본 AI로 처리
