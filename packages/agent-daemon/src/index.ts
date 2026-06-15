@@ -74,6 +74,10 @@ const CODEX_BIN       = process.env.CODEX_BIN       ?? "codex";
 const AIDER_BIN       = process.env.AIDER_BIN       ?? "aider";
 const OLLAMA_BIN      = process.env.OLLAMA_BIN      ?? "ollama";
 const OLLAMA_MODEL    = process.env.OLLAMA_MODEL    ?? "gemma4";
+// "Local hands, remote brain": a lightweight node (e.g. a container, a Pi) keeps
+// the agent loop local but routes inference to a remote ollama over HTTP, so it
+// needs no model and no ollama binary of its own. Set AGENT_BACKEND=remote.
+const OLLAMA_REMOTE_URL = process.env.OLLAMA_REMOTE_URL ?? "";
 // "auto" = pick best available from capabilities at runtime
 const AGENT_BACKEND   = process.env.AGENT_BACKEND   ?? "auto";
 const AGENT_CAPABILITIES = detectCapabilities();
@@ -940,6 +944,13 @@ async function runOpenCode(
   payload: TaskPayload,
   signal: AbortSignal,
 ): Promise<OpenCodeResult> {
+  // Remote-inference backend: no local subprocess, just an HTTP call to ollama.
+  const requested = payload.backend ?? AGENT_BACKEND;
+  if ((requested === "auto" ? autoSelectBackend() : requested) === "remote") {
+    console.log(`[backend] using: remote (${OLLAMA_REMOTE_URL} · ${OLLAMA_MODEL})`);
+    return runRemoteOllama(taskId, payload);
+  }
+
   const timeout = payload.timeout_ms ?? 300_000; // 5min default
   const timeoutId = setTimeout(() => {
     if (!signal.aborted) console.log(`[task] ${taskId} timed out`);
@@ -1086,6 +1097,32 @@ function autoSelectBackend(): string {
   return "opencode"; // last resort
 }
 
+// ─── Remote inference (local hands, remote brain) ──────────────────────────────
+
+/** Call a remote ollama's /api/generate. No local model or binary needed. */
+async function remoteOllamaGenerate(prompt: string): Promise<string> {
+  const url = OLLAMA_REMOTE_URL.replace(/\/$/, "");
+  const res = await fetch(`${url}/api/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model: OLLAMA_MODEL, prompt, stream: false }),
+  });
+  if (!res.ok) throw new Error(`remote ollama ${res.status}`);
+  const data = (await res.json()) as { response?: string };
+  return data.response ?? "";
+}
+
+/** Run a task by delegating inference to the remote ollama. */
+async function runRemoteOllama(taskId: string, payload: TaskPayload): Promise<OpenCodeResult> {
+  try {
+    const output = await remoteOllamaGenerate(payload.instructions);
+    return { output, exitCode: 0, artifacts: [] };
+  } catch (err) {
+    console.log(`[task] ${taskId} remote inference failed: ${err}`);
+    return { output: err instanceof Error ? err.message : String(err), exitCode: 1, artifacts: [] };
+  }
+}
+
 // ─── Self-evaluation (eval loop) ───────────────────────────────────────────────
 
 /** Run a backend command and capture stdout (used for self-scoring). */
@@ -1127,8 +1164,10 @@ async function scoreResult(goal: string, output: string, backend: string): Promi
       "You are grading a result against a goal. Reply with ONLY one number " +
       "between 0.00 and 1.00 — no words, no explanation — rating how well the " +
       `RESULT achieves the GOAL.\n\nGOAL:\n${goal.slice(0, 500)}\n\nRESULT:\n${output.slice(0, 2000)}\n\nScore (0.00-1.00):`;
-    const cmd = buildAgentCmd(backend, prompt);
-    const raw = stripAnsi(await captureCmd(cmd));
+    const raw =
+      backend === "remote"
+        ? await remoteOllamaGenerate(prompt)
+        : stripAnsi(await captureCmd(buildAgentCmd(backend, prompt)));
     return parseScore(raw);
   } catch {
     return null;
