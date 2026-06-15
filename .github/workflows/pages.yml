@@ -59,6 +59,14 @@ jobs:
             --file scripts/rpi_agent.py \
             --content-type "text/x-python" \
             --remote
+          # open-agent-harness.baryon.ai/oah-agent.js → bundled agent daemon (bun target)
+          curl -fsSL https://bun.sh/install | bash
+          export PATH="$HOME/.bun/bin:$PATH"
+          bun build packages/agent-daemon/src/index.ts --target=bun --outfile=oah-agent.js
+          wrangler r2 object put open-agent-harness/oah-agent.js \
+            --file oah-agent.js \
+            --content-type "text/javascript" \
+            --remote
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
