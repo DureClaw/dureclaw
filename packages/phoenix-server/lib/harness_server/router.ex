@@ -349,6 +349,41 @@ defmodule HarnessServer.Router do
     send_json(conn, 200, StateStore.eval_summary(work_key))
   end
 
+  # ── POST /api/eval/:work_key/approve ────────────────────────────────────────
+  # Human approval gate: a person approves/rejects an eval consensus (suggest),
+  # turning the agents' measurement into a recorded decision (read→suggest→approve).
+  # Body: {"eval_id": "...", "approved": true, "decided_by": "alice"}
+
+  post "/api/eval/:work_key/approve" do
+    params = conn.body_params
+    eval_id = Map.get(params, "eval_id")
+    approved = Map.get(params, "approved", true)
+    by = Map.get(params, "decided_by", "human")
+
+    consensus =
+      StateStore.eval_summary(work_key)
+      |> Map.get(:consensus, %{})
+      |> Map.get(eval_id)
+
+    decision = %{
+      "status" => if(approved, do: "approved", else: "rejected"),
+      "eval_id" => eval_id,
+      "consensus" => consensus,
+      "decided_by" => by,
+      "ts" => DateTime.utc_now() |> DateTime.to_iso8601()
+    }
+
+    StateStore.update(work_key, %{"decision_#{eval_id}" => decision})
+
+    HarnessServer.Endpoint.broadcast(
+      "work:#{work_key}",
+      "task.result",
+      Map.merge(decision, %{"event" => "decision", "from" => by, "task_id" => eval_id})
+    )
+
+    send_json(conn, 200, %{ok: true, decision: decision})
+  end
+
   # ── POST /api/task/:task_id/cancel ──────────────────────────────────────────
   # Cancel a running task. Body: {"work_key": "LN-..."}
 
