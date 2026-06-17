@@ -18,6 +18,37 @@ Claude Code를 오케스트레이터로, 각 머신의 AI 에이전트들을 워
 
 ---
 
+## 핵심 기능
+
+- **멀티머신 AI 팀** — Claude Code 오케스트레이터 + 각 머신의 AI 워커를 Phoenix WebSocket 버스로 묶어 실시간 협력.
+- **브레인 노드 위임** — AI 인증(pi)을 마스터 한 곳에만 두고, 키 없는 서브 노드(Windows · RPi Zero 등)는 마스터에 AI 태스크를 위임(`remote-pi` 백엔드 / `/brain/exec`). 저사양·무인증 머신도 즉시 합류.
+- **원격 운영 마커** — `[SHELL]`(명령) · `[WRITE]`/`[WRITE:b64]`(파일 생성) · `[SCREENSHOT]`(화면 캡처) · `[EVAL]`/`[GRADE]`(평가)로 원격 머신을 SSH 없이 진단·제어.
+- **RSI 학습 루프 + 결정론적 스킬** — 5단계 학습 루프(관측 → 종합 → 목적화 → 지식화 → 학습·선택)로 마스터가 1회 판단한 정책을 엣지의 결정론적 스킬로 결정화. 반복 판단 비용을 제거(실측: 거리 판정 ~6 s → ~36 µs, **약 4만 배**).
+- **물리 세계 접점** — GPIO·센서·시리얼 등 엣지 하드웨어를 버스에 연결(HC-SR04 거리 → 신호등, 가상 시리얼 포트 → 실시간 파형 시각화).
+
+---
+
+## 지원 환경 — DureClaw 패밀리
+
+마스터(Claude)가 **두뇌**, 각 노드는 **서로 다른 손**입니다. 같은 버스(Phoenix Channel)·같은 keyless 위임으로 어떤 환경이든 fleet에 합류합니다.
+
+**네이티브 노드 / Native nodes** — 버스 우선 설계, 한 줄 합류, keyless:
+
+| Repo | 손의 종류 | 환경 |
+|------|----------|------|
+| **[edgeclaw](https://github.com/DureClaw/edgeclaw)** | OS·물리 — shell·sensor·GPIO·LED·부저·릴레이·신호탑·PA 음성 (승인=물리 결과) | 단일 정적 Go 바이너리(No-CGo). **Win·macOS·Linux·Pi Zero(armv6)·arm64·riscv64·loong64·mips64le**. physical-edge는 gpiochip 노출 모든 Linux(Pi·Jetson·산업 게이트웨이). [사전빌드 릴리즈 + 설치 원라이너](https://github.com/DureClaw/edgeclaw/releases/latest) |
+| **[webclaw](https://github.com/DureClaw/webclaw)** | 브라우저 — fetch·DOM (CORS-free, 상시) | Chrome MV3 확장, 순수 JS |
+| **[deskclaw](https://github.com/DureClaw/deskclaw)** | 데스크톱 GUI — 스크린샷·클릭·타이핑·키·앱실행 + **RPA record→replay**(LLM 1회 학습→무LLM 재생) | **Windows·macOS**, 순수 Go/No-CGo(OS 내장 도구). [사전빌드 릴리즈](https://github.com/DureClaw/deskclaw/releases/latest) |
+
+**어댑터 / Adapters** — 기존 오픈소스 도구에 `dureclaw/` 브리지를 더해 합류:
+[picoclaw](https://github.com/DureClaw/picoclaw)(Go) · [nanobot](https://github.com/DureClaw/nanobot)(Py) · [zeroclaw](https://github.com/DureClaw/zeroclaw)(Rust) · [nullclaw](https://github.com/DureClaw/nullclaw)(Zig).
+
+**문서·데모 / Docs & demo** — [📄 기술 백서(한국어/English PDF)](https://github.com/DureClaw/whitepaper) · [🏭 dure-factory — 분산 엣지 × 제조 MES 데모](https://github.com/DureClaw/dure-factory-public). 전체 조직: **[github.com/DureClaw](https://github.com/DureClaw)**.
+
+> **edge**claw(OS·물리) · **web**claw(브라우저) · **desk**claw(데스크톱 GUI) = 네이티브 노드 | pico·nano·zero·null = 기존 도구 어댑터. 모두 같은 버스, 같은 keyless 위임.
+
+---
+
 ## 실제 동작 예시
 
 > "두레클로로 네가 실행가능하지 않을 ?" — 한 마디로 리눅스 빌더에 태스크가 넘어간다.
@@ -185,9 +216,26 @@ Claude가 서버 IP를 감지해 **바로 복사·실행 가능한 한 줄 명�
 ③ oah-agent (워커, 각 머신)
      PHOENIX=ws://host:4000 ROLE=builder bash <(curl -fsSL .../setup-agent.sh)
    → WebSocket 연결 → task.assign 수신
-   → AI 백엔드 실행 (claude / pi / gemini / aider)
+   → AI 백엔드 실행 (claude / pi / gemini / ollama)
+     · 인증 키가 없으면 → remote-pi 로 마스터 브레인에 위임
    → task.result 반환
 ```
+
+### 브레인 노드 위임 (키 없는 노드도 합류)
+
+AI CLI 인증(pi 등)은 **마스터 한 곳**에만 두고, 키가 없는 서브 노드는 AI 태스크를 마스터에 위임합니다. Windows·RPi Zero처럼 인증을 두기 어렵거나 로컬에서 모델을 못 돌리는 머신도 그대로 팀에 합류할 수 있습니다.
+
+```
+마스터 (BRAIN_SERVE=1)
+   └─ /brain/exec  (Bun.serve :4111, Bearer BRAIN_TOKEN)  ← pi 인증 보유
+        ▲
+        │ remote-pi 백엔드로 AI 태스크 위임
+서브 노드 (BRAIN_URL=http://master:4111, BRAIN_TOKEN=…)
+   └─ 로컬엔 키/모델 없음 — SHELL·WRITE·SCREENSHOT 등은 로컬 실행, AI 판단은 마스터에 위임
+```
+
+- 마스터: `BRAIN_SERVE=1 BRAIN_TOKEN=<secret>` 로 데몬 기동 → `/brain/exec` 노출
+- 서브: 워커 설치 시 `BRAIN_URL`·`BRAIN_TOKEN` 전달 → 백엔드 자동으로 `remote-pi` 선택(로컬 pi 설치 불필요)
 
 ---
 
@@ -241,6 +289,21 @@ mcp__oah__get_presence
 `get_presence` · `send_task` · `receive_task` · `complete_task` · `read_state` · `write_state` · `read_mailbox` · `post_message`
 
 > 전체 도구 명세 → [docs/API_REFERENCE.md](docs/API_REFERENCE.md)
+
+### 태스크 마커 — 원격 머신 진단·제어
+
+`instructions` 첫머리의 마커로 원격 노드에서 SSH 없이 작업을 지시합니다.
+
+| 마커 | 동작 | 예시 |
+|------|------|------|
+| `[SHELL]` | 셸 명령 실행 | `[SHELL] mix test` |
+| `[WRITE] <path>` | 파일 생성(본문 = 내용) | `[WRITE] /tmp/run.sh\n#!/bin/bash …` |
+| `[WRITE:b64] <path>` | base64 파일 배포(바이너리·따옴표 안전) | 스크립트/이미지 원격 배포 |
+| `[SCREENSHOT]` | 화면 캡처 → `image`(base64) 반환 | `[SCREENSHOT]` |
+| `[EVAL]` / `[GRADE]` | 산출물 평가·채점 (RSI 루프) | self-score / evaluator |
+| (마커 없음) | AI 백엔드로 자유 프롬프트 실행 | `이 레포 버그 찾아줘` |
+
+> 마스터에서 임의 노드로 파일 배포+실행: `scripts/oah_deploy.sh <node> <local> <remote> --run "<cmd>"`
 
 ### 분산 서브 에이전트 추가 — OS·아키텍처별 1줄 설치
 
@@ -298,8 +361,8 @@ PHOENIX=ws://SERVER_IP:4000 ROLE=tester WK=LN-20260418-001 bash <(curl -fsSL htt
 | macOS | arm64 (Apple Silicon) | 네이티브 바이너리 | claude-cli · pi · gemini |
 | macOS | x64 (Intel) | 네이티브 바이너리 | claude-cli · pi |
 | Linux | x64 · arm64 | 네이티브 바이너리 | claude-cli · pi · ollama |
-| Linux | armv7l (RPi 4/5) | Node.js + oah-agent.js | zeroclaw · claude-cli |
-| Linux | armv6l (RPi Zero W) | Python + agent.py | zeroclaw (경량) |
+| Linux | armv7l (RPi 4/5) | Node.js + oah-agent.js | claude-cli · 브레인 위임 |
+| Linux | armv6l (RPi Zero W) | Python + agent.py | 브레인 위임(remote-pi) · 로컬 결정론 스킬 |
 | Windows | x64 | PowerShell / CMD | claude-cli · pi |
 
 ### 구성도
@@ -337,17 +400,17 @@ Phoenix Server              ws://host:4000
 | macOS Apple Silicon | `✅ darwin-arm64 바이너리 다운로드 완료` → `→ 서버 시작 · ws://100.x.x.x:4000` |
 | Linux x86_64 (GPU 서버) | `✅ linux-x86_64 에이전트 설치 완료` → `✅ claude-cli 감지됨` → `→ builder@gpu-server 연결 완료` |
 | Raspberry Pi 4/5 | `✅ linux-arm64 에이전트 설치 완료` → `✅ pi 감지됨` → `→ executor@raspberrypi 연결 완료` |
-| Raspberry Pi Zero W | `✅ Python 에이전트 모드 (armv6)` → `⚠ aider 경량 모드` → `→ executor@zero-w 연결 완료 (WiFi)` |
-| Windows (PowerShell) | `✅ pi npm 설치 완료` → `→ builder@DESKTOP-WIN 연결 완료` |
+| Raspberry Pi Zero W | `✅ Python 에이전트 모드 (armv6)` → `→ 브레인 위임(remote-pi)` → `→ executor@zero-w 연결 완료 (WiFi)` |
+| Windows (PowerShell) | `✅ 워커 설치 완료` → `→ 브레인 위임(remote-pi)` → `→ builder@DESKTOP-WIN 연결 완료` |
 
 ### 에이전트 역할별
 
 | Role | AI 백엔드 | 실행 예시 |
 |------|----------|---------|
 | `builder` | claude-cli / pi / codex | `[SHELL] make build` → 코드 작성·빌드 |
-| `tester` | claude-cli / aider | `[SHELL] pytest tests/` → 테스트 실행·검증 |
+| `tester` | claude-cli / pi | `[SHELL] pytest tests/` → 테스트 실행·검증 |
 | `analyst` | claude-cli / gemini | 코드 분석·리뷰·버그 탐지 |
-| `executor` | aider / pi | 경량 명령 실행 · RPi Zero W 최적 |
+| `executor` | 브레인 위임 / 결정론 스킬 | 경량 명령·센서 실행 · RPi Zero W 최적 |
 
 ### 실제 대화 — 자연어 → 원격 실행
 
@@ -408,6 +471,7 @@ Phoenix Server              ws://host:4000
 | [docs/PROTOCOL.md](./docs/PROTOCOL.md) | **프로토콜 명세** — 4계층 통신 프로토콜 공식 정의 (L1 네트워크 ~ L4 팀 프로토콜) |
 | [docs/PRIVATE_NETWORK.md](./docs/PRIVATE_NETWORK.md) | **사설망 구성** — Tailscale로 원격 에이전트를 하나의 팀으로 연결하는 방법 |
 | [docs/REMOTE_AGENT_OPS.md](./docs/REMOTE_AGENT_OPS.md) | **원격 에이전트 운영** — 원격지 에이전트를 실시간 진단·명령·복구하는 방법 |
+| [docs/REPORT_edge-brain-traffic-light.md](./docs/REPORT_edge-brain-traffic-light.md) | **엣지-브레인 결정론 사례** — HC-SR04 신호등 + 마스터 1회 판단 → 엣지 결정론 스킬(약 4만 배 가속) |
 | [docs/AGENTS.md](./docs/AGENTS.md) | 에이전트 역할 정의 |
 | [docs/METHODOLOGY.md](./docs/METHODOLOGY.md) | 워크루프 방법론 |
 | [docs/GAP_ANALYSIS.md](./docs/GAP_ANALYSIS.md) | 현재 상태 및 개선 방향 |
@@ -538,7 +602,7 @@ DureClaw는 이 제약들을 **팀의 역할 분담**으로 해결한다.
 
 ```
 🌍 초이동형   executor@cmini01      Raspberry Pi Zero W (손바닥 크기)
-               └─ GPIO · I2C · 카메라 · WiFi · zeroclaw AI
+               └─ GPIO · I2C · 카메라 · WiFi · 브레인 위임 + 로컬 결정론 스킬
                └─ 어디든 배포 가능, 배터리 구동, 물리 세계 접점
 
 💼 이동형     tester@NUCBOXG3       Windows 11 NucBox (가방 속 미니PC)
@@ -594,14 +658,23 @@ macmini-intel      → Word/Keynote 보고서 자동 생성
 ```
 > 인터뷰 후 보고서 완성: 수 시간 → **15분 자동 처리**
 
+**⑤ 엣지 결정론 — 마스터 1회 판단 → 엣지 결정론 스킬** (RSI 학습 루프)
+```
+cmini01 (RPi Zero W)  → HC-SR04 거리 측정 → 신호등 LED 제어
+마스터 브레인         → 1회만 정책 보정 (red<12cm, yellow<35cm + 근거)
+cmini01               → 이후 보정값을 로컬 결정론 스킬로 결정화하여 자율 동작
+                      → 거리 신호는 버스로 마스터에 스트리밍(모니터링·이상 탐지)
+```
+> AI 판단을 매번 호출하지 않는다. 마스터가 **한 번** 판단한 정책을 엣지가 결정론적으로 실행 — 거리 판정 ~6 s → **~36 µs (약 4만 배)**. 5단계 학습 루프(관측 → 종합 → 목적화 → 지식화 → 학습·선택)로 채택 시 스킬이 자동 결정화된다.
+
 ### 오픈소스만으로 구현
 
 | 구성 요소 | 라이선스 | 역할 |
 |---------|:-------:|------|
 | Phoenix (Elixir) | MIT | 실시간 WebSocket 채널 |
 | Claude Code CLI | 무료 | AI 오케스트레이터 |
-| ZeroClaw | Apache 2.0 | ARMv6 경량 AI |
-| OpenCode | MIT | 멀티모델 AI 에이전트 |
+| pi (coding-agent) | MIT | 멀티모델 AI 에이전트 |
+| 브레인 위임 (remote-pi) | MIT | 키 없는 엣지가 마스터에 AI 위임 |
 | Raspberry Pi OS | GPL | IoT 엣지 OS |
 
 비싼 SaaS 없이, 내 네트워크 안의 유휴 머신들을 연결하는 것만으로 —

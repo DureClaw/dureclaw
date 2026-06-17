@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>DureClaw — 내 모든 머신을 하나의 AI 팀으로</title>
-<meta name="description" content="Claude Code 네이티브 플러그인. Mac이 오케스트레이트하는 동안 GPU 서버·Linux·라즈베리파이가 동시에 일한다. 한 줄 설치로 멀티머신 AI 팀을 3분만에 구성하세요."/>
+<meta name="description" content="분산 디바이스를 하나의 협력 AI 크루로. 마스터가 두뇌, edgeclaw(OS·물리)·webclaw(브라우저)·deskclaw(데스크톱 GUI)가 손이 된다. keyless 엣지 + 결정 동결(LLM as compiler). Claude Code 네이티브 플러그인, 한 줄 설치."/>
 
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
@@ -500,6 +500,7 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
       <div class="nav-links">
         <a href="#how-it-works">시작하기</a>
         <a href="#demo">데모</a>
+        <a href="#ecosystem">에코시스템</a>
         <a href="#install">설치</a>
         <a href="#platforms">지원 환경</a>
         <a href="#screenshots">스크린샷</a>
@@ -605,6 +606,62 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
         <div class="how-code"><span class="cyan">/두레팀</span> <span class="dim">또는 "팀 설정해줘"</span></div>
       </div>
     </div>
+  </div>
+</section>
+
+<!-- ECOSYSTEM -->
+<section class="section" id="ecosystem" style="padding-top:0">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-num">★</span>
+      <h2 class="section-title">에코시스템 — <em>한 두뇌, 여러 손</em></h2>
+    </div>
+    <p style="color:var(--text2); margin:-8px 0 22px; max-width:760px">
+      마스터(Claude)가 <strong>두뇌</strong>, 각 claw는 <strong>서로 다른 손</strong>입니다.
+      같은 버스·같은 keyless 위임으로 물리 세계·브라우저·데스크톱 어디로든 손을 뻗습니다.
+      <span style="color:var(--text3)">One brain, many hands — one bus, one keyless delegation.</span>
+    </p>
+
+    <div style="font:600 12px/1 'JetBrains Mono',monospace; color:var(--text3); letter-spacing:.5px; margin:0 0 10px">네이티브 노드 / NATIVE NODES</div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px; margin-bottom:22px">
+      <a href="https://github.com/DureClaw/edgeclaw" target="_blank" style="display:block; text-decoration:none; border:1px solid var(--border); border-radius:10px; padding:16px; background:var(--bg2)">
+        <div style="font:700 15px 'Syne',sans-serif; color:var(--white)">edgeclaw <span style="color:var(--green)">↗</span></div>
+        <div style="color:var(--text2); font-size:12.5px; margin:6px 0 8px">OS·물리 노드. 단일 정적 Go 바이너리 — Win·Mac·Linux·Pi Zero·riscv… shell·sensor·GPIO·LED·부저·릴레이·신호탑까지(승인=물리 결과).</div>
+        <span style="font-size:11px; color:var(--green); border:1px solid var(--green); border-radius:20px; padding:2px 8px">go · gpio · cross-platform</span>
+      </a>
+      <a href="https://github.com/DureClaw/webclaw" target="_blank" style="display:block; text-decoration:none; border:1px solid var(--border); border-radius:10px; padding:16px; background:var(--bg2)">
+        <div style="font:700 15px 'Syne',sans-serif; color:var(--white)">webclaw <span style="color:var(--cyan)">↗</span></div>
+        <div style="color:var(--text2); font-size:12.5px; margin:6px 0 8px">브라우저 노드. Chrome MV3 확장 — 브라우저를 fleet에 빌려준다(fetch·DOM, CORS-free, 상시). 순수 JS.</div>
+        <span style="font-size:11px; color:var(--cyan); border:1px solid var(--cyan); border-radius:20px; padding:2px 8px">chrome-extension · browser</span>
+      </a>
+      <a href="https://github.com/DureClaw/deskclaw" target="_blank" style="display:block; text-decoration:none; border:1px solid var(--border); border-radius:10px; padding:16px; background:var(--bg2)">
+        <div style="font:700 15px 'Syne',sans-serif; color:var(--white)">deskclaw <span style="color:var(--purple)">↗</span></div>
+        <div style="color:var(--text2); font-size:12.5px; margin:6px 0 8px">데스크톱 GUI 노드. Win/macOS — 눈(스크린샷)+손(클릭·타이핑·앱실행). <strong>RPA record→replay</strong>: 한 번 가르치면 LLM 없이 재생.</div>
+        <span style="font-size:11px; color:var(--purple); border:1px solid var(--purple); border-radius:20px; padding:2px 8px">go · desktop · rpa</span>
+      </a>
+    </div>
+
+    <div style="font:600 12px/1 'JetBrains Mono',monospace; color:var(--text3); letter-spacing:.5px; margin:0 0 10px">어댑터 / ADAPTERS — 기존 도구를 fleet에</div>
+    <div style="border:1px solid var(--border); border-radius:10px; padding:14px 16px; background:var(--bg2); margin-bottom:22px; color:var(--text2); font-size:12.5px">
+      <a href="https://github.com/DureClaw/picoclaw" target="_blank" style="color:var(--cyan2); text-decoration:none">picoclaw</a>(Go) ·
+      <a href="https://github.com/DureClaw/nanobot" target="_blank" style="color:var(--cyan2); text-decoration:none">nanobot</a>(Py) ·
+      <a href="https://github.com/DureClaw/zeroclaw" target="_blank" style="color:var(--cyan2); text-decoration:none">zeroclaw</a>(Rust) ·
+      <a href="https://github.com/DureClaw/nullclaw" target="_blank" style="color:var(--cyan2); text-decoration:none">nullclaw</a>(Zig)
+      — 각 repo에 <code>dureclaw/</code> 브리지를 더해 같은 버스에 합류.
+    </div>
+
+    <div style="font:600 12px/1 'JetBrains Mono',monospace; color:var(--text3); letter-spacing:.5px; margin:0 0 10px">문서·데모 / DOCS & DEMO</div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px">
+      <a href="https://github.com/DureClaw/whitepaper" target="_blank" style="display:block; text-decoration:none; border:1px solid var(--border); border-radius:10px; padding:16px; background:var(--bg2)">
+        <div style="font:700 15px 'Syne',sans-serif; color:var(--white)">📄 whitepaper <span style="color:var(--orange)">↗</span></div>
+        <div style="color:var(--text2); font-size:12.5px; margin:6px 0 0">기술 백서 — 아키텍처·원칙·보안·사례. 한국어판 / English PDF.</div>
+      </a>
+      <a href="https://github.com/DureClaw/dure-factory-public" target="_blank" style="display:block; text-decoration:none; border:1px solid var(--border); border-radius:10px; padding:16px; background:var(--bg2)">
+        <div style="font:700 15px 'Syne',sans-serif; color:var(--white)">🏭 dure-factory <span style="color:var(--orange)">↗</span></div>
+        <div style="color:var(--text2); font-size:12.5px; margin:6px 0 0">분산 엣지 × 제조 MES 데모 — 센싱→종합→승인→결정 동결. DureClaw + Open MES Korea.</div>
+      </a>
+    </div>
+    <div style="margin-top:14px; font-size:12px; color:var(--text3)">전체 조직 / all repos → <a href="https://github.com/DureClaw" target="_blank" style="color:var(--cyan2)">github.com/DureClaw</a></div>
   </div>
 </section>
 
