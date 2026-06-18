@@ -1127,11 +1127,21 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
       <h2 class="section-title">데모 <em>시나리오</em></h2>
     </div>
 
-    <!-- 영상 placeholder -->
-    <div class="demo-video-placeholder">
-      <div class="dvp-icon">▶</div>
-      <div class="dvp-label">데모 영상 준비 중</div>
-      <div class="dvp-sub">설치 → 워커 연결 → 동시 실행 · ~3분</div>
+    <!-- 라이브 데모 GIF (실제 동작 캡처) -->
+    <div style="font:600 12px/1 'JetBrains Mono',monospace; color:var(--text3); letter-spacing:.5px; margin:0 0 12px">라이브 데모 / LIVE — 실제 시스템 캡처</div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:16px; margin-bottom:28px">
+      <figure style="margin:0; border:1px solid var(--border); border-radius:10px; overflow:hidden; background:var(--bg2)">
+        <img src="demo/mes-fanout.gif" alt="fan-out → 마스터 종합" loading="lazy" style="width:100%; display:block; border-bottom:1px solid var(--border)"/>
+        <figcaption style="padding:10px 12px; font-size:12px; color:var(--text2)"><strong style="color:var(--white)">① fan-out → 종합</strong><br/>불량 fan-out → 이종 노드 fan-in → 마스터 SUGGEST(원인·신뢰도·권고).</figcaption>
+      </figure>
+      <figure style="margin:0; border:1px solid var(--border); border-radius:10px; overflow:hidden; background:var(--bg2)">
+        <img src="demo/decision-freeze.gif" alt="결정 동결 — LLM as compiler" loading="lazy" style="width:100%; display:block; border-bottom:1px solid var(--border)"/>
+        <figcaption style="padding:10px 12px; font-size:12px; color:var(--text2)"><strong style="color:var(--white)">② 결정 동결</strong><br/>승인 → 룰 동결 → 같은 패턴은 <strong>LLM 0회·2µs</strong> 재사용(15.6s 절감).</figcaption>
+      </figure>
+      <figure style="margin:0; border:1px solid var(--border); border-radius:10px; overflow:hidden; background:var(--bg2)">
+        <img src="demo/deskclaw-rpa.gif" alt="deskclaw RPA record→replay" loading="lazy" style="width:100%; display:block; border-bottom:1px solid var(--border)"/>
+        <figcaption style="padding:10px 12px; font-size:12px; color:var(--text2)"><strong style="color:var(--white)">③ deskclaw RPA</strong><br/>한 번 가르치면(record) → <code>[RUN]</code>은 <strong>LLM 없이</strong> 결정론적 재생.</figcaption>
+      </figure>
     </div>
 
     <!-- 5-장면 스토리보드 -->
