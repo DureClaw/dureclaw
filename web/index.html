@@ -1150,7 +1150,12 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
       <!-- Scene 1 -->
       <div class="demo-scene">
         <div class="demo-scene-shot">
-          <div class="shot-empty"><span>📷</span><p>스크린샷<br/>scene-01.png</p></div>
+          <div style="width:100%;height:100%;background:#0b1220;color:#cdd9e5;font:10.5px/1.7 'JetBrains Mono',monospace;padding:14px 12px;display:flex;flex-direction:column;justify-content:center;gap:2px">
+            <div style="color:#64748b"># 문제</div>
+            <div><span style="color:#64748b">$</span> claude</div>
+            <div style="color:#64748b"># 창 하나 = 머신 하나</div>
+            <div style="color:#64748b"># GPU·Linux·Pi는 대기</div>
+          </div>
         </div>
         <div class="demo-scene-body">
           <div class="demo-scene-meta">
@@ -1169,7 +1174,11 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
       <!-- Scene 2 -->
       <div class="demo-scene">
         <div class="demo-scene-shot">
-          <div class="shot-empty"><span>📷</span><p>스크린샷<br/>scene-02.png</p></div>
+          <div style="width:100%;height:100%;background:#0b1220;color:#cdd9e5;font:10.5px/1.7 'JetBrains Mono',monospace;padding:14px 12px;display:flex;flex-direction:column;justify-content:center;gap:2px">
+            <div><span style="color:#64748b">$</span> <span style="color:#38bdf8">bash &lt;(curl -fsSL</span></div>
+            <div style="color:#38bdf8">&nbsp;&nbsp;&nbsp;dureclaw.baryon.ai/install)</div>
+            <div style="color:#34d399; margin-top:4px">✓ 서버 + MCP + Tailscale</div>
+          </div>
         </div>
         <div class="demo-scene-body">
           <div class="demo-scene-meta">
@@ -1189,7 +1198,11 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
       <!-- Scene 3 -->
       <div class="demo-scene">
         <div class="demo-scene-shot">
-          <div class="shot-empty"><span>📷</span><p>스크린샷<br/>scene-03.png</p></div>
+          <div style="width:100%;height:100%;background:#0b1220;color:#cdd9e5;font:10.5px/1.7 'JetBrains Mono',monospace;padding:14px 12px;display:flex;flex-direction:column;justify-content:center;gap:2px">
+            <div><span style="color:#64748b">$</span> <span style="color:#38bdf8">PHOENIX=ws://100.x:4000</span></div>
+            <div style="color:#38bdf8">&nbsp;&nbsp;&nbsp;bash &lt;(…/agent)</div>
+            <div style="color:#34d399; margin-top:4px">✓ builder@server 연결됨</div>
+          </div>
         </div>
         <div class="demo-scene-body">
           <div class="demo-scene-meta">
@@ -1209,7 +1222,11 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
       <!-- Scene 4 -->
       <div class="demo-scene">
         <div class="demo-scene-shot">
-          <div class="shot-empty"><span>📷</span><p>스크린샷<br/>scene-04.png</p></div>
+          <div style="width:100%;height:100%;background:#0b1220;color:#cdd9e5;font:10.5px/1.7 'JetBrains Mono',monospace;padding:14px 12px;display:flex;flex-direction:column;justify-content:center;gap:2px">
+            <div><span style="color:#64748b">claude ›</span> <span style="color:#a78bfa">/두레팀</span></div>
+            <div style="color:#cdd9e5">"팀 설정해줘"</div>
+            <div style="color:#34d399; margin-top:4px">→ N개 머신에 fan-out</div>
+          </div>
         </div>
         <div class="demo-scene-body">
           <div class="demo-scene-meta">
@@ -1229,7 +1246,7 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
       <!-- Scene 5 -->
       <div class="demo-scene">
         <div class="demo-scene-shot">
-          <div class="shot-empty"><span>📷</span><p>스크린샷<br/>scene-05.png</p></div>
+          <img src="demo/mes-fanout.gif" alt="두 머신이 동시에 — fleet fan-out" loading="lazy"/>
         </div>
         <div class="demo-scene-body">
           <div class="demo-scene-meta">
@@ -1251,7 +1268,7 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
     </div><!-- /demo-scenes -->
 
     <p style="margin-top:16px;font-size:11px;color:var(--text3);text-align:center;letter-spacing:0.5px;">
-      ↑ 스크린샷은 <code>web/screenshots/scene-0N.png</code>으로 추가하면 자동 표시됩니다
+      설치 → 워커 연결 → 한 줄 지시 → 동시 실행 · 약 2.5분. 위 <strong style="color:var(--text2)">라이브 데모</strong>는 실제 시스템 캡처.
     </p>
   </div>
 </section>
