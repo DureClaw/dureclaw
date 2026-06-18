@@ -1,0 +1,36 @@
+# DureClaw
+
+> 분산 디바이스를 하나의 협력 AI 크루로 묶는 오픈소스 시스템. 마스터(Claude)가 두뇌가 되어 추론·제안하고, 각 노드(claw)는 서로 다른 손이 되어 물리 세계·브라우저·데스크톱을 다룬다. keyless 엣지 + 결정 동결(LLM as compiler). Claude Code 네이티브 플러그인, 한 줄 설치.
+> Turn scattered machines into one collaborating AI crew over a single real-time bus. One brain (Claude), many hands. Keyless edges delegate inference to the master; approved decisions are compiled into deterministic rules and replayed with zero LLM calls.
+
+DureClaw는 Claude Code 네이티브 플러그인 + Phoenix(Elixir) WebSocket 협력 버스다. Mac이 오케스트레이트하는 동안 GPU 서버·Linux·Windows·라즈베리파이가 동시에 일한다. 설치: `bash <(curl -fsSL https://dureclaw.baryon.ai/install)`.
+
+## 핵심 개념 / Core ideas
+- **한 두뇌, 여러 손 (one brain, many hands)**: 마스터(Claude)가 추론·제안, 각 claw가 물리·브라우저·데스크톱의 손.
+- **keyless 엣지**: 엣지 노드는 모델 키 없이 마스터 브레인(`/brain/exec`)에 위임 → 비용·키·레이트리밋은 마스터가 흡수.
+- **결정 동결 (LLM as compiler)**: 사람이 승인한 판단을 결정론적 룰/매크로로 동결 → 같은 문제는 LLM 0회·µs로 재사용.
+- **버스 프로토콜**: Phoenix Channel `vsn=2.0.0`, 5-tuple JSON 프레임 `[join_ref, ref, topic, event, payload]`.
+
+## 네이티브 노드 / Native nodes
+- [edgeclaw](https://github.com/DureClaw/edgeclaw): OS·물리 노드. 단일 정적 Go 바이너리(No-CGo), 모든 OS/CPU(Win·Mac·Linux·Pi Zero armv6·riscv64). physical-edge 모드로 LED·부저·릴레이·신호탑·PA 음성 구동(gpiochip). 사전빌드 릴리즈 + 설치 원라이너.
+- [webclaw](https://github.com/DureClaw/webclaw): 브라우저 노드. Chrome MV3 확장. 브라우저를 fleet에 빌려준다(fetch·DOM, CORS-free, 상시).
+- [deskclaw](https://github.com/DureClaw/deskclaw): 데스크톱 GUI 노드. Win/macOS. 눈(스크린샷)+손(클릭·타이핑·앱실행) + RPA record→replay(한 번 가르치면 LLM 없이 재생).
+
+## 어댑터 / Adapters (기존 도구를 fleet에)
+- [picoclaw](https://github.com/DureClaw/picoclaw) (Go) · [nanobot](https://github.com/DureClaw/nanobot) (Python) · [zeroclaw](https://github.com/DureClaw/zeroclaw) (Rust) · [nullclaw](https://github.com/DureClaw/nullclaw) (Zig). 각 repo에 `dureclaw/` 브리지를 더해 같은 버스에 합류.
+
+## 문서·데모 / Docs & demo
+- [기술 백서 / Technical Whitepaper (한국어·English PDF)](https://github.com/DureClaw/whitepaper)
+- [dure-factory — 분산 엣지 × 제조 MES 데모](https://github.com/DureClaw/dure-factory-public)
+- [GitHub 조직 (all repos)](https://github.com/DureClaw)
+- [버스 코어 / dureclaw](https://github.com/DureClaw/dureclaw)
+
+## 자주 묻는 질문 / FAQ
+- **무엇인가?** 흩어진 머신을 한 버스로 묶는 멀티머신 AI 오케스트레이션. 새 시스템으로 갈아엎지 않고 기존 인프라 위에 얹는다.
+- **누구를 위한 것인가?** 여러 머신(엣지·GPU·PC)을 가진 개발자/팀, 제조 현장(데이터 수집→분석→자동화→AX).
+- **왜 keyless인가?** 모든 노드에 키를 심는 비용·보안 부담을 없애고, 저사양·무인증 머신도 즉시 합류시키기 위해.
+- **설치는?** `bash <(curl -fsSL https://dureclaw.baryon.ai/install)` — 플러그인·서버·MCP 자동 등록, 약 3분.
+
+## 원칙 / Principles
+데이터는 엣지 · 두뇌는 분산 · 학습은 닫힌 루프 · 결정은 사람.
+_Data at the edge · brains distributed · learning in a closed loop · humans decide._

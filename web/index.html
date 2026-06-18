@@ -10,6 +10,96 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
 
+<!-- ── SEO / canonical / icons ── -->
+<link rel="canonical" href="https://dureclaw.baryon.ai/"/>
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
+<meta name="author" content="DureClaw · Baryon Labs"/>
+<meta name="keywords" content="DureClaw, 두레클로, 분산 AI 에이전트, multi-agent orchestration, Claude Code 플러그인, edgeclaw, webclaw, deskclaw, keyless edge, LLM as compiler, 결정 동결, RPA, GPIO, Raspberry Pi, 멀티머신 AI, distributed AI agents"/>
+<meta name="theme-color" content="#0284c7"/>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+<link rel="icon" href="/favicon-256.png" sizes="256x256" type="image/png"/>
+<link rel="apple-touch-icon" href="/favicon-256.png"/>
+<link rel="sitemap" type="application/xml" href="/sitemap.xml"/>
+
+<!-- ── Open Graph ── -->
+<meta property="og:type" content="website"/>
+<meta property="og:site_name" content="DureClaw"/>
+<meta property="og:locale" content="ko_KR"/>
+<meta property="og:url" content="https://dureclaw.baryon.ai/"/>
+<meta property="og:title" content="DureClaw — 내 모든 머신을 하나의 AI 팀으로"/>
+<meta property="og:description" content="분산 디바이스를 하나의 협력 AI 크루로. 마스터가 두뇌, edgeclaw(OS·물리)·webclaw(브라우저)·deskclaw(데스크톱 GUI)가 손. keyless 엣지 + 결정 동결(LLM as compiler). Claude Code 네이티브 플러그인, 한 줄 설치."/>
+<meta property="og:image" content="https://dureclaw.baryon.ai/screenshots/hero-banner.jpg"/>
+<meta property="og:image:width" content="1400"/>
+<meta property="og:image:height" content="594"/>
+<meta property="og:image:alt" content="DureClaw Cooperative — Unified AI Robotics Ecosystem"/>
+
+<!-- ── Twitter ── -->
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:title" content="DureClaw — 내 모든 머신을 하나의 AI 팀으로"/>
+<meta name="twitter:description" content="마스터가 두뇌, edgeclaw·webclaw·deskclaw가 손. keyless 엣지 + 결정 동결(LLM as compiler). Claude Code 네이티브 플러그인, 한 줄 설치."/>
+<meta name="twitter:image" content="https://dureclaw.baryon.ai/screenshots/hero-banner.jpg"/>
+
+<!-- ── AI / LLM crawlers (GEO/AEO) ── -->
+<link rel="alternate" type="text/markdown" title="llms.txt" href="/llms.txt"/>
+
+<!-- ── Structured data: SoftwareApplication ── -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "DureClaw",
+  "alternateName": "두레클로",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "macOS, Windows, Linux, Raspberry Pi",
+  "url": "https://dureclaw.baryon.ai/",
+  "image": "https://dureclaw.baryon.ai/screenshots/hero-banner.jpg",
+  "description": "분산 디바이스를 하나의 협력 AI 크루로 묶는 오픈소스 시스템. 마스터(Claude)가 두뇌, 각 노드(claw)가 물리·브라우저·데스크톱의 손이 된다. keyless 엣지 + 결정 동결(LLM as compiler).",
+  "softwareVersion": "0.4.0",
+  "isAccessibleForFree": true,
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "author": { "@type": "Organization", "name": "Baryon Labs", "url": "https://baryon.ai" },
+  "sameAs": [
+    "https://github.com/DureClaw",
+    "https://github.com/DureClaw/dureclaw"
+  ]
+}
+</script>
+
+<!-- ── Structured data: FAQPage (AEO/GEO — answer-engine ready) ── -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "DureClaw가 무엇인가요?",
+      "acceptedAnswer": { "@type": "Answer", "text": "DureClaw는 흩어진 여러 머신(Mac·GPU 서버·Linux·Windows·라즈베리파이)을 하나의 실시간 협력 버스(Phoenix WebSocket)로 묶어 협력 AI 크루로 만드는 오픈소스 시스템입니다. Claude Code 네이티브 플러그인으로 제공되며, 한 줄 설치로 멀티머신 AI 팀을 구성합니다. 마스터(Claude)가 두뇌 역할로 추론·제안하고, 각 노드(claw)가 서로 다른 손이 됩니다." }
+    },
+    {
+      "@type": "Question",
+      "name": "어떤 환경과 노드를 지원하나요?",
+      "acceptedAnswer": { "@type": "Answer", "text": "세 가지 네이티브 노드가 있습니다. edgeclaw는 OS·물리 노드로 단일 정적 Go 바이너리이며 Windows·macOS·Linux·라즈베리파이(armv6)·riscv64 등 모든 OS/CPU에서 동작하고 GPIO·LED·부저·릴레이·신호탑까지 구동합니다. webclaw는 브라우저 노드(Chrome MV3 확장)입니다. deskclaw는 데스크톱 GUI 노드(Windows·macOS)로 스크린샷·클릭·타이핑과 RPA record→replay를 지원합니다. 추가로 picoclaw·nanobot·zeroclaw·nullclaw 어댑터로 기존 도구를 합류시킬 수 있습니다." }
+    },
+    {
+      "@type": "Question",
+      "name": "keyless 엣지란 무엇인가요?",
+      "acceptedAnswer": { "@type": "Answer", "text": "엣지 노드가 모델 API 키를 갖지 않는다는 뜻입니다. 자연어 작업이 오면 노드는 프롬프트를 마스터 브레인에 위임하고 결과만 받습니다. 비용·키·레이트리밋은 마스터 한 곳이 흡수하므로, 저사양·무인증 머신도 즉시 합류할 수 있고 키 유출면이 줄어듭니다." }
+    },
+    {
+      "@type": "Question",
+      "name": "결정 동결(LLM as compiler)이란 무엇인가요?",
+      "acceptedAnswer": { "@type": "Answer", "text": "사람이 한 번 승인한 판단을 결정론적 룰이나 매크로로 '동결'하여, 같은 문제는 다음부터 LLM 호출 없이 마이크로초 단위로 재사용하는 닫힌 학습 루프입니다. 제조 라인에서는 스킬 캐시 룰로, 데스크톱에서는 deskclaw RPA 매크로로 구현됩니다. LLM을 런타임 의존성이 아니라 컴파일러로 사용합니다." }
+    },
+    {
+      "@type": "Question",
+      "name": "어떻게 설치하나요?",
+      "acceptedAnswer": { "@type": "Answer", "text": "한 줄로 설치합니다: bash <(curl -fsSL https://dureclaw.baryon.ai/install) — Claude Code 플러그인, Phoenix 서버, MCP 등록까지 자동 처리됩니다. 워커 머신은 출력된 한 줄 명령을 실행하면 연결됩니다. 약 3분이면 멀티머신 AI 팀이 완성됩니다." }
+    }
+  ]
+}
+</script>
+
 <style>
 :root {
   --bg:       #ffffff;
