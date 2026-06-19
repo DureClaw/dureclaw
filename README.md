@@ -97,7 +97,7 @@ edgeclaw는 단일 정적 Go 바이너리(**arm64·armv7·armv6·riscv64·amd64*
 
 > 모든 칩·아키텍처는 edgeclaw가 **실제 빌드·릴리즈하는 타깃**(`make all` → `dist/edgeclaw-linux-{arm64,armv7,armv6,riscv64,amd64,…}`)이다.
 
-#### 🇰🇷 국산 대안 / 한국 업체 — 글로벌 제품 대체
+#### 🇰🇷 국산 제품 / KOREAN SUPPLIERS
 
 | 분류 | 국내 업체 | 대표 제품 | 링크 |
 |---|---|---|---|
@@ -105,6 +105,7 @@ edgeclaw는 단일 정적 Go 바이너리(**arm64·armv7·armv6·riscv64·amd64*
 | 센서·온도조절기·계측 | 오토닉스 · 한영넥스 | PID 온도조절기·근접/광센서·패널미터 | [Autonics](https://www.autonics.com/kr) · [한영넥스](https://hanyoungnux.co.kr/) |
 | 시리얼↔이더넷 (Moxa NPort 대안) | 솔내시스템 · 위즈넷 | 시리얼 디바이스 서버(CSE), WIZ750SR·W5500 | [Sollae](https://www.sollae.co.kr/ko/home/) · [WIZnet](https://www.wiznet.io/) |
 | PLC·산업제어 | LS일렉트릭 · 컴파일 | XGT/XGB PLC, CUBLOC 임베디드 컨트롤러 | [LS ELECTRIC](https://www.ls-electric.com/ko) · [Comfile](https://www.comfile.co.kr/) |
+| 산업용 IPC·패널PC·임베디드 | MX On(구 M2I) · 컴텍 · 비맥스 · 휴인스 · 코텍 | 산업용 박스/팬리스 PC·HMI 터치패널·임베디드 보드 | [MX On](https://www.mxon.co.kr/) · [컴텍](https://com-tech.kr/) · [비맥스](https://www.bemax.co.kr/) · [휴인스](https://www.huins.com/kr/index.php) · [코텍](http://www.kortek.co.kr/) |
 | SBC·엣지 컴퓨터 | 하드커널 (Hardkernel) | ODROID (arm64 / x86) | [Hardkernel](https://www.hardkernel.com/product-category/odroid-board/) |
 | 비전 카메라 | 위드로봇 (Withrobot) | oCam USB3.0 산업 카메라(UVC) | [Withrobot](https://withrobot.com/) |
 
