@@ -47,6 +47,23 @@ Claude Code를 오케스트레이터로, 각 머신의 AI 에이전트들을 워
 
 > **edge**claw(OS·물리) · **web**claw(브라우저) · **desk**claw(데스크톱 GUI) = 네이티브 노드 | pico·nano·zero·null = 기존 도구 어댑터. 모두 같은 버스, 같은 keyless 위임.
 
+### 제조 현장 하드웨어 조합 / Manufacturing hardware kits
+
+실제 제조공정에 바로 설치하는 권장 조합. 모두 **keyless**(엣지에 키 0, 마스터가 두뇌) · **한 줄 설치**. 제품은 *예시*이며 동등 사양 대체 가능.
+
+| 역할 / Role | 권장 하드웨어 | 실행 노드 | 제품 링크 |
+|---|---|---|---|
+| 📏 거리·근접 센싱 | Raspberry Pi Zero 2 W + HC-SR04 초음파 | `edgeclaw · sensor` | [Pi Zero 2 W](https://www.raspberrypi.com/products/raspberry-pi-zero-2-w/) · [HC-SR04](https://www.adafruit.com/product/3942) |
+| 🌡 금형·설비 온도 | Raspberry Pi 4·5 + MAX31855 + K형 열전대 | `edgeclaw · sensor` | [Pi 5](https://www.raspberrypi.com/products/raspberry-pi-5/) · [MAX31855](https://www.adafruit.com/product/269) |
+| 🚦 신호탑·안돈 (승인=물리) | Pi + 5V 릴레이 모듈 + 산업 신호탑(패트라이트) + 부저 | `edgeclaw · physical-edge` | [릴레이](https://www.adafruit.com/product/2935) · [PATLITE 신호탑](https://www.patlite.com/product/signal_towers.html) |
+| 👁 비전 검사 | NVIDIA Jetson Orin Nano + USB 산업 카메라 | `edgeclaw + 마스터 비전` | [Jetson Orin Nano](https://www.nvidia.com/en-us/autonomous-machines/embedded-systems/jetson-orin/) · [Arducam](https://www.arducam.com/) |
+| 🔌 현장 게이트웨이·PLC | 산업용 팬리스 IPC(x86) + USB-RS485(Modbus RTU) | `edgeclaw · shell/serial` | [USB-RS485](https://www.waveshare.com/usb-to-rs485.htm) · [Advantech IPC](https://www.advantech.com/en/products/embedded-box-pcs) |
+| 🖥 현장 PC GUI 자동화 | 기존 Windows 현장 PC (MES·ERP 화면) | `deskclaw · RPA` | 기존 PC 자산 (추가 HW 0) |
+| 🔊 음성 안내(PA) | Raspberry Pi + USB 사운드카드 + 스피커 | `edgeclaw · audio` | 범용 USB 오디오 (WAV 내장) |
+
+> 국내 구매처 예시: 디바이스마트(devicemart.co.kr) · 엘레파츠(eleparts.co.kr) · 메카솔루션(mechasolution.com).
+> 노드 설치: `curl -fsSL https://github.com/DureClaw/edgeclaw/releases/latest/download/install.sh | sh`
+
 ---
 
 ## 실제 동작 예시
