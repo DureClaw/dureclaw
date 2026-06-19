@@ -84,16 +84,16 @@ edgeclaw는 단일 정적 Go 바이너리(**arm64·armv7·armv6·riscv64·amd64*
 
 | 보드 / Board | 칩·아키텍처 | edgeclaw 바이너리 | 링크 |
 |---|---|---|---|
-| Raspberry Pi Zero 2 W / 4 / 5 | arm64 (Zero=armv6) | `linux-arm64` · `armv6` | [raspberrypi.com](https://www.raspberrypi.com/products/) |
-| 🇰🇷 Hardkernel ODROID-C4 / N2+ / M1S | arm64 (Amlogic/RK) | `linux-arm64` | [hardkernel.com](https://www.hardkernel.com/product-category/odroid-board/) |
-| 🇰🇷 Hardkernel ODROID-H4 | x86_64 (Intel) | `linux-amd64` | [hardkernel.com](https://www.hardkernel.com/product-category/odroid-board/) |
-| Sipeed Lichee Pi 4A | RISC-V (TH1520) | `linux-riscv64` | [sipeed.com](https://sipeed.com/) |
-| Sipeed Maix K230 _(K210은 MCU·리눅스 미지원)_ | RISC-V (C908) | `linux-riscv64` | [wiki.sipeed](https://wiki.sipeed.com/) |
-| Milk-V Duo / Mars | RISC-V (SG200x/JH7110) | `linux-riscv64` | [milkv.io](https://milkv.io/) |
-| Radxa Rock 시리즈 | arm64 (RK3588 등) | `linux-arm64` | [radxa.com](https://radxa.com/) |
-| Orange Pi | arm64 (일부 RISC-V) | `linux-arm64` · `riscv64` | [orangepi.org](http://www.orangepi.org/) |
-| BeagleBone Black / AI | armv7 / arm64 | `linux-armv7` · `arm64` | [beagleboard.org](https://www.beagleboard.org/) |
-| Luckfox Pico | ARM Cortex-A7 (armv7) | `linux-armv7` | [luckfox.com](https://www.luckfox.com/) |
+| Raspberry Pi Zero 2 W / 4 / 5 | arm64 (Zero=armv6) | [`linux-arm64`](https://github.com/DureClaw/edgeclaw/releases/latest/download/edgeclaw-linux-arm64) · [`armv6`](https://github.com/DureClaw/edgeclaw/releases/latest/download/edgeclaw-linux-armv6) | [raspberrypi.com](https://www.raspberrypi.com/products/) |
+| 🇰🇷 Hardkernel ODROID-C4 / N2+ / M1S | arm64 (Amlogic/RK) | [`linux-arm64`](https://github.com/DureClaw/edgeclaw/releases/latest/download/edgeclaw-linux-arm64) | [hardkernel.com](https://www.hardkernel.com/product-category/odroid-board/) |
+| 🇰🇷 Hardkernel ODROID-H4 | x86_64 (Intel) | [`linux-amd64`](https://github.com/DureClaw/edgeclaw/releases/latest/download/edgeclaw-linux-amd64) | [hardkernel.com](https://www.hardkernel.com/product-category/odroid-board/) |
+| Sipeed Lichee Pi 4A | RISC-V (TH1520) | [`linux-riscv64`](https://github.com/DureClaw/edgeclaw/releases/latest/download/edgeclaw-linux-riscv64) | [sipeed.com](https://sipeed.com/) |
+| Sipeed Maix K230 _(K210은 MCU·리눅스 미지원)_ | RISC-V (C908) | [`linux-riscv64`](https://github.com/DureClaw/edgeclaw/releases/latest/download/edgeclaw-linux-riscv64) | [wiki.sipeed](https://wiki.sipeed.com/) |
+| Milk-V Duo / Mars | RISC-V (SG200x/JH7110) | [`linux-riscv64`](https://github.com/DureClaw/edgeclaw/releases/latest/download/edgeclaw-linux-riscv64) | [milkv.io](https://milkv.io/) |
+| Radxa Rock 시리즈 | arm64 (RK3588 등) | [`linux-arm64`](https://github.com/DureClaw/edgeclaw/releases/latest/download/edgeclaw-linux-arm64) | [radxa.com](https://radxa.com/) |
+| Orange Pi | arm64 (일부 RISC-V) | [`linux-arm64`](https://github.com/DureClaw/edgeclaw/releases/latest/download/edgeclaw-linux-arm64) · [`riscv64`](https://github.com/DureClaw/edgeclaw/releases/latest/download/edgeclaw-linux-riscv64) | [orangepi.org](http://www.orangepi.org/) |
+| BeagleBone Black / AI | armv7 / arm64 | [`linux-armv7`](https://github.com/DureClaw/edgeclaw/releases/latest/download/edgeclaw-linux-armv7) · [`arm64`](https://github.com/DureClaw/edgeclaw/releases/latest/download/edgeclaw-linux-arm64) | [beagleboard.org](https://www.beagleboard.org/) |
+| Luckfox Pico | ARM Cortex-A7 (armv7) | [`linux-armv7`](https://github.com/DureClaw/edgeclaw/releases/latest/download/edgeclaw-linux-armv7) | [luckfox.com](https://www.luckfox.com/) |
 
 > 모든 칩·아키텍처는 edgeclaw가 **실제 빌드·릴리즈하는 타깃**(`make all` → `dist/edgeclaw-linux-{arm64,armv7,armv6,riscv64,amd64,…}`)이다.
 
