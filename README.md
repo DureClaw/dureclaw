@@ -97,6 +97,17 @@ edgeclaw는 단일 정적 Go 바이너리(**arm64·armv7·armv6·riscv64·amd64*
 
 > 모든 칩·아키텍처는 edgeclaw가 **실제 빌드·릴리즈하는 타깃**(`make all` → `dist/edgeclaw-linux-{arm64,armv7,armv6,riscv64,amd64,…}`)이다.
 
+#### 🇰🇷 국산 대안 / 한국 업체 — 글로벌 제품 대체
+
+| 분류 | 국내 업체 | 대표 제품 | 링크 |
+|---|---|---|---|
+| 신호탑·타워램프 (PATLITE 대안) | 큐라이트 · 카콘 | LED 타워램프·표시등 (ST/QTC, IO-Link) | [Qlight](https://www.qlight.com/kr/) · [KACON](https://www.kacon.co.kr/) |
+| 센서·온도조절기·계측 | 오토닉스 · 한영넥스 | PID 온도조절기·근접/광센서·패널미터 | [Autonics](https://www.autonics.com/kr) · [한영넥스](https://hanyoungnux.co.kr/) |
+| 시리얼↔이더넷 (Moxa NPort 대안) | 솔내시스템 · 위즈넷 | 시리얼 디바이스 서버(CSE), WIZ750SR·W5500 | [Sollae](https://www.sollae.co.kr/ko/home/) · [WIZnet](https://www.wiznet.io/) |
+| PLC·산업제어 | LS일렉트릭 · 컴파일 | XGT/XGB PLC, CUBLOC 임베디드 컨트롤러 | [LS ELECTRIC](https://www.ls-electric.com/ko) · [Comfile](https://www.comfile.co.kr/) |
+| SBC·엣지 컴퓨터 | 하드커널 (Hardkernel) | ODROID (arm64 / x86) | [Hardkernel](https://www.hardkernel.com/product-category/odroid-board/) |
+| 비전 카메라 | 위드로봇 (Withrobot) | oCam USB3.0 산업 카메라(UVC) | [Withrobot](https://withrobot.com/) |
+
 #### 국내 총판 / 구매처
 
 - **Moxa**: [여의시스템(대표총판)](https://www.yoisys.com/) · [위존](https://moxa.wezon.com/) · [목사스토어](https://www.moxastore.co.kr/)
