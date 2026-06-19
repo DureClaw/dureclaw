@@ -80,7 +80,18 @@ Claude Code를 오케스트레이터로, 각 머신의 AI 에이전트들을 워
 
 #### Pi는 한 예시 — 저비용 보드도 동일 바이너리
 
-edgeclaw는 단일 정적 Go 바이너리로 **arm64·armv6·riscv64**까지 빌드된다. 따라서 **Sipeed**(Lichee Pi 4A·Maix, RISC-V) · **Milk-V**(Duo·Mars, RISC-V) · **Radxa**(Rock) · **Orange Pi** · **BeagleBone** · **Luckfox** 같은 보드에서도 그대로 동작한다(어댑터 [picoclaw](https://github.com/DureClaw/picoclaw)는 Sipeed 계열 포크).
+edgeclaw는 단일 정적 Go 바이너리로 **arm64·armv6·riscv64**까지 빌드 → 아래 보드에서 그대로 동작(어댑터 [picoclaw](https://github.com/DureClaw/picoclaw)는 Sipeed 계열 포크).
+
+| 보드 / Board | 칩·아키텍처 | 특징 / 용도 | 링크 |
+|---|---|---|---|
+| Raspberry Pi Zero 2 W / 4 / 5 | arm64 / armv6 | 표준·생태계 풍부, GPIO·카메라 | [raspberrypi.com](https://www.raspberrypi.com/products/) |
+| Sipeed Lichee Pi 4A | RISC-V (TH1520) | 고성능 RISC-V 리눅스 SBC | [sipeed.com](https://sipeed.com/licheepi4a) |
+| Sipeed Maix (K210/K230) | RISC-V | 초저가 엣지 AI 모듈 | [wiki.sipeed](https://wiki.sipeed.com/) |
+| Milk-V Duo / Mars | RISC-V (SG200x/JH7110) | 초저가($5~) RISC-V 리눅스 | [milkv.io](https://milkv.io/) |
+| Radxa Rock 시리즈 | arm64 (RK3588 등) | Pi 대체 고성능 SBC | [radxa.com](https://radxa.com/) |
+| Orange Pi | arm64 | 저가 Pi 호환 SBC | [orangepi.org](http://www.orangepi.org/) |
+| BeagleBone Black / AI | arm (armv7) | 산업용 I/O 풍부(PRU 실시간) | [beagleboard.org](https://www.beagleboard.org/) |
+| Luckfox Pico | arm (RV1103/RV1106) | 초소형·초저가 엣지 | [luckfox.com](https://www.luckfox.com/) |
 
 #### 국내 총판 / 구매처
 
