@@ -61,7 +61,34 @@ Claude Code를 오케스트레이터로, 각 머신의 AI 에이전트들을 워
 | 🖥 현장 PC GUI 자동화 | 기존 Windows 현장 PC (MES·ERP 화면) | `deskclaw · RPA` | 기존 PC 자산 (추가 HW 0) |
 | 🔊 음성 안내(PA) | Raspberry Pi + USB 사운드카드 + 스피커 | `edgeclaw · audio` | 범용 USB 오디오 (WAV 내장) |
 
-> 국내 구매처 예시: 디바이스마트(devicemart.co.kr) · 엘레파츠(eleparts.co.kr) · 메카솔루션(mechasolution.com).
+#### 통신 프로토콜 게이트웨이 — 기존 설비·PLC를 버스에
+
+설비가 쓰는 산업 프로토콜을 게이트웨이로 표준화해 edgeclaw가 수집한다(edgeclaw는 게이트웨이 옆 또는 산업용 리눅스 GW 위에서 구동).
+
+| 프로토콜 / 용도 | 대표 게이트웨이 | 링크 |
+|---|---|---|
+| 시리얼(RS-232/422/485) → Ethernet | Moxa NPort 5100 | [NPort 5100](https://www.moxa.com/en/products/industrial-edge-connectivity/serial-device-servers/general-device-servers/nport-5100-series) |
+| Modbus RTU/ASCII ↔ Modbus TCP | Moxa MGate MB3180/3280/3480 | [MGate MB3000](https://www.moxa.com/en/products/industrial-edge-connectivity/protocol-gateways/modbus-tcp-gateways/mgate-mb3180-mb3280-mb3480-series) |
+| Modbus ↔ PROFINET / EtherNet/IP | Moxa MGate 5103 | [MGate 5103](https://www.moxa.com/en/products/industrial-edge-connectivity/protocol-gateways/profinet-gateways/mgate-5103-series) |
+| OPC-UA ↔ Modbus/EtherNet-IP/PROFINET | Advantech EKI-1242IEIMS | [EKI OPC-UA](https://www.advantech.com/en-us/products/opc-ua-gateways/sub_38205c82-9338-4a53-8569-23b3fe14328e) |
+| MQTT / IIoT (Modbus·serial → MQTT) | Moxa ioThinx 4510 · Advantech ADAM-6000 | [ioThinx](https://www.moxa.com/en/products/industrial-edge-connectivity/controllers-and-ios/advanced-controllers-and-i-os/iothinx-4510-series) · [ADAM-6000](https://www.advantech.com/en-us/products/ethernet-i-o-modules-adam-6000/sub_a67f7853-013a-4b50-9b20-01798c56b090) |
+| 멀티 필드버스(PROFIBUS·CC-Link·CANopen·EtherCAT) | HMS Anybus Communicator | [Anybus](https://www.hms-networks.com/anybus) |
+| BACnet (빌딩/설비) | HMS Intesis | [Intesis BACnet](https://www.hms-networks.com/p/inbaceip1k20000-ethernet-ip-bacnet-ip-ms-tp-server-gateway) |
+| 리눅스 엣지 GW (edgeclaw 직접 구동) | Advantech UNO-2271G V3 | [UNO-2271G](https://www.advantech.com/en-us/products/1-2mlj9a/uno-2271g-v3/mod_25219c02-4050-4154-bfce-fe18246c028b) |
+
+> 참고: Moxa MGate **5119/5134는 OPC-UA가 아니라 IEC 61850/BACnet**용 → OPC-UA는 Advantech EKI 라인으로 표기. HMS/Intesis는 프로토콜 조합별 SKU가 많으니 실제 도입 시 양쪽 프로토콜에 맞는 정확한 SKU 선택.
+
+#### Pi는 한 예시 — 저비용 보드도 동일 바이너리
+
+edgeclaw는 단일 정적 Go 바이너리로 **arm64·armv6·riscv64**까지 빌드된다. 따라서 **Sipeed**(Lichee Pi 4A·Maix, RISC-V) · **Milk-V**(Duo·Mars, RISC-V) · **Radxa**(Rock) · **Orange Pi** · **BeagleBone** · **Luckfox** 같은 보드에서도 그대로 동작한다(어댑터 [picoclaw](https://github.com/DureClaw/picoclaw)는 Sipeed 계열 포크).
+
+#### 국내 총판 / 구매처
+
+- **Moxa**: [여의시스템(대표총판)](https://www.yoisys.com/) · [위존](https://moxa.wezon.com/) · [목사스토어](https://www.moxastore.co.kr/)
+- **Advantech**: [어드밴텍 한국](https://www.advantech.com/ko-kr) · [어드밴텍코리아](https://advantech.co.kr/)
+- **HMS · Anybus · Red Lion**: [anybus.com](https://www.anybus.com/) (한국 영업 본사 채널 통합)
+- **부품·게이트웨이 유통**: [디바이스마트(MGate 검색)](https://www.devicemart.co.kr/goods/search?searchKeyword=MGate) · [엘레파츠](https://www.eleparts.co.kr/) · [메카솔루션](https://www.mechasolution.com/) · [RS Korea](https://kr.rs-online.com/web/) · [Mouser Korea](https://kr.mouser.com/)
+
 > 노드 설치: `curl -fsSL https://github.com/DureClaw/edgeclaw/releases/latest/download/install.sh | sh`
 
 ---
