@@ -591,6 +591,7 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
         <a href="#how-it-works">시작하기</a>
         <a href="#demo">데모</a>
         <a href="#ecosystem">에코시스템</a>
+        <a href="#layers">레이어</a>
         <a href="#hardware">하드웨어</a>
         <a href="#install">설치</a>
         <a href="#platforms">지원 환경</a>
@@ -751,8 +752,101 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
         <div style="font:700 15px 'Syne',sans-serif; color:var(--white)">🏭 dure-factory <span style="color:var(--orange)">↗</span></div>
         <div style="color:var(--text2); font-size:12.5px; margin:6px 0 0">분산 엣지 × 제조 MES 데모 — 센싱→종합→승인→결정 동결. DureClaw + Open MES Korea.</div>
       </a>
+      <a href="https://github.com/hongsw/clawfit" target="_blank" style="display:block; text-decoration:none; border:1px solid var(--border); border-radius:10px; padding:16px; background:var(--bg2)">
+        <div style="font:700 15px 'Syne',sans-serif; color:var(--white)">🗺 clawfit <span style="color:var(--cyan)">↗</span></div>
+        <div style="color:var(--text2); font-size:12.5px; margin:6px 0 0">Claude Code 에코시스템 맵 — 162+ 도구를 7계층(L1–L7)으로 분류·추천. DureClaw가 어디에 있는지(<strong>L2</strong>) 보여준다.</div>
+      </a>
     </div>
     <div style="margin-top:14px; font-size:12px; color:var(--text3)">전체 조직 / all repos → <a href="https://github.com/DureClaw" target="_blank" style="color:var(--cyan2)">github.com/DureClaw</a></div>
+  </div>
+</section>
+
+<!-- LAYERS -->
+<section class="section" id="layers" style="padding-top:0">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-num">≣</span>
+      <h2 class="section-title">어디에 <em>위치하는가</em> — L4→L0 수직 스택</h2>
+    </div>
+    <p style="color:var(--text2); margin:-8px 0 22px; max-width:780px">
+      Claude Code 에코시스템에서 대부분의 메타팩토리는 <strong>L3</strong>에서 구조/설정을 뱉고 외부 런타임에 넘깁니다.
+      DureClaw는 팀을 <strong>생성(L3)</strong>할 뿐 아니라, 그 팀이 실제로 도는 <strong>런타임(L1)·물리 실행(L0)</strong>을 소유하고,
+      산출물을 평가해 되먹이는 <strong>자기개선(L4)</strong>까지 한 몸으로 가진 <strong>유일한 수직 스택</strong>입니다.
+      <span style="color:var(--text3)">One vertical from self-improvement down to the physical actuator.</span>
+    </p>
+
+    <div style="display:flex; flex-direction:column; gap:10px">
+      <!-- L4 -->
+      <div style="display:flex; gap:14px; align-items:stretch; border:1px solid var(--orange); border-radius:10px; padding:14px 16px; background:var(--bg2)">
+        <div style="flex:0 0 52px; display:flex; flex-direction:column; align-items:center; justify-content:center; border-right:1px solid var(--border); padding-right:12px">
+          <div style="font:800 20px 'Syne',sans-serif; color:var(--orange)">L4</div>
+        </div>
+        <div style="flex:1">
+          <div style="font:700 15px 'Syne',sans-serif; color:var(--white)">RSI / 자기개선 <span style="font-size:11px; color:var(--orange); border:1px solid var(--orange); border-radius:20px; padding:1px 8px; margin-left:6px">★ DureClaw 고유</span></div>
+          <div style="color:var(--text2); font-size:12.5px; margin-top:5px">5단계 학습 루프(관측→종합→목적화→지식화→학습·선택) + eval + <strong>결정 동결</strong>. 팀 산출물을 평가해 결정론적 스킬로 결정화하고 L3 패턴에 되먹임 — <em>팩토리 자체를 진화</em>. <span style="color:var(--text3)">Recursive self-improvement above the meta-factory.</span></div>
+        </div>
+      </div>
+      <!-- L3 -->
+      <div style="display:flex; gap:14px; align-items:stretch; border:1px solid var(--purple); border-radius:10px; padding:14px 16px; background:var(--bg2)">
+        <div style="flex:0 0 52px; display:flex; flex-direction:column; align-items:center; justify-content:center; border-right:1px solid var(--border); padding-right:12px">
+          <div style="font:800 20px 'Syne',sans-serif; color:var(--purple)">L3</div>
+        </div>
+        <div style="flex:1">
+          <div style="font:700 15px 'Syne',sans-serif; color:var(--white)">Meta-Factory / Team-Architecture <span style="font-size:11px; color:var(--text3); margin-left:6px">이웃: Archon · meta-harness</span></div>
+          <div style="color:var(--text2); font-size:12.5px; margin-top:5px">도메인 문장 → 에이전트 팀 + 스킬. <code>/dureclaw</code> 6패턴(Pipeline · Fan-out/in · Expert Pool · Producer-Reviewer · Supervisor · Hierarchical).</div>
+        </div>
+      </div>
+      <!-- L2 -->
+      <div style="display:flex; gap:14px; align-items:stretch; border:1px solid var(--cyan); border-radius:10px; padding:14px 16px; background:var(--bg2)">
+        <div style="flex:0 0 52px; display:flex; flex-direction:column; align-items:center; justify-content:center; border-right:1px solid var(--border); padding-right:12px">
+          <div style="font:800 20px 'Syne',sans-serif; color:var(--cyan)">L2</div>
+        </div>
+        <div style="flex:1">
+          <div style="font:700 15px 'Syne',sans-serif; color:var(--white)">Cross-Harness Workflow <span style="font-size:11px; color:var(--text3); margin-left:6px">이웃: ECC</span></div>
+          <div style="color:var(--text2); font-size:12.5px; margin-top:5px">스킬·룰·훅 표준화 + 플러그인 마켓플레이스 로더 — 여러 하니스 간 공통 규약.</div>
+        </div>
+      </div>
+      <!-- L1 -->
+      <div style="display:flex; gap:14px; align-items:stretch; border:1px solid var(--green); border-radius:10px; padding:14px 16px; background:var(--bg2)">
+        <div style="flex:0 0 52px; display:flex; flex-direction:column; align-items:center; justify-content:center; border-right:1px solid var(--border); padding-right:12px">
+          <div style="font:800 20px 'Syne',sans-serif; color:var(--green)">L1</div>
+        </div>
+        <div style="flex:1">
+          <div style="font:700 15px 'Syne',sans-serif; color:var(--white)">Orchestration Runtime <span style="font-size:11px; color:var(--green); border:1px solid var(--green); border-radius:20px; padding:1px 8px; margin-left:6px">★ DureClaw 고유</span></div>
+          <div style="color:var(--text2); font-size:12.5px; margin-top:5px">Phoenix Channel 버스 + MCP + Work Key + DETS 영속 + <strong>keyless brain 위임</strong>. 팀이 실제로 실행되는 분산 메시지 버스.</div>
+        </div>
+      </div>
+      <!-- L0 -->
+      <div style="display:flex; gap:14px; align-items:stretch; border:1px solid var(--red); border-radius:10px; padding:14px 16px; background:var(--bg2)">
+        <div style="flex:0 0 52px; display:flex; flex-direction:column; align-items:center; justify-content:center; border-right:1px solid var(--border); padding-right:12px">
+          <div style="font:800 20px 'Syne',sans-serif; color:var(--red)">L0</div>
+        </div>
+        <div style="flex:1">
+          <div style="font:700 15px 'Syne',sans-serif; color:var(--white)">Physical Execution <span style="font-size:11px; color:var(--red); border:1px solid var(--red); border-radius:20px; padding:1px 8px; margin-left:6px">★ DureClaw 고유</span></div>
+          <div style="color:var(--text2); font-size:12.5px; margin-top:5px"><strong>edgeclaw</strong>(shell·GPIO·신호탑·PA) · <strong>webclaw</strong>(브라우저) · <strong>deskclaw</strong>(GUI). Win·mac·Linux·Pi·riscv — 물리 액추에이터까지 "승인=물리 결과".</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:16px; font-size:12px; color:var(--text3)">
+      Archon은 런타임 결정론을 만든다. DureClaw는 L4 결정 동결로 <em>그 결정론을 L0 엣지에 직접 내린다</em> — 생성·실행·자기개선을 한 수직으로.
+    </div>
+
+    <!-- clawfit lens -->
+    <div style="margin-top:22px; border:1px solid var(--border); border-radius:10px; padding:16px 18px; background:var(--bg3)">
+      <div style="font:700 14px 'Syne',sans-serif; color:var(--white)">🗺 clawfit 에코시스템 맵에서 보면 — DureClaw = <span style="color:var(--purple)">L2</span></div>
+      <p style="color:var(--text2); font-size:12.5px; margin:8px 0 10px; max-width:820px">
+        <a href="https://github.com/hongsw/clawfit" target="_blank" style="color:var(--cyan2); text-decoration:none">clawfit</a> 은 Claude Code 에코시스템의 <strong>162+ 도구를 7계층(L1–L7)</strong>으로 분류하는 추천 엔진·생태계 맵입니다.
+        그 기준에서 DureClaw는 <strong>L2 — Meta wrappers / harnesses / orchestration</strong>: Claude Code·pi 같은 <strong>L1 베이스 런타임</strong> 위에 올라타는 메타-래퍼/오케스트레이션 슬롯입니다(이웃: SuperClaude · Archon · oh-my-*).
+      </p>
+      <p style="color:var(--text2); font-size:12.5px; margin:0 0 12px; max-width:820px">
+        ⚠️ <strong>두 렌즈는 직교합니다.</strong> clawfit의 L1–L7은 <em>"성숙도 사다리가 아니라 아키텍처 역할"</em>을 가르는 <strong>가로 렌즈</strong>(어느 슬롯인가). 위의 L4→L0은 <strong>세로 렌즈</strong> — DureClaw가 그 L2 역할을 하면서 실제로 <strong>자기개선(L4)부터 물리 실행(L0)까지 몇 계층을 직접 소유하는가</strong>를 보여줍니다. 같은 사물의 다른 축.
+      </p>
+      <div style="display:flex; gap:10px; flex-wrap:wrap; font-size:12px">
+        <a href="https://github.com/hongsw/clawfit" target="_blank" style="color:var(--cyan2); text-decoration:none; border:1px solid var(--border); border-radius:20px; padding:3px 12px; background:var(--bg2)">clawfit — 에코시스템 맵 ↗</a>
+        <a href="https://github.com/hongsw/clawfit/blob/main/docs/reference-levels.md" target="_blank" style="color:var(--cyan2); text-decoration:none; border:1px solid var(--border); border-radius:20px; padding:3px 12px; background:var(--bg2)">7계층 택소노미 (L1–L7) ↗</a>
+      </div>
+    </div>
   </div>
 </section>
 
