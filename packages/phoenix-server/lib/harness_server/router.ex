@@ -228,9 +228,13 @@ defmodule HarnessServer.Router do
   # Uses the socket ID convention: "agent:{agent_name}"
 
   delete "/api/presence/:agent_name" do
-    socket_id = "agent:#{agent_name}"
-    HarnessServer.Endpoint.broadcast(socket_id, "disconnect", %{})
-    send_json(conn, 200, %{ok: true, disconnected: agent_name})
+    if master?(conn) do
+      socket_id = "agent:#{agent_name}"
+      HarnessServer.Endpoint.broadcast(socket_id, "disconnect", %{})
+      send_json(conn, 200, %{ok: true, disconnected: agent_name})
+    else
+      deny_non_master(conn)
+    end
   end
 
   # ── GET /api/work-keys ──────────────────────────────────────────────────────
@@ -310,18 +314,26 @@ defmodule HarnessServer.Router do
     end
   end
 
-  # POST /api/join/:enroll_id/approve  (authed — operator only)
+  # POST /api/join/:enroll_id/approve  (master only — operator action)
   post "/api/join/:enroll_id/approve" do
-    case StateStore.approve_enrollment(enroll_id) do
-      {:ok, e} -> send_json(conn, 200, %{status: "approved", name: e["name"], token: e["token"]})
-      :not_found -> send_json(conn, 404, %{error: "unknown enroll_id"})
+    if master?(conn) do
+      case StateStore.approve_enrollment(enroll_id) do
+        {:ok, e} -> send_json(conn, 200, %{status: "approved", name: e["name"], token: e["token"]})
+        :not_found -> send_json(conn, 404, %{error: "unknown enroll_id"})
+      end
+    else
+      deny_non_master(conn)
     end
   end
 
-  # POST /api/join/:enroll_id/deny  (authed — operator only)
+  # POST /api/join/:enroll_id/deny  (master only — operator action)
   post "/api/join/:enroll_id/deny" do
-    StateStore.deny_enrollment(enroll_id)
-    send_json(conn, 200, %{status: "denied", enroll_id: enroll_id})
+    if master?(conn) do
+      StateStore.deny_enrollment(enroll_id)
+      send_json(conn, 200, %{status: "denied", enroll_id: enroll_id})
+    else
+      deny_non_master(conn)
+    end
   end
 
   # GET /api/enrollments  (authed) — list enrollments for dashboard / status.
@@ -351,6 +363,11 @@ defmodule HarnessServer.Router do
   # Returns: {"task_id": "http-...", "work_key": "LN-..."}
 
   post "/api/task" do
+    # Dispatch is a command — master (single command origin) only.
+    if master?(conn), do: dispatch_task(conn), else: deny_non_master(conn)
+  end
+
+  defp dispatch_task(conn) do
     params = conn.body_params
 
     wk =
@@ -440,6 +457,11 @@ defmodule HarnessServer.Router do
   # Body: {"eval_id","approved","decided_by","wiki": adopted draft body}
 
   post "/api/eval/:work_key/approve" do
+    if master?(conn), do: approve_eval(conn, work_key), else: deny_non_master(conn)
+  end
+
+  # (extracted body — master-gated above)
+  defp approve_eval(conn, work_key) do
     params = conn.body_params
     eval_id = Map.get(params, "eval_id")
     approved = Map.get(params, "approved", true)
@@ -629,6 +651,28 @@ defmodule HarnessServer.Router do
     conn
     |> Plug.Conn.put_resp_content_type("application/json")
     |> Plug.Conn.send_resp(status, Jason.encode!(body))
+  end
+
+  # ── Command authority ─────────────────────────────────────────────────────────
+  # Single command origin: only the master (OAH_SECRET holder) may issue orders
+  # or perform admin actions. Worker per-node tokens can connect/report but not
+  # dispatch. Read endpoints stay open to any valid token.
+
+  defp master?(conn) do
+    token =
+      case Plug.Conn.get_req_header(conn, "authorization") do
+        ["Bearer " <> t] -> t
+        _ -> conn.query_params["secret"]
+      end
+
+    HarnessServer.Auth.master_token?(token)
+  end
+
+  defp deny_non_master(conn) do
+    send_json(conn, 403, %{
+      error: "master_required",
+      message: "이 작업은 마스터(단일 지시자)만 가능합니다 — worker 토큰은 지시 불가"
+    })
   end
 
   # ── Enrollment helpers ────────────────────────────────────────────────────────

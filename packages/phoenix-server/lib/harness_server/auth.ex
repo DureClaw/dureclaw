@@ -79,16 +79,28 @@ defmodule HarnessServer.Auth do
 
   # ── WebSocket auth ────────────────────────────────────────────────────────────
 
-  @doc "Verify secret from WebSocket connect params. Returns :ok | {:error, reason}."
+  @doc """
+  Verify a WebSocket connection and classify its authority tier.
+
+  Returns {:ok, :master} | {:ok, :worker} | {:error, :unauthorized}.
+  Only :master (the shared OAH_SECRET holder) may originate task orders; a
+  :worker (approved per-node token) may connect, receive, and report only.
+  """
   def verify_ws(params) do
     expected = secret()
     token = params["token"] || params["secret"]
 
     cond do
-      expected == "" -> :ok
-      token == expected -> :ok
-      HarnessServer.StateStore.token_approved?(token) -> :ok
+      expected == "" -> {:ok, :master}
+      token == expected -> {:ok, :master}
+      HarnessServer.StateStore.token_approved?(token) -> {:ok, :worker}
       true -> {:error, :unauthorized}
     end
+  end
+
+  @doc "True if the given token is the master shared secret (the single command credential)."
+  def master_token?(token) do
+    expected = secret()
+    expected != "" and token == expected
   end
 end

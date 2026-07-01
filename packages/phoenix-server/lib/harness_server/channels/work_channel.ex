@@ -212,10 +212,38 @@ defmodule HarnessServer.WorkChannel do
     end
   end
 
+  # task.assign is a command. Real work orders (arbitrary instructions) may only
+  # originate from the master (single command origin). The one exception is the
+  # eval loop's peer-grading delegation ([GRADE]), an internal worker→peer
+  # mechanic — workers may relay that but nothing else.
+  @impl true
+  def handle_in("task.assign", payload, socket) do
+    if dispatch_allowed?(socket, payload) do
+      msg =
+        payload
+        |> Map.put("from", socket.assigns.agent_name)
+        |> Map.put("event", "task.assign")
+        |> Map.put("ts", DateTime.utc_now() |> DateTime.to_iso8601())
+
+      broadcast!(socket, "task.assign", msg)
+      {:reply, {:ok, %{broadcast: true}}, socket}
+    else
+      {:reply, {:error, %{reason: "dispatch requires master credential"}}, socket}
+    end
+  end
+
+  # Master may dispatch anything; workers may only relay peer-grading ([GRADE]).
+  defp dispatch_allowed?(socket, payload) do
+    Map.get(socket.assigns, :is_master, false) or
+      payload
+      |> Map.get("instructions", "")
+      |> String.trim_leading()
+      |> String.starts_with?("[GRADE]")
+  end
+
   @impl true
   def handle_in(event, payload, socket)
       when event in [
-             "task.assign",
              "task.progress",
              "task.approval_requested"
            ] do
