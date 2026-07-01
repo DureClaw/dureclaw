@@ -61,7 +61,7 @@ defmodule HarnessServer.Auth do
         _ -> conn.query_params["secret"]
       end
 
-    if expected != "" and token == expected do
+    if valid_token?(expected, token) do
       conn
     else
       conn
@@ -71,16 +71,23 @@ defmodule HarnessServer.Auth do
     end
   end
 
+  # Accept the master shared secret OR any approved per-node token.
+  defp valid_token?(expected, token) do
+    (expected != "" and token == expected) or
+      HarnessServer.StateStore.token_approved?(token)
+  end
+
   # ── WebSocket auth ────────────────────────────────────────────────────────────
 
   @doc "Verify secret from WebSocket connect params. Returns :ok | {:error, reason}."
   def verify_ws(params) do
     expected = secret()
+    token = params["token"] || params["secret"]
 
     cond do
       expected == "" -> :ok
-      params["token"] == expected -> :ok
-      params["secret"] == expected -> :ok
+      token == expected -> :ok
+      HarnessServer.StateStore.token_approved?(token) -> :ok
       true -> {:error, :unauthorized}
     end
   end

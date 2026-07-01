@@ -36,6 +36,16 @@ input,select,button{font-family:inherit;font-size:12px}
 .kpi-l{font-size:10px;letter-spacing:2px;color:var(--t3);text-transform:uppercase}
 /* approval banner */
 #approval{padding:0 16px}
+/* enrollment (join) banner */
+#enroll-pending{padding:0 16px}
+.enr{border:1px solid var(--am,#d97706);border-radius:10px;padding:12px 14px;margin:8px 0;background:rgba(217,119,6,.06)}
+.enr-h{font-weight:700;margin-bottom:6px}
+.enr-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:6px 0;border-top:1px solid var(--bd,#eee)}
+.enr-row:first-of-type{border-top:0}
+.enr-meta{font-size:12px;color:var(--t2,#556);flex:1}
+.enr .b-ok,.enr .b-no{border:0;border-radius:6px;padding:4px 12px;font-size:12px;cursor:pointer}
+.enr .b-ok{background:#16a34a;color:#fff}
+.enr .b-no{background:#e5e7eb;color:#333}
 .appr{margin:14px 0;padding:16px 18px;background:linear-gradient(135deg,#2a210a,#1b2740);border:1px solid var(--am);border-radius:10px;box-shadow:0 0 24px rgba(251,191,36,.08)}
 .appr-h{font-weight:700;color:var(--am);font-size:11px;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px}
 .appr-goal{font-size:16px;color:var(--tx);font-style:italic;margin-bottom:10px;line-height:1.45}
@@ -177,6 +187,7 @@ textarea.inp{resize:vertical;min-height:60px}
 </div>
 
 <div id="active-eval"></div>
+<div id="enroll-pending"></div>
 <div id="approval"></div>
 
 <div class="vtabs">
@@ -286,6 +297,7 @@ async function poll(){
     $('k-nodes').textContent=agents.length;
     $('k-wks').textContent=wks.length;
     renderFleet();renderWkPills();renderDispatchTargets();
+    refreshEnrollments();
     if(selWk) await refreshEval();
   }catch(e){if(connected){connected=false;setConn(false,'연결 끊김')}else setConn(false,'미연결 (토큰 확인)')}
 }
@@ -342,6 +354,28 @@ async function refreshEval(){
   }catch(e){}
 }
 
+async function refreshEnrollments(){
+  const el=$('enroll-pending');if(!el)return;
+  let list=[];
+  try{const d=await jget('/api/enrollments?status=pending');list=d.enrollments||[]}catch(e){el.innerHTML='';return}
+  if(!list.length){if(el.dataset.sig!==''){el.innerHTML='';el.dataset.sig=''}return}
+  const rows=list.map(e=>`<div class="enr-row">
+    <div class="enr-meta"><b>${E(e.name||'?')}</b> · ${E(e.machine||'?')} · ${E(e.role||'')} · ${E((e.capabilities||[]).slice(0,4).join(', '))}
+    <span style="opacity:.6">· ${E(e.source_ip||'')} · ${E((e.requested_at||'').slice(11,19))}</span></div>
+    <button class="b-ok" onclick="approveNode('${E(e.enroll_id)}')">✓ 승인</button>
+    <button class="b-no" onclick="denyNode('${E(e.enroll_id)}')">✕ 거부</button>
+  </div>`).join('');
+  const html=`<div class="enr"><div class="enr-h">🔑 가입 대기 — 새 노드 ${list.length}개가 토큰 발급을 기다립니다 (tailnet 밖 접속)</div>${rows}</div>`;
+  if(el.dataset.sig!==html){el.innerHTML=html;el.dataset.sig=html}
+}
+async function approveNode(id){
+  try{await fetch('/api/join/'+encodeURIComponent(id)+'/approve',{method:'POST',headers:H()})}catch(e){}
+  refreshEnrollments();
+}
+async function denyNode(id){
+  try{await fetch('/api/join/'+encodeURIComponent(id)+'/deny',{method:'POST',headers:H()})}catch(e){}
+  refreshEnrollments();
+}
 function renderApproval(con,st){
   const el=$('approval');
   const pend=Object.entries(con).filter(([eid])=>!st['decision_'+eid]);

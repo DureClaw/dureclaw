@@ -249,6 +249,89 @@ defmodule HarnessServer.Router do
     end
   end
 
+  # ── Node enrollment: join → approve → per-node token ──────────────────────────
+  # Keyless first-connect. Tailnet/local peers are auto-approved; off-tailnet
+  # peers wait for operator approval. See HarnessServer.StateStore enrollment fns.
+
+  # POST /api/join  (auth-exempt) — a new node requests to join.
+  post "/api/join" do
+    p = conn.body_params
+    ip = format_ip(conn.remote_ip)
+
+    enrollment =
+      StateStore.create_enrollment(%{
+        "name" => Map.get(p, "name", "unknown@unknown"),
+        "machine" => Map.get(p, "machine", "unknown"),
+        "role" => Map.get(p, "role", "builder"),
+        "capabilities" => Map.get(p, "capabilities", []),
+        "source_ip" => ip
+      })
+
+    if auto_approve?(conn.remote_ip) do
+      case StateStore.approve_enrollment(enrollment["enroll_id"]) do
+        {:ok, approved} ->
+          send_json(conn, 200, %{
+            enroll_id: approved["enroll_id"],
+            status: "approved",
+            token: approved["token"],
+            work_key: StateStore.latest_work_key(),
+            reason: "tailnet/local peer auto-approved"
+          })
+
+        _ ->
+          send_json(conn, 500, %{error: "approve failed"})
+      end
+    else
+      send_json(conn, 202, %{
+        enroll_id: enrollment["enroll_id"],
+        status: "pending",
+        poll_after: 2,
+        message: "waiting for operator approval"
+      })
+    end
+  end
+
+  # GET /api/join/:enroll_id  (auth-exempt) — node polls for its token.
+  get "/api/join/:enroll_id" do
+    case StateStore.get_enrollment(enroll_id) do
+      nil ->
+        send_json(conn, 404, %{error: "unknown enroll_id"})
+
+      %{"status" => "approved"} = e ->
+        send_json(conn, 200, %{
+          enroll_id: e["enroll_id"],
+          status: "approved",
+          token: e["token"],
+          work_key: StateStore.latest_work_key()
+        })
+
+      e ->
+        send_json(conn, 200, %{enroll_id: e["enroll_id"], status: e["status"], poll_after: 2})
+    end
+  end
+
+  # POST /api/join/:enroll_id/approve  (authed — operator only)
+  post "/api/join/:enroll_id/approve" do
+    case StateStore.approve_enrollment(enroll_id) do
+      {:ok, e} -> send_json(conn, 200, %{status: "approved", name: e["name"], token: e["token"]})
+      :not_found -> send_json(conn, 404, %{error: "unknown enroll_id"})
+    end
+  end
+
+  # POST /api/join/:enroll_id/deny  (authed — operator only)
+  post "/api/join/:enroll_id/deny" do
+    StateStore.deny_enrollment(enroll_id)
+    send_json(conn, 200, %{status: "denied", enroll_id: enroll_id})
+  end
+
+  # GET /api/enrollments  (authed) — list enrollments for dashboard / status.
+  get "/api/enrollments" do
+    status = Map.get(conn.query_params, "status", "all")
+    filter = if status in ["pending", "approved"], do: String.to_atom(status), else: :all
+    enrollments = StateStore.list_enrollments(filter)
+    send_json(conn, 200, %{enrollments: enrollments, count: length(enrollments)})
+  end
+
   # ── POST /api/work-keys ─────────────────────────────────────────────────────
 
   post "/api/work-keys" do
@@ -547,6 +630,28 @@ defmodule HarnessServer.Router do
     |> Plug.Conn.put_resp_content_type("application/json")
     |> Plug.Conn.send_resp(status, Jason.encode!(body))
   end
+
+  # ── Enrollment helpers ────────────────────────────────────────────────────────
+
+  defp format_ip({a, b, c, d}), do: "#{a}.#{b}.#{c}.#{d}"
+  defp format_ip(ip) when is_tuple(ip), do: ip |> :inet.ntoa() |> to_string()
+  defp format_ip(_), do: ""
+
+  # Auto-approve peers on the trusted private network: Tailscale CGNAT range
+  # (100.64.0.0/10) or loopback. Off-tailnet peers require operator approval.
+  # OAH_REQUIRE_APPROVAL=1 forces explicit approval for everyone.
+  defp auto_approve?(remote_ip) do
+    if System.get_env("OAH_REQUIRE_APPROVAL") in ["1", "true"] do
+      false
+    else
+      tailnet_or_local?(remote_ip)
+    end
+  end
+
+  defp tailnet_or_local?({127, _, _, _}), do: true
+  defp tailnet_or_local?({100, b, _, _}) when b >= 64 and b <= 127, do: true
+  defp tailnet_or_local?({0, 0, 0, 0, 0, 0, 0, 1}), do: true
+  defp tailnet_or_local?(_), do: false
 
   # ── Deterministic crystallization ───────────────────────────────────────────
   # Freeze an adopted, peer-vetted draft into a reusable skill: a structured DETS

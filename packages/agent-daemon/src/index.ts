@@ -41,7 +41,7 @@ import { hostname } from "os";
 import { execSync } from "child_process";
 import { readFileSync, writeFileSync, mkdirSync, unlinkSync } from "fs";
 import { dirname, join } from "path";
-import { tmpdir } from "os";
+import { tmpdir, homedir } from "os";
 import { detectCapabilities, detectPreferredModel } from "./capabilities.ts";
 import { orchestrateGoal } from "./orchestrator.ts";
 
@@ -105,15 +105,99 @@ const AGENT_PREFERRED_MODEL = BRAIN_URL ? "pi/remote" : detectPreferredModel();
 const WS_BASE = STATE_SERVER_RAW.replace(/^http/, "ws").replace(/\/$/, "");
 const HTTP_BASE = STATE_SERVER_RAW.replace(/^ws/, "http").replace(/\/$/, "");
 
-// Phoenix WebSocket path — include OAH_SECRET token if set
-const OAH_SECRET = process.env.OAH_SECRET ?? "";
-const WS_URL = OAH_SECRET
-  ? `${WS_BASE}/socket/websocket?vsn=2.0.0&token=${encodeURIComponent(OAH_SECRET)}`
-  : `${WS_BASE}/socket/websocket?vsn=2.0.0`;
+// Auth token: OAH_SECRET (shared) > cached per-node token > enrollment (/api/join).
+// Keyless first-connect — a node without a secret enrolls and the server issues a
+// per-node token (auto-approved on the tailnet, else operator-approved). Cached so
+// subsequent starts reconnect instantly.
+const TOKEN_CACHE = join(homedir(), ".dureclaw", "token");
+let effectiveToken = process.env.OAH_SECRET ?? readCachedToken();
 
-/** Returns Authorization header if OAH_SECRET is set, else empty object. */
+function readCachedToken(): string {
+  try {
+    return readFileSync(TOKEN_CACHE, "utf8").trim();
+  } catch {
+    return "";
+  }
+}
+
+function cacheToken(tok: string): void {
+  try {
+    mkdirSync(dirname(TOKEN_CACHE), { recursive: true });
+  } catch (e: any) {
+    if (e?.code !== "EEXIST") { /* ignore */ }
+  }
+  try {
+    writeFileSync(TOKEN_CACHE, tok, { mode: 0o600 });
+  } catch { /* best-effort cache */ }
+}
+
+/** Phoenix WebSocket URL — includes the effective token if we have one. */
+function wsUrl(): string {
+  return effectiveToken
+    ? `${WS_BASE}/socket/websocket?vsn=2.0.0&token=${encodeURIComponent(effectiveToken)}`
+    : `${WS_BASE}/socket/websocket?vsn=2.0.0`;
+}
+
+/** Returns Authorization header if we have a token, else empty object. */
 function authHeaders(): Record<string, string> {
-  return OAH_SECRET ? { Authorization: `Bearer ${OAH_SECRET}` } : {};
+  return effectiveToken ? { Authorization: `Bearer ${effectiveToken}` } : {};
+}
+
+/**
+ * Ensure we hold a valid auth token before connecting. If a secret/cached token
+ * is present, use it. Otherwise enroll via POST /api/join and poll GET
+ * /api/join/:id until the server approves (instant on the tailnet, else waits for
+ * an operator). The granted per-node token is cached for future starts.
+ */
+async function resolveToken(): Promise<void> {
+  if (effectiveToken) return;
+
+  try {
+    const res = await fetch(`${HTTP_BASE}/api/join`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: AGENT_NAME,
+        machine: AGENT_MACHINE,
+        role: AGENT_ROLE,
+        capabilities: AGENT_CAPABILITIES,
+      }),
+    });
+    const body: any = await res.json().catch(() => ({}));
+
+    if (body?.status === "approved" && body?.token) {
+      effectiveToken = body.token;
+      cacheToken(effectiveToken);
+      console.log(`[enroll] auto-approved — token granted (${body.reason ?? "approved"})`);
+      return;
+    }
+
+    const enrollId = body?.enroll_id;
+    if (!enrollId) {
+      console.log(`[enroll] no enroll_id from server — connecting without token`);
+      return;
+    }
+
+    console.log(`[enroll] pending operator approval (enroll_id=${enrollId}) — 승인 대기중...`);
+    console.log(`[enroll]   운영자 승인: /dureteam-status 에서 승인하거나`);
+    console.log(`[enroll]   curl -H "Authorization: Bearer <SECRET>" -X POST ${HTTP_BASE}/api/join/${enrollId}/approve`);
+
+    // Poll until approved (2s cadence, no hard cap — the daemon waits patiently).
+    while (!effectiveToken) {
+      await new Promise((r) => setTimeout(r, 2000));
+      try {
+        const pres = await fetch(`${HTTP_BASE}/api/join/${enrollId}`);
+        const pbody: any = await pres.json().catch(() => ({}));
+        if (pbody?.status === "approved" && pbody?.token) {
+          effectiveToken = pbody.token;
+          cacheToken(effectiveToken);
+          console.log(`[enroll] approved — token granted, connecting...`);
+        }
+      } catch { /* server hiccup — keep polling */ }
+    }
+  } catch (e: any) {
+    console.log(`[enroll] join failed (${e?.message ?? e}) — connecting without token`);
+  }
 }
 
 let WORK_KEY = process.env.WORK_KEY ?? "";
@@ -207,6 +291,11 @@ const pendingResults: Array<{ event: AgentEvent; payload: Record<string, unknown
 let ws: WebSocket | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let reconnectDelay = 1000;
+// Re-enrollment guard: if a cached (non-secret) token keeps getting rejected —
+// e.g. the server was reset or the token revoked — drop it and re-enroll.
+const TOKEN_FROM_ENV = !!process.env.OAH_SECRET;
+let sawOpenThisCycle = false;
+let failedOpens = 0;
 let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 /** Watchdog: if no server message arrives within 90s, force reconnect. */
 let heartbeatWatchdog: ReturnType<typeof setTimeout> | null = null;
@@ -290,11 +379,14 @@ function stopHeartbeat() {
 // ─── WebSocket connection ─────────────────────────────────────────────────────
 
 function connect() {
-  console.log(`[daemon] connecting → ${WS_URL}`);
-  ws = new WebSocket(WS_URL);
+  console.log(`[daemon] connecting → ${wsUrl()}`);
+  sawOpenThisCycle = false;
+  ws = new WebSocket(wsUrl());
 
   ws.onopen = async () => {
     reconnectDelay = 1000;
+    sawOpenThisCycle = true;
+    failedOpens = 0;
     console.log(`[daemon] WebSocket connected`);
 
     // If no work key, fetch or create one via REST
@@ -337,8 +429,25 @@ function connect() {
   ws.onclose = () => {
     stopHeartbeat();
     isJoined = false;
-    console.log(`[daemon] disconnected — reconnecting in ${reconnectDelay}ms`);
-    reconnectTimer = setTimeout(connect, reconnectDelay);
+
+    // Closed before ever opening → likely an auth reject (403). If we're using a
+    // cached/enrolled token (not an env secret), drop it after a few strikes and
+    // re-enroll — the server may have been reset or the token revoked.
+    if (!sawOpenThisCycle) failedOpens += 1;
+
+    if (failedOpens >= 3 && effectiveToken && !TOKEN_FROM_ENV) {
+      console.log(`[enroll] cached token rejected ${failedOpens}× — clearing and re-enrolling`);
+      effectiveToken = "";
+      try { unlinkSync(TOKEN_CACHE); } catch { /* already gone */ }
+      failedOpens = 0;
+      reconnectTimer = setTimeout(() => {
+        resolveToken().finally(connect);
+      }, reconnectDelay);
+    } else {
+      console.log(`[daemon] disconnected — reconnecting in ${reconnectDelay}ms`);
+      reconnectTimer = setTimeout(connect, reconnectDelay);
+    }
+
     reconnectDelay = Math.min(reconnectDelay * 2, 30_000);
   };
 }
@@ -1818,12 +1927,15 @@ console.log(`
  open-agent-harness | agent-daemon v${AGENT_VERSION}
  Agent : ${AGENT_NAME}
  Role  : ${AGENT_ROLE}
- Server: ${WS_URL}
+ Server: ${WS_BASE}/socket/websocket
+ Auth  : ${effectiveToken ? "token present" : "keyless — will enroll via /api/join"}
  Dir   : ${PROJECT_DIR}
  Proto : Phoenix Channel (vsn 2.0.0)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `);
 
+// Resolve a token (secret / cache / enrollment) before the first connect.
+await resolveToken();
 connect();
 startBrainServer();
 

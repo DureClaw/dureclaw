@@ -35,6 +35,14 @@ defmodule HarnessServer.AuthPlug do
 
   defp exempt?(conn) do
     Enum.member?(@exempt, conn.request_path) or
-      String.starts_with?(conn.request_path, "/dist/")
+      String.starts_with?(conn.request_path, "/dist/") or
+      join_exempt?(conn)
+  end
+
+  # Enrollment: a keyless node may POST /api/join and poll GET /api/join/:id.
+  # approve/deny (POST /api/join/:id/approve) stay authed (operator only).
+  defp join_exempt?(conn) do
+    (conn.method == "POST" and conn.request_path == "/api/join") or
+      (conn.method == "GET" and String.starts_with?(conn.request_path, "/api/join/"))
   end
 end

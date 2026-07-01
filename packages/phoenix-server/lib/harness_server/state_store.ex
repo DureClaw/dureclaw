@@ -32,6 +32,8 @@ defmodule HarnessServer.StateStore do
   @metrics_table :harness_metrics
   @eval_table :harness_evals
   @skill_table :harness_skills
+  @enroll_table :harness_enrollments
+  @token_table :harness_tokens
 
   # ─── Public API ─────────────────────────────────────────────────────────────
 
@@ -186,6 +188,50 @@ defmodule HarnessServer.StateStore do
     dets_to_list(@skill_table) |> Enum.map(fn {_k, v} -> length(v) end) |> Enum.sum()
   end
 
+  # ─── Node enrollment (join → approve → per-node token) ──────────────────────
+  # A keyless node POSTs /api/join with its identity. Tailnet/local peers are
+  # auto-approved (server issues a per-node token); off-tailnet peers land in a
+  # pending queue until an operator approves. Tokens are revocable per node and
+  # never expose the master OAH_SECRET.
+
+  @doc "Create a pending enrollment. Returns the enrollment map (with enroll_id)."
+  def create_enrollment(info) when is_map(info) do
+    GenServer.call(__MODULE__, {:create_enrollment, info})
+  end
+
+  @doc "Approve an enrollment, issuing a per-node token. Returns {:ok, enrollment} | :not_found."
+  def approve_enrollment(enroll_id) do
+    GenServer.call(__MODULE__, {:approve_enrollment, enroll_id})
+  end
+
+  @doc "Deny/remove an enrollment. Returns :ok."
+  def deny_enrollment(enroll_id) do
+    GenServer.call(__MODULE__, {:deny_enrollment, enroll_id})
+  end
+
+  @doc "Look up a single enrollment by id."
+  def get_enrollment(enroll_id) do
+    case :dets.lookup(@enroll_table, enroll_id) do
+      [{^enroll_id, e}] -> e
+      _ -> nil
+    end
+  end
+
+  @doc "All enrollments, newest first (optionally filter by status)."
+  def list_enrollments(status \\ :all) do
+    dets_to_list(@enroll_table)
+    |> Enum.map(fn {_id, e} -> e end)
+    |> Enum.filter(fn e -> status == :all or Map.get(e, "status") == to_string(status) end)
+    |> Enum.sort_by(&Map.get(&1, "requested_at"), :desc)
+  end
+
+  @doc "True if a per-node token has been issued (approved). Direct DETS read."
+  def token_approved?(token) when is_binary(token) and token != "" do
+    match?([{^token, _}], :dets.lookup(@token_table, token))
+  end
+
+  def token_approved?(_), do: false
+
   @doc "Store a pending task with dependency list."
   def store_pending_task(task_id, task_info) do
     GenServer.call(__MODULE__, {:store_pending_task, task_id, task_info})
@@ -268,6 +314,18 @@ defmodule HarnessServer.StateStore do
         type: :set
       )
 
+    {:ok, _} =
+      :dets.open_file(@enroll_table,
+        file: String.to_charlist(Path.join(data_dir, "harness_enrollments.dets")),
+        type: :set
+      )
+
+    {:ok, _} =
+      :dets.open_file(@token_table,
+        file: String.to_charlist(Path.join(data_dir, "harness_tokens.dets")),
+        type: :set
+      )
+
     :ets.new(@pending_table, [:named_table, :public, read_concurrency: true])
     :ets.new(@metrics_table, [:named_table, :public, read_concurrency: true])
 
@@ -287,6 +345,8 @@ defmodule HarnessServer.StateStore do
     :dets.close(@task_table)
     :dets.close(@eval_table)
     :dets.close(@skill_table)
+    :dets.close(@enroll_table)
+    :dets.close(@token_table)
     :ok
   end
 
@@ -411,6 +471,73 @@ defmodule HarnessServer.StateStore do
     kept = Enum.reject(existing, &(Map.get(&1, "eval_id") == eid))
     :dets.insert(@skill_table, {work_key, kept ++ [skill]})
     {:reply, :ok, state}
+  end
+
+  @impl true
+  def handle_call({:create_enrollment, info}, _from, state) do
+    id = "enr_" <> (:crypto.strong_rand_bytes(6) |> Base.encode16(case: :lower))
+    now = DateTime.utc_now() |> DateTime.to_iso8601()
+
+    enrollment =
+      %{
+        "enroll_id" => id,
+        "name" => Map.get(info, "name", "unknown@unknown"),
+        "machine" => Map.get(info, "machine", "unknown"),
+        "role" => Map.get(info, "role", "builder"),
+        "capabilities" => Map.get(info, "capabilities", []),
+        "source_ip" => Map.get(info, "source_ip", ""),
+        "status" => "pending",
+        "token" => nil,
+        "requested_at" => now,
+        "approved_at" => nil
+      }
+
+    :dets.insert(@enroll_table, {id, enrollment})
+    {:reply, enrollment, state}
+  end
+
+  @impl true
+  def handle_call({:approve_enrollment, id}, _from, state) do
+    case :dets.lookup(@enroll_table, id) do
+      [{^id, e}] ->
+        # Reuse an already-issued token on re-approval (idempotent).
+        token =
+          Map.get(e, "token") ||
+            "nt_" <> (:crypto.strong_rand_bytes(24) |> Base.url_encode64(padding: false))
+
+        now = DateTime.utc_now() |> DateTime.to_iso8601()
+        updated = %{e | "status" => "approved", "token" => token, "approved_at" => now}
+        :dets.insert(@enroll_table, {id, updated})
+
+        :dets.insert(
+          @token_table,
+          {token,
+           %{
+             "name" => e["name"],
+             "machine" => e["machine"],
+             "enroll_id" => id,
+             "approved_at" => now
+           }}
+        )
+
+        {:reply, {:ok, updated}, state}
+
+      _ ->
+        {:reply, :not_found, state}
+    end
+  end
+
+  @impl true
+  def handle_call({:deny_enrollment, id}, _from, state) do
+    case :dets.lookup(@enroll_table, id) do
+      [{^id, e}] ->
+        if t = Map.get(e, "token"), do: :dets.delete(@token_table, t)
+        :dets.delete(@enroll_table, id)
+        {:reply, :ok, state}
+
+      _ ->
+        {:reply, :ok, state}
+    end
   end
 
   @impl true
