@@ -128,24 +128,28 @@ SSH·WinRM·PsExec·WMI 등 **인바운드** 방식은 전부 같은 벽(자격�
 
 ## 7. 균질(Linux) vs 이종(Windows) — DureClaw 동일 과제 실측
 
-같은 빌드 과제(파이썬 → 독립 실행 바이너리)를 **DureClaw로** Linux 노드(`builder@linux-builder`, Ubuntu 24.04 x64, RTX 서버)에도 돌려 Windows와 비교했다.
+같은 빌드 과제(파이썬 → 독립 실행 바이너리)를 **DureClaw로** Linux 노드(`builder@linux-builder`, Ubuntu 24.04 x64, RTX 4090 서버)에도 **최신 v0.4.0 데몬 + Windows와 동일한 마커**(`[WRITE:b64]`)로 돌려 비교했다.
 
-| 태스크 | Windows (이종, 신 데몬) | Linux (균질, 구 데몬) |
+| 태스크 | Windows (이종, x64) | Linux (균질, x64) |
 |--------|:---:|:---:|
-| T1 정보수집 | 2 RT · 0.1 s · ✅ | 2 RT · 0.0 s · ✅ |
-| T2 파일생성·실행 | 2 RT · 0.1 s · ✅ (`[WRITE:b64]`) | 2 RT · 0.0 s · ✅ (`[SHELL]` base64) |
-| T3 빌드 파이프라인 | 4 RT · 11.5 s · ✅ **exe 7.35 MB** | 4 RT · 4.4 s · ✅ **ELF 7.11 MB** |
-| T4 산출물 회수 | 1 RT · 0.4 s · ✅ | 1 RT · 0.0 s · ✅ |
-| **합계(T1–T4)** | **9 RT · 12.1 s · 0 실패** | **9 RT · 4.4 s · 0 실패** |
+| T1 정보수집 | 2 RT · ✅ | 2 RT · ✅ |
+| T2 파일생성·실행 `[WRITE:b64]` | 2 RT · ✅ | 2 RT · ✅ |
+| T3 빌드 파이프라인 | 4 RT · 11.5 s · ✅ **exe 7.35 MB** | 4 RT · 4.2 s · ✅ **ELF 7.11 MB** |
+| T4 산출물 회수 | 1 RT · ✅ | 1 RT · ✅ |
+| T5 화면 캡처 `[SCREENSHOT]` | 1 RT · ✅ PNG 262 KB | ✗ 헤드리스(디스플레이 없음) |
+| **합계(T1–T4)** | **9 RT · 0 실패** | **9 RT · 0 실패** |
 
-두 OS 모두 DureClaw로 **동일 과제를 0 실패로 완주**했다(빌드 결과: `fib(20)=6765` 실행 확인). Linux가 빠른 건 전송이 아니라 빌드 머신(RTX 서버) 성능 차이다.
+T1–T4는 **양쪽 모두 동일 마커·동일 방식으로 0 실패 완주**(빌드 결과 `fib(20)=6765` 실행 확인). Linux가 빠른 건 전송이 아니라 빌드 머신(RTX 4090) 성능. T5만 갈렸는데, Linux 서버가 **헤드리스**(X 디스플레이 없음)라 캡처할 화면이 없어서다(`ENOENT` — 환경 조건이지 데몬 결함이 아니다). Windows는 GUI 세션이 있어 캡처됨.
 
-### 7-1. "Linux=무마찰"이 아니다 — 마찰의 종류가 다를 뿐
+### 7-1. "Linux=무마찰"이 아니다 — 셋업까지 3개의 마찰
 
-첫 순진한 Linux 실행은 **4개 실패**했다. 원인은 Windows와 전혀 다른 **Linux 특유의 두 마찰**:
+Linux를 최신으로 올려 이 결과를 얻기까지 **세 번 막혔다.** Windows와 전혀 다른, Linux/운영 특유의 마찰이다:
 
-1. **PEP 668 (externally-managed-environment)** — 최신 Debian/Ubuntu는 시스템 파이썬에 `pip install`을 차단한다. `--break-system-packages`(또는 venv)로만 pyinstaller 설치 가능.
-2. **혼재 버전 데몬(mixed-version fleet)** — linux-builder는 구버전 데몬이라 이번에 추가된 `[WRITE:b64]`/`[SCREENSHOT]` 마커를 모른다 → 마커가 **AI 백엔드로 새서** 파일 대신 대화체 응답을 반환. `[SHELL]`(모든 버전 공통)로 파일을 쓰면 정상.
+1. **Stale 네이티브 바이너리** — x64 Linux 설치는 GitHub Releases의 `oah-agent-linux-x64` 바이너리를 받는데, CI는 JS 번들만 재빌드하고 이 바이너리는 안 만든다 → 재설치해도 enrollment 이전 구버전(토큰 없이 붙어 401). **CI가 매번 빌드하는 JS 번들 + `bun`** 실행으로 우회.
+2. **PEP 668 (externally-managed-environment)** — 최신 Debian/Ubuntu는 시스템 파이썬에 `pip install`을 차단. `--break-system-packages`(또는 venv)로만 pyinstaller 설치.
+3. **`ROLE` vs `AGENT_ROLE` 함정** — 데몬은 `AGENT_ROLE`만 읽는데 원라이너는 흔히 `ROLE`을 export → role 미설정 시 **조용히 orchestrator(조율자)로 기동**해 워커 태스크를 전부 무시. 코드에 `ROLE` 폴백을 추가해 제거(commit `ebe1f9a`).
+
+→ 결론: **어느 OS도 마찰 0은 아니다.** Windows는 셸·인코딩·ACL·UAC, Linux는 stale 바이너리·PEP 668·role 함정. 마찰이 사라지는 게 아니라 **표면이 다를 뿐**이고, DureClaw의 `[SHELL]`/`[WRITE:b64]` 마커가 그 위에서 실행을 균질화한다. (혼재 버전·stale 바이너리 이슈는 "서버 재가동 시 자동 재접속"으로 fleet을 최신 번들로 일괄 올리면 해소된다 — 4절 복원력.)
 
 → 결론: **어느 OS도 마찰 0은 아니다.** Windows는 셸·인코딩·ACL·UAC, Linux는 PEP 668·버전 스큐. **`[SHELL]`이 두 세계의 공통분모**이고, 신 데몬의 `[WRITE:b64]`가 그 위에 인코딩·개행 정규화를 얹는다. (혼재 버전 이슈는 "서버 재가동 시 자동 재접속"으로 fleet을 일괄 업그레이드하면 해소된다 — 4절 복원력 참조.)
 
