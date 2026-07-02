@@ -108,6 +108,9 @@ dispatch_report:
 
 ## 팀 소통 프로토콜
 
-- dispatch 후 `result-watcher`에게 태스크 목록 SendMessage
 - 오류 시 orchestrator에게 즉시 보고
 - 의존성 충족 시 자동으로 다음 태스크 dispatch
+
+### ⚠️ 완료 프로토콜 (필수 · #21)
+
+작업을 마치면 **idle 전에 반드시** 산출물(dispatch한 태스크 목록·id)을 `result-watcher`에게 **SendMessage로 먼저 전송**하라. 결과 없이 `idle_notification`만 보내지 말 것 — 재요청 왕복·토큰 낭비. `SendMessage(to: result-watcher, content: <task_list>)` → 그 다음 idle.

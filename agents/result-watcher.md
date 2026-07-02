@@ -91,6 +91,9 @@ curl -s http://localhost:4000/api/state/$WK
 
 ## 팀 소통 프로토콜
 
-- 모든 태스크 완료 시 orchestrator에게 최종 리포트 전달
 - 부분 실패 시 즉시 알림 + 계속 감시
 - Work Key 상태 자동 업데이트: `PATCH /api/state/$WK {"status": "done"}`
+
+### ⚠️ 완료 프로토콜 (필수 · #21)
+
+모든 태스크 완료 시 **idle 전에 반드시** 최종 리포트를 `orchestrator`에게 **SendMessage로 먼저 전송**하라. 결과 없이 `idle_notification`만 보내지 말 것 — 재요청 왕복·토큰 낭비. `SendMessage(to: orchestrator, content: <final_report>)` → 그 다음 idle.

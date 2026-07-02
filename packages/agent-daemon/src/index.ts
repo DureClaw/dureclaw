@@ -58,7 +58,7 @@ import {
 
 // ─── Version ─────────────────────────────────────────────────────────────────
 
-const AGENT_VERSION = "0.4.0";
+const AGENT_VERSION = "0.4.1";
 
 // --version flag
 if (process.argv.includes("--version") || process.argv.includes("-v")) {
@@ -745,6 +745,17 @@ async function handleTaskAssign(payload: TaskPayload) {
     return;
   }
 
+  // Pickup ack (#19): tell the controller we accepted this task, so it can
+  // distinguish "picked up / running" from "queued / never picked up" instead
+  // of guessing from result-polling timeouts alone.
+  sendEvent("task.progress", {
+    task_id: taskId,
+    to: payload.from ?? "http@controller",
+    from: AGENT_NAME,
+    status: "running",
+    message: `picked up on ${AGENT_NAME}`,
+  });
+
   // Special: [SHELL] task — run shell command directly, no OpenCode/LLM
   if (payload.instructions.trimStart().startsWith("[SHELL]")) {
     await handleShellTask(payload);
@@ -953,27 +964,62 @@ async function handleTaskAssign(payload: TaskPayload) {
 
 // ─── Shell task handler ───────────────────────────────────────────────────────
 
+// Keep only the last N bytes of output — a multi-MB log (pip installs, model
+// downloads, progress bars) in a single task.result WS frame could exceed the
+// socket limit and silently vanish, leaving the task stuck pending (#15).
+const SHELL_OUTPUT_CAP = 128 * 1024;
+const SHELL_DEFAULT_TIMEOUT_MS = 30 * 60_000;
+
 async function handleShellTask(payload: TaskPayload) {
   const taskId = payload.task_id ?? `task-${Date.now()}`;
-  // Extract command after [SHELL] prefix
-  const cmd = payload.instructions.replace(/^\[SHELL\]\s*/i, "").trim();
+
+  // Strip [SHELL], then prefer a fenced ```code``` block if present so that
+  // surrounding prose/description lines don't get executed as commands and
+  // produce spurious `command not found` (exit 127) failures (#17).
+  let cmd = payload.instructions.replace(/^\s*\[SHELL\]\s*/i, "");
+  const fence = cmd.match(/```(?:[a-zA-Z0-9_-]*)\n([\s\S]*?)```/);
+  if (fence) cmd = fence[1];
+  cmd = cmd.trim();
 
   console.log(`[shell] ${taskId}: ${cmd.slice(0, 80)}`);
 
   let output = "";
+  let truncated = false;
+  let timedOut = false;
   let exitCode = 0;
+
+  // Cap accumulation to the last SHELL_OUTPUT_CAP bytes.
+  const append = (s: string) => {
+    output += s;
+    if (output.length > SHELL_OUTPUT_CAP) {
+      output = output.slice(output.length - SHELL_OUTPUT_CAP);
+      truncated = true;
+    }
+  };
+
+  const timeoutMs = payload.timeout_ms ?? SHELL_DEFAULT_TIMEOUT_MS;
 
   try {
     const isWindows = process.platform === "win32";
-    const shellCmd = isWindows
-      ? ["cmd.exe", "/c", cmd]
-      : ["sh", "-c", cmd];
-    const proc = spawn({
-      cmd: shellCmd,
-      cwd: PROJECT_DIR,
-      stdout: "pipe",
-      stderr: "pipe",
-    });
+    const shellCmd = isWindows ? ["cmd.exe", "/c", cmd] : ["sh", "-c", cmd];
+    const proc = spawn({ cmd: shellCmd, cwd: PROJECT_DIR, stdout: "pipe", stderr: "pipe" });
+
+    // Watchdog: kill a runaway/hung task so it can't stick pending forever (#15).
+    const killer = setTimeout(() => { timedOut = true; try { proc.kill(); } catch { /* already gone */ } }, timeoutMs);
+
+    // Live progress: stream a short tail every ~5s so long tasks show life and
+    // the controller can follow along even before the final result (#15/#19).
+    let lastTail = "";
+    const progressTimer = setInterval(() => {
+      const tail = output.slice(-2000);
+      if (tail && tail !== lastTail) {
+        lastTail = tail;
+        sendEvent("task.progress", {
+          task_id: taskId, to: payload.from ?? "http@controller", from: AGENT_NAME,
+          status: "running", output_tail: tail,
+        });
+      }
+    }, 5000);
 
     const decoder = new TextDecoder();
     const readStream = async (stream: ReadableStream<Uint8Array>) => {
@@ -982,19 +1028,29 @@ async function handleShellTask(payload: TaskPayload) {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-          output += decoder.decode(value);
+          append(decoder.decode(value));
         }
       } catch { /* closed */ }
     };
 
     await Promise.all([readStream(proc.stdout), readStream(proc.stderr)]);
     exitCode = await proc.exited;
+    clearTimeout(killer);
+    clearInterval(progressTimer);
   } catch (err) {
     output = err instanceof Error ? err.message : String(err);
     exitCode = 1;
   }
 
-  // Inject system info automatically
+  let finalOut = stripAnsi(output).trim();
+  if (truncated) {
+    finalOut = `…[output truncated to last ${Math.round(SHELL_OUTPUT_CAP / 1024)}KB]…\n${finalOut}`;
+  }
+  if (timedOut) {
+    finalOut += `\n[task timed out after ${Math.round(timeoutMs / 1000)}s — process killed]`;
+    if (exitCode === 0) exitCode = 124;
+  }
+
   const sysInfo = {
     machine: AGENT_MACHINE,
     agent: AGENT_NAME,
@@ -1009,9 +1065,12 @@ async function handleShellTask(payload: TaskPayload) {
     to: payload.from ?? "http@controller",
     from: AGENT_NAME,
     role: AGENT_ROLE,
-    status: exitCode === 0 ? "done" : "blocked",
-    output: stripAnsi(output).trim(),
+    // exit≠0 → "failed" (not "blocked" — blocked means capability mismatch) (#17)
+    status: exitCode === 0 ? "done" : "failed",
+    output: finalOut,
     exit_code: exitCode,
+    truncated,
+    timed_out: timedOut,
     sys: sysInfo,
     artifacts: [],
   });

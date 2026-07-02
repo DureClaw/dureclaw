@@ -23,6 +23,11 @@ curl -s http://localhost:4000/api/health
 
 실패 시: `setup-server.sh` 실행 또는 PHOENIX 환경변수로 원격 서버 지정.
 
+> ⚠️ **Phoenix 판별은 `/api/health`의 JSON(`{"ok":true,"version":...}`)으로만 하세요 (#20).**
+> `https://dureclaw.baryon.ai`는 **문서/설치 사이트(GitHub Pages)** 이지 Phoenix 서버가 아닙니다 —
+> 루트가 HTTP 200을 주더라도 `/api/*`는 전부 404입니다. 루트 200을 Phoenix 후보로 판단하지 마세요.
+> (`baryon.ai/server`·`/setup-agent.sh` 등은 설치 스크립트 배포 경로일 뿐입니다.)
+
 ### 2. Tailscale 피어 탐색
 
 ```bash
@@ -76,5 +81,11 @@ network_report:
 
 ## 팀 소통 프로토콜
 
-- 결과를 `team-builder`에게 SendMessage로 전달
 - 에러 시 orchestrator에게 즉시 보고
+
+### ⚠️ 완료 프로토콜 (필수 · #21)
+
+작업을 마치면 **idle 상태로 돌아가기 전에 반드시** 산출물(`network_report`)을 `team-builder`(또는 팀 리드)에게 **SendMessage로 먼저 전송**하라. 이것이 마지막 액션이어야 한다.
+
+- ❌ 금지: 결과 없이 `idle_notification`만 보내고 종료 — 팀 리드가 "결과 보내줘"를 재요청해야 해서 왕복·토큰 낭비가 발생한다.
+- ✅ 올바름: `SendMessage(to: team-builder, content: <network_report YAML>)` → 그 다음 idle.

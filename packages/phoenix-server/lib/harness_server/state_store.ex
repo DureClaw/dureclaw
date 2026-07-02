@@ -30,6 +30,7 @@ defmodule HarnessServer.StateStore do
   @task_table :harness_tasks
   @pending_table :harness_pending
   @metrics_table :harness_metrics
+  @task_status_table :harness_task_status
   @eval_table :harness_evals
   @skill_table :harness_skills
   @enroll_table :harness_enrollments
@@ -90,6 +91,36 @@ defmodule HarnessServer.StateStore do
   @doc "Append task result (supports multiple agents responding to same task_id)."
   def store_task_result(task_id, result) do
     GenServer.call(__MODULE__, {:store_task_result, task_id, result})
+  end
+
+  # ─── Task status lifecycle (queued → running → done|failed) ─────────────────
+  # A dispatch is HTTP 201 immediately, which says nothing about pickup (#19).
+  # We track lightweight status + timestamps in ETS: queued on dispatch, running
+  # on the agent's pickup ack, done/failed on result. Timestamps are first-write.
+
+  @doc "Set task status; provided fields are first-write (timestamps kept)."
+  def set_task_status(task_id, status, fields \\ %{}) do
+    existing =
+      case :ets.lookup(@task_status_table, task_id) do
+        [{^task_id, m}] -> m
+        _ -> %{}
+      end
+
+    merged =
+      fields
+      |> Enum.reduce(existing, fn {k, v}, acc -> Map.put_new(acc, k, v) end)
+      |> Map.put("status", status)
+
+    :ets.insert(@task_status_table, {task_id, merged})
+    :ok
+  end
+
+  @doc "Get task status map (or nil)."
+  def get_task_status(task_id) do
+    case :ets.lookup(@task_status_table, task_id) do
+      [{^task_id, m}] -> m
+      _ -> nil
+    end
   end
 
   @doc """
@@ -328,6 +359,7 @@ defmodule HarnessServer.StateStore do
 
     :ets.new(@pending_table, [:named_table, :public, read_concurrency: true])
     :ets.new(@metrics_table, [:named_table, :public, read_concurrency: true])
+    :ets.new(@task_status_table, [:named_table, :public, read_concurrency: true])
 
     # Rebuild daily counter from persisted work keys
     counter = rebuild_counter()

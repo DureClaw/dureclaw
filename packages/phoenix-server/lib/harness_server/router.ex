@@ -388,23 +388,33 @@ defmodule HarnessServer.Router do
       "work_key" => wk
     }
 
+    now = DateTime.utc_now() |> DateTime.to_iso8601()
+
+    StateStore.set_task_status(task_id, "queued", %{
+      "queued_at" => now,
+      "to" => Map.get(params, "to")
+    })
+
+    # strict_work_key (#18): mailbox delivery is agent-scoped (WK-agnostic), so a
+    # task can be picked up by an agent bound to a different work_key. When strict
+    # is set, skip the mailbox fallback so delivery is broadcast-only == WK-scoped.
+    strict = Map.get(params, "strict_work_key", false) in [true, "true", "1"]
+
     if depends_on == [] do
       # No dependencies — dispatch immediately
       HarnessServer.Endpoint.broadcast("work:#{wk}", "task.assign", payload)
-
-      # Only queue to the mailbox if the target is OFFLINE. An online agent
-      # already receives the broadcast; enqueuing as well caused the same task
-      # to run twice (broadcast + mailbox poll) and, on failure, a retry storm.
-      if to = Map.get(params, "to") do
-        online? = Map.has_key?(Presence.list("work:#{wk}"), to)
-        unless online?, do: StateStore.enqueue_mailbox(to, payload)
-      end
+      maybe_mailbox(Map.get(params, "to"), wk, payload, strict)
     else
       # Has dependencies — store as pending
       StateStore.store_pending_task(task_id, Map.put(payload, "depends_on", depends_on))
     end
 
-    send_json(conn, 201, %{task_id: task_id, work_key: wk, pending: depends_on != []})
+    send_json(conn, 201, %{
+      task_id: task_id,
+      work_key: wk,
+      status: "queued",
+      pending: depends_on != []
+    })
   end
 
   # ── POST /api/task/:task_id/result ──────────────────────────────────────────
@@ -529,15 +539,24 @@ defmodule HarnessServer.Router do
   # Poll for task result. Returns 202 while pending, 200 when done.
 
   get "/api/task/:task_id" do
+    st = StateStore.get_task_status(task_id) || %{}
+
     case StateStore.get_task_result(task_id) do
       {:ok, [single]} ->
-        send_json(conn, 200, single)
+        send_json(conn, 200, Map.merge(st, single))
 
       {:ok, results} ->
-        send_json(conn, 200, %{task_id: task_id, results: results, count: length(results)})
+        send_json(
+          conn,
+          200,
+          Map.merge(st, %{task_id: task_id, results: results, count: length(results)})
+        )
 
       :not_found ->
-        send_json(conn, 202, %{status: "pending", task_id: task_id})
+        # No result yet — report the lifecycle status (queued/running) instead of
+        # a bare "pending", so the controller can tell pickup from never-picked (#19).
+        status = Map.get(st, "status", "pending")
+        send_json(conn, 202, Map.merge(st, %{status: status, task_id: task_id}))
     end
   end
 
@@ -651,6 +670,17 @@ defmodule HarnessServer.Router do
     conn
     |> Plug.Conn.put_resp_content_type("application/json")
     |> Plug.Conn.send_resp(status, Jason.encode!(body))
+  end
+
+  # Queue to mailbox only when the target is set, OFFLINE, and not strict-scoped.
+  # (An online agent already gets the broadcast; strict mode skips the WK-agnostic
+  # mailbox path entirely — see #18.)
+  defp maybe_mailbox(nil, _wk, _payload, _strict), do: :ok
+
+  defp maybe_mailbox(to, wk, payload, strict) do
+    online? = Map.has_key?(Presence.list("work:#{wk}"), to)
+    if not online? and not strict, do: StateStore.enqueue_mailbox(to, payload)
+    :ok
   end
 
   # ── Command authority ─────────────────────────────────────────────────────────

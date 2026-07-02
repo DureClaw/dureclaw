@@ -158,6 +158,14 @@ defmodule HarnessServer.WorkChannel do
 
     if task_id = Map.get(payload, "task_id") do
       StateStore.store_task_result(task_id, msg)
+
+      # Lifecycle: mark terminal state (#19).
+      final = if Map.get(msg, "status") == "done", do: "done", else: "failed"
+
+      StateStore.set_task_status(task_id, final, %{
+        "finished_at" => DateTime.utc_now() |> DateTime.to_iso8601()
+      })
+
       maybe_record_eval(socket.assigns.work_key, task_id, msg)
       maybe_dispatch_unblocked(task_id, socket.assigns.work_key)
     end
@@ -247,11 +255,20 @@ defmodule HarnessServer.WorkChannel do
              "task.progress",
              "task.approval_requested"
            ] do
+    now = DateTime.utc_now() |> DateTime.to_iso8601()
+
     msg =
       payload
       |> Map.put("from", socket.assigns.agent_name)
       |> Map.put("event", event)
-      |> Map.put("ts", DateTime.utc_now() |> DateTime.to_iso8601())
+      |> Map.put("ts", now)
+
+    # A progress update is the agent's pickup ack — mark running once (#19).
+    task_id = Map.get(payload, "task_id")
+
+    if event == "task.progress" && task_id do
+      StateStore.set_task_status(task_id, "running", %{"picked_up_at" => now})
+    end
 
     broadcast!(socket, event, msg)
     {:reply, {:ok, %{broadcast: true}}, socket}

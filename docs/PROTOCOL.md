@@ -104,6 +104,29 @@ created → running → done
                  ↘ failed
 ```
 
+#### Work Key 스코핑 시맨틱 (중요 · #18)
+
+Work Key는 **격리 경계가 아니라 그룹핑 라벨**이다. 태스크가 노드에 도달하는 경로는 둘이고 스코핑이 다르다:
+
+| 경로 | 스코핑 | 설명 |
+|------|--------|------|
+| **WS broadcast** (`task.assign` on `work:{WK}`) | **WK 필터** | 해당 WK 채널에 join한 에이전트만 수신 |
+| **Mailbox 폴링** (`GET /api/mailbox/{agent}`) | **agent 단위 (WK 무관)** | 오프라인 대비 큐 — 에이전트가 **다른 WK에 바인딩돼 있어도** 자기 mailbox의 태스크는 소비 |
+
+즉 presence가 `WK-A`에 바인딩된 에이전트도, `POST /api/task`가 오프라인으로 판단해 mailbox에 넣은 `WK-B` 태스크를 pickup할 수 있다. 격리가 필요하면 **`POST /api/task {"strict_work_key": true}`** 로 dispatch하면 mailbox 폴백을 건너뛰어 **broadcast-only == WK 엄격 스코프**가 된다.
+
+#### 태스크 상태 라이프사이클 (#19)
+
+`POST /api/task`의 201은 pickup을 보장하지 않는다. `GET /api/task/{id}`가 상태 + 타임스탬프를 반환한다:
+```
+queued (queued_at) → running (picked_up_at) → done | failed (finished_at)
+```
+`running`은 에이전트의 pickup ack(첫 `task.progress`)로 전이된다. 계속 `queued`면 아직 아무도 안 잡은 것.
+
+#### 로컬 무인증 (#16)
+
+서버를 `OAH_TRUST_LOOPBACK=1`로 기동하면 **루프백(127.0.0.1/::1) 요청은 토큰 없이** REST API 사용 가능 — 같은 머신의 오케스트레이터(Claude Code)가 `OAH_SECRET` 없이 presence/task API를 쓸 수 있다. 원격/포워딩된 IP는 절대 신뢰하지 않는다.
+
 #### Agent 역할 (role)
 | role | 설명 |
 |------|------|

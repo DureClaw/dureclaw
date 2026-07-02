@@ -88,5 +88,8 @@ team_manifest:
 
 ## 팀 소통 프로토콜
 
-- 완료 후 `task-dispatcher`에게 team_manifest SendMessage
 - 합류 대기 에이전트 있으면 orchestrator에게 알림
+
+### ⚠️ 완료 프로토콜 (필수 · #21)
+
+작업을 마치면 **idle 전에 반드시** 산출물(`team_manifest`)을 `task-dispatcher`에게 **SendMessage로 먼저 전송**하라. 결과 없이 `idle_notification`만 보내지 말 것 — 팀 리드가 재요청해야 해서 왕복·토큰 낭비. `SendMessage(to: task-dispatcher, content: <team_manifest>)` → 그 다음 idle.
