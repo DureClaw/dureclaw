@@ -100,3 +100,79 @@ dureclaw는 이 중 2·5를 **프로토콜로 제도화**했다: 태스크 상�
 - 순수 단일 브라우저 업무 성숙도는 아직 **Aside가 앞선다**(ack·취소·skills·snapshot).
 - webclaw가 유일한 지점은 **"브라우저 + 이기종 머신을 한 마스터·한 버스로 keyless 지휘"** — 이번처럼 브라우저 다운로드 뒤에 GPU 채점·Windows 성적표가 붙는 파이프라인에서 진가가 난다.
 - 이번 세션의 실수(다운로드 ack 혼동, 재로드 마찰, 다중 다운로드 차단)는 webclaw를 개선(v0.3.2: 경로지정 다운로드·2MB 캡)하고 운영 규율(디스크 검증)을 세우는 계기가 됐다.
+
+---
+
+# 부록 — 조건이 바뀌면: 로그인 프로필 + Claude in Chrome + webclaw까지 쓸 수 있다면
+
+앞의 비교는 "Aside만 사용자 로그인 세션에 붙을 수 있다"를 전제로 했다. 하지만 **미리 로그인된 Chrome 프로필**을 준비할 수 있고, Claude in Chrome과 자체 브라우저 레이어(webclaw)까지 쓸 수 있다면 판단 축이 바뀐다.
+
+## 축이 옮겨간다: "세션 접근" → "운영 로직을 누가 만드나"
+
+로그인 프로필만 안정적으로 준비되면 Playwright persistent context나 agent-browser profile restore로도 **실 계정 자동화**가 된다. 즉 **Aside의 독점 강점이던 "로그인된 사용자 브라우저 접근"이 줄어든다.** 그러면 진짜 차이는 아래를 **누가/어디서 만드느냐**로 옮겨간다:
+
+- 다운로드 저장 검증 · 파일 정리 · 실패 복구 · 사용자 확인 · 장기 대기 · 작업 로그 · 보안 경계 · 사이트별 절차(skill)
+
+Aside는 이걸 **한 환경 안에서** 준다. Playwright/agent-browser는 **직접 만들어야** 한다. dureclaw는 이걸 **버스/프로토콜 계층**(아래)에서 준다.
+
+## Claude in Chrome은 메인 엔진이 아니다
+
+가능은 하다(로그인된 Claude 웹UI, API 키 없이 테스트, HITL 실험에 편함). 하지만 "브라우저 에이전트가 Claude 웹앱을 조작해 다시 브라우저 작업을 지시"하는 **이중 브라우저 구조**가 되어 느리고, 실패 지점이 많고, Claude UI 변경에 취약하고, 파일 업/다운로드·권한·대기 처리가 복잡하다. → **데모 / 수동 보조 / API 없는 환경 / human-in-the-loop 실험**용. 운영 자동화의 중심으로는 비추천.
+
+## webclaw 실제 구조 분석 (소스 기준 — 이 세션에서 확인)
+
+`github.com/DureClaw/webclaw`를 직접 뜯어본 결과:
+
+| 항목 | 실제 | 함의 |
+|---|---|---|
+| 규모 | **~17KB** (core 6.6KB + background 7.6KB + offscreen 1.9KB) | 프레임워크가 아니라 **얇은 keyless 브라우저 손** |
+| 마커 | FETCH · DOM · CLICK · FILL/TYPE · SUBMIT · JS · TABS · DOWNLOAD (9종) | 명령형 마커 인터페이스 |
+| **DOM 읽기** | **`innerText` + CSS 셀렉터** | **snapshot/ref 아님** → agent-browser/Playwright-MCP의 accessibility-snapshot+ref보다 토큰효율·안정성 낮음 |
+| **다운로드** | `chrome.downloads.download` (fire-only) | **완료 콜백(onChanged) 없음 · 취소 없음** → 이 세션에서 "무응답"·폭주 취소불가로 드러남. **검증은 외부(마스터)가 디스크로** 해야 함 |
+| skills/routines/memory | **없음** | Aside의 업무별 절차 자산 없음 |
+| 세션 | 사용자의 실제 Chrome 프로필 | Aside와 동일(실 로그인 세션) |
+| LLM | 없음(마스터 brain 위임, keyless) | 브라우저에 키 없음 |
+
+### 그래서 webclaw의 정확한 위치
+
+- Playwright: **저수준 브라우저 제어 엔진**
+- agent-browser: **LLM 친화 CLI + snapshot/ref 계층**
+- Aside: **실 사용자 작업 실행 환경 + skills + 파일/계정/브라우저 통합**
+- **webclaw: Playwright/CDP 위가 아니라 "확장(extension) 위의 얇은 keyless 브라우저 손" — snapshot/ref·skills·검증을 스스로 갖지 않는다.**
+
+핵심: webclaw 단독은 agent-browser의 snapshot/ref 경쟁자가 **아직 아니다**. webclaw의 가치는 브라우저 레이어 자체가 아니라, 그것이 **DureClaw 버스에 붙는다**는 데 있다 —
+- 검증·복구·장기대기·로그·현황을 **버스/프로토콜**이 제공: 태스크 상태 라이프사이클(`queued→running→done`), mailbox 재전달, presence 대시보드, 지수 백오프 자동재접속.
+- 즉 **"운영 로직"이 브라우저 레이어가 아니라 버스에 산다.** 이게 Aside(한 환경에 다 넣음)와의 구조적 차이다.
+
+> 요약: **dureclaw = webclaw(브라우저 손) + 버스(운영 척추) + 마스터(두뇌).** Aside가 "한 몸"이라면 dureclaw는 "손·척추·두뇌 분리형 + 이기종 확장".
+
+## 실전 권장 구조
+
+**로컬 사용자 업무 자동화 (이번 LearnUs류)** → Aside 중심
+```
+Aside + 현재 Chrome 세션 + skills + Playwright/snapshot + 파일시스템 + 사용자 확인
+```
+성숙도(검증·취소·skills·snapshot)에서 가장 매끄럽다. **순수 단일 브라우저 작업 하나면 이쪽.**
+
+**제품화 가능한 브라우저 agent** → webclaw 또는 agent-browser
+```
+webclaw|agent-browser + persistent Chrome profile + LLM API + job runner + logs + artifact storage
+```
+
+**반복 가능한 채점/다운로드 파이프라인** → Playwright
+```
+Playwright + 저장된 auth state + deterministic download + filesystem validation + CSV/log
+```
+
+**브라우저 + 이기종 머신(GPU·Windows·엣지) 교차 지휘** → dureclaw/webclaw (유일)
+```
+webclaw(브라우저 다운로드) → linux-builder(GPU 표절탐지) → Windows(성적표 xlsx) : 한 마스터·한 버스
+```
+
+## 벤치마크 제안 (성공 여부가 아니라 운영 품질로)
+
+같은 작업 3종을 4방식으로 돌려 **아래 기준**으로 비교:
+- 작업: ① LearnUs 과제 다운로드 ② GitHub 이슈 생성/수정 ③ 파일 업로드 후 응답 수신
+- 기준: **실제 저장 검증 · 실패 복구 · 토큰 사용량 · 작업 시간 · 로그 재현성 · 사용자 개입 횟수** (단순 "성공" 아님)
+
+이 세션의 LearnUs 작업이 이미 하나의 데이터포인트다 — webclaw로 완주는 했으나, **다운로드 ack 부재·다중 다운로드 차단·재로드 마찰**로 사용자 개입 횟수가 컸다(반면 fleet 확장성과 keyless는 확인). 성숙도는 Aside가, 확장성은 dureclaw가 앞선다.
