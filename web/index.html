@@ -592,6 +592,7 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
         <a href="#demo">데모</a>
         <a href="#ecosystem">에코시스템</a>
         <a href="#layers">레이어</a>
+        <a href="#vs-ssh">vs SSH</a>
         <a href="#hardware">하드웨어</a>
         <a href="#install">설치</a>
         <a href="#platforms">지원 환경</a>
@@ -870,6 +871,47 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
         <a href="https://github.com/hongsw/clawfit" target="_blank" style="color:var(--cyan2); text-decoration:none; border:1px solid var(--border); border-radius:20px; padding:3px 12px; background:var(--bg2)">clawfit — 에코시스템 맵 ↗</a>
         <a href="https://github.com/hongsw/clawfit/blob/main/docs/reference-levels.md" target="_blank" style="color:var(--cyan2); text-decoration:none; border:1px solid var(--border); border-radius:20px; padding:3px 12px; background:var(--bg2)">7계층 택소노미 (L1–L7) ↗</a>
       </div>
+    </div>
+  </div>
+</section>
+
+<!-- VS SSH -->
+<section class="section" id="vs-ssh" style="padding-top:0">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-num">⚡</span>
+      <h2 class="section-title">왜 <em>SSH가 아니라</em> DureClaw인가</h2>
+    </div>
+
+    <div style="border-left:3px solid var(--green);border-radius:8px;padding:14px 18px;margin:0 0 22px;background:var(--bg2)">
+      <div style="font:600 16px/1.5 'Syne',sans-serif;color:var(--white)">
+        SSH는 <span style="color:var(--red)">"이종 인바운드"</span>를 그대로 노출하고,<br/>
+        DureClaw는 그걸 <span style="color:var(--green)">"균질 아웃바운드 + 정규화 마커"</span>로 바꾼다.
+      </div>
+      <div style="color:var(--text2);font-size:13px;margin-top:8px">Linux↔Mac은 둘 다 POSIX라 "키 한 번 → 끝". 하지만 <strong>Windows가 노드에 끼는 순간</strong> SSH가 기대는 전제가 5개 축에서 동시에 깨진다 — <strong>Windows가 낄수록 이 차이가 커진다.</strong></div>
+    </div>
+
+    <div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;font-size:12.5px;min-width:640px">
+      <thead>
+        <tr style="text-align:left;color:var(--text3);border-bottom:1px solid var(--border)">
+          <th style="padding:8px 10px;font-weight:600">축</th>
+          <th style="padding:8px 10px;font-weight:600;color:var(--red)">SSH — 이종 인바운드 (Windows에서)</th>
+          <th style="padding:8px 10px;font-weight:600;color:var(--green)">DureClaw — 균질 아웃바운드</th>
+        </tr>
+      </thead>
+      <tbody style="color:var(--text2)">
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 10px;color:var(--white);font-weight:600">셸</td><td style="padding:8px 10px">cmd ↔ PowerShell ↔ WSL 혼재 — 따옴표·이스케이프 파손</td><td style="padding:8px 10px"><code>[SHELL]</code> 데몬이 OS별 셸 자동 선택</td></tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 10px;color:var(--white);font-weight:600">경로</td><td style="padding:8px 10px"><code>C:\…</code> 역슬래시·드라이브레터·<code>cd /d</code></td><td style="padding:8px 10px">경로를 그대로 전달, 노드가 로컬 해석</td></tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 10px;color:var(--white);font-weight:600">인코딩</td><td style="padding:8px 10px">cmd 코드페이지 → mojibake</td><td style="padding:8px 10px"><code>[WRITE:b64]</code> 바이트 그대로 기록</td></tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 10px;color:var(--white);font-weight:600">개행</td><td style="padding:8px 10px">CRLF ↔ LF — heredoc·스크립트 깨짐</td><td style="padding:8px 10px">base64 전송 → 개행 무관</td></tr>
+        <tr><td style="padding:8px 10px;color:var(--white);font-weight:600">인증</td><td style="padding:8px 10px">관리자는 <code>administrators_authorized_keys</code> + 무상속 ACL + <strong style="color:var(--red)">UAC 상승</strong></td><td style="padding:8px 10px">keyless 등록 — 인바운드 인증·방화벽·상승 <strong style="color:var(--green)">전부 없음</strong></td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <div style="margin-top:16px;font-size:12px;color:var(--text3)">
+      실측 실험: 같은 과제(Mac→Windows 파이썬→exe 빌드)에서 DureClaw는 <strong style="color:var(--green)">셋업 0 · 6단계로 exe 완성</strong>, SSH는 <strong style="color:var(--red)">작업 전 인증에서 4번 실패 + UAC 벽</strong>으로 한 줄도 실행 못 함. 차이는 전송 속도가 아니라 <strong>온보딩·인증·이종-OS 정규화의 마찰 제거</strong>다.
     </div>
   </div>
 </section>
