@@ -913,6 +913,15 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
     <div style="margin-top:16px;font-size:12px;color:var(--text3)">
       실측 실험: 같은 과제(Mac→Windows 파이썬→exe 빌드)에서 DureClaw는 <strong style="color:var(--green)">셋업 0 · 6단계로 exe 완성</strong>, SSH는 <strong style="color:var(--red)">작업 전 인증에서 4번 실패 + UAC 벽</strong>으로 한 줄도 실행 못 함. 차이는 전송 속도가 아니라 <strong>온보딩·인증·이종-OS 정규화의 마찰 제거</strong>다.
     </div>
+
+    <div style="margin-top:14px;border-left:3px solid var(--cyan);border-radius:8px;padding:12px 16px;background:var(--bg2)">
+      <div style="font:600 14px 'Syne',sans-serif;color:var(--white)">🔄 복원력 · 가시성 — SSH엔 없는 것</div>
+      <div style="color:var(--text2);font-size:12.5px;margin-top:6px">
+        <strong>서버를 재가동·업그레이드해도</strong> 노드가 <strong>자동 재접속</strong>(지수 백오프)하고, <strong>실시간 대시보드</strong>로 fleet 현황을 본다.
+        <span style="color:var(--text3)">SSH는 세션이 끊기면 수동 재연결이고, "누가 살아있나"를 보는 화면이 없다.</span>
+        <br/>실측: 이 프로젝트를 개선·배포하며 서버를 여러 번 재시작했지만 전 노드가 매번 스스로 복귀.
+      </div>
+    </div>
   </div>
 </section>
 
