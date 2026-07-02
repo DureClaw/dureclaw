@@ -922,6 +922,16 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
         <br/>실측: 이 프로젝트를 개선·배포하며 서버를 여러 번 재시작했지만 전 노드가 매번 스스로 복귀.
       </div>
     </div>
+
+    <div style="margin-top:14px;font-size:12.5px;color:var(--text2)">
+      <strong>균질 Linux↔Linux에서도</strong> SSH엔 구조적 한계가 남습니다 — 인바운드 도달성(NAT/방화벽 뒤 불가) · 1:N 팬아웃 · 지속성 · fleet 가시성 · 셸 밖 능력.
+      실측 한 방: 같은 리눅스 박스에 <strong style="color:var(--red)">SSH inbound :22는 timeout(못 들어감)</strong>인데 <strong style="color:var(--green)">DureClaw는 outbound로 붙어 exe까지 빌드</strong>했습니다.
+      <span style="color:var(--text3)">SSH는 전송 파이프, DureClaw는 fleet 버스 — 레이어가 다릅니다.</span>
+    </div>
+
+    <div style="margin-top:16px">
+      <a href="https://github.com/DureClaw/dureclaw/blob/main/docs/REPORT_dureclaw-vs-ssh.md" target="_blank" style="display:inline-block;text-decoration:none;border:1px solid var(--green);border-radius:24px;padding:9px 20px;background:var(--bg2);color:var(--green);font:700 13px 'Syne',sans-serif">📄 전체 실험 리포트 보기 — 태스크별 수치 · 균질/이종 비교 · 구조적 한계 <span style="color:var(--text3)">↗</span></a>
+    </div>
   </div>
 </section>
 

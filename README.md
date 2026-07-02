@@ -54,7 +54,11 @@ Linux↔Mac은 둘 다 POSIX라 "키 한 번 설정 → 끝"입니다. 하지만
 
 **복원력 · 가시성** — 서버를 재가동하거나 개선·배포해도 노드가 스스로 돌아옵니다(끊기면 1s→2s→…→30s 백오프 재접속). `http://서버:4000/` 대시보드로 온라인 노드·태스크·가입 대기를 실시간으로 봅니다. (실측: 이 프로젝트를 개발하며 프로덕션 서버를 여러 번 재시작했지만 전 노드가 매번 자동 복귀.) SSH엔 자동 재접속도, fleet 가시성도 없습니다.
 
-차이는 전송 속도가 아니라 **온보딩·인증·이종-OS 정규화의 마찰 제거 + 복원력·가시성**입니다. SSH·WinRM·PsExec 등 *인바운드* 방식은 전부 같은 벽(자격증명·방화벽·상승)에 걸리고, DureClaw는 *아웃바운드 에이전트 + 정규화 마커*로 그 계층 자체를 없앱니다. → 상세: [docs/REPORT_dureclaw-vs-ssh.md](./docs/REPORT_dureclaw-vs-ssh.md)
+차이는 전송 속도가 아니라 **온보딩·인증·이종-OS 정규화의 마찰 제거 + 복원력·가시성**입니다.
+
+**균질 Linux↔Linux에서도** SSH엔 구조적 한계가 남습니다 — 인바운드 도달성(NAT/방화벽 뒤 불가), 1:N 팬아웃, 지속성, fleet 가시성, 셸 밖 능력(스크린샷·평가·AI 위임). 실측 한 방: 같은 리눅스 박스에 **SSH inbound :22는 timeout(못 들어감)인데 DureClaw는 outbound로 붙어 exe까지 빌드**했습니다. SSH는 *전송 파이프*, DureClaw는 *fleet 버스* — 레이어가 다릅니다.
+
+📄 **전체 실험 리포트**: [docs/REPORT_dureclaw-vs-ssh.md](./docs/REPORT_dureclaw-vs-ssh.md) — 시뮬레이션 태스크별 수치, 균질/이종 비교, 구조적 한계 분석. SSH·WinRM·PsExec 등 *인바운드* 방식은 전부 같은 벽(자격증명·방화벽·상승)에 걸리고, DureClaw는 *아웃바운드 에이전트 + 정규화 마커*로 그 계층 자체를 없앱니다. → 상세: [docs/REPORT_dureclaw-vs-ssh.md](./docs/REPORT_dureclaw-vs-ssh.md)
 
 ---
 
