@@ -70,7 +70,9 @@ if (process.argv.includes("--version") || process.argv.includes("-v")) {
 
 const STATE_SERVER_RAW = process.env.STATE_SERVER ?? "ws://localhost:4000";
 const AGENT_MACHINE = process.env.AGENT_MACHINE ?? hostname();
-let AGENT_ROLE = process.env.AGENT_ROLE ?? "orchestrator";
+// Accept ROLE as a fallback — installers/one-liners commonly export ROLE, and a
+// silently-defaulted orchestrator won't execute worker tasks (subtle footgun).
+let AGENT_ROLE = process.env.AGENT_ROLE ?? process.env.ROLE ?? "orchestrator";
 let AGENT_NAME = process.env.AGENT_NAME ?? `${AGENT_ROLE}@${AGENT_MACHINE}`;
 const PROJECT_DIR = process.env.PROJECT_DIR ?? process.cwd();
 const PI_BIN          = process.env.PI_BIN          ?? "pi";
