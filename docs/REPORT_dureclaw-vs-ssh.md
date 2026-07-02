@@ -126,6 +126,31 @@ SSH·WinRM·PsExec·WMI 등 **인바운드** 방식은 전부 같은 벽(자격�
 
 ---
 
+## 7. 균질(Linux) vs 이종(Windows) — DureClaw 동일 과제 실측
+
+같은 빌드 과제(파이썬 → 독립 실행 바이너리)를 **DureClaw로** Linux 노드(`builder@linux-builder`, Ubuntu 24.04 x64, RTX 서버)에도 돌려 Windows와 비교했다.
+
+| 태스크 | Windows (이종, 신 데몬) | Linux (균질, 구 데몬) |
+|--------|:---:|:---:|
+| T1 정보수집 | 2 RT · 0.1 s · ✅ | 2 RT · 0.0 s · ✅ |
+| T2 파일생성·실행 | 2 RT · 0.1 s · ✅ (`[WRITE:b64]`) | 2 RT · 0.0 s · ✅ (`[SHELL]` base64) |
+| T3 빌드 파이프라인 | 4 RT · 11.5 s · ✅ **exe 7.35 MB** | 4 RT · 4.4 s · ✅ **ELF 7.11 MB** |
+| T4 산출물 회수 | 1 RT · 0.4 s · ✅ | 1 RT · 0.0 s · ✅ |
+| **합계(T1–T4)** | **9 RT · 12.1 s · 0 실패** | **9 RT · 4.4 s · 0 실패** |
+
+두 OS 모두 DureClaw로 **동일 과제를 0 실패로 완주**했다(빌드 결과: `fib(20)=6765` 실행 확인). Linux가 빠른 건 전송이 아니라 빌드 머신(RTX 서버) 성능 차이다.
+
+### 7-1. "Linux=무마찰"이 아니다 — 마찰의 종류가 다를 뿐
+
+첫 순진한 Linux 실행은 **4개 실패**했다. 원인은 Windows와 전혀 다른 **Linux 특유의 두 마찰**:
+
+1. **PEP 668 (externally-managed-environment)** — 최신 Debian/Ubuntu는 시스템 파이썬에 `pip install`을 차단한다. `--break-system-packages`(또는 venv)로만 pyinstaller 설치 가능.
+2. **혼재 버전 데몬(mixed-version fleet)** — linux-builder는 구버전 데몬이라 이번에 추가된 `[WRITE:b64]`/`[SCREENSHOT]` 마커를 모른다 → 마커가 **AI 백엔드로 새서** 파일 대신 대화체 응답을 반환. `[SHELL]`(모든 버전 공통)로 파일을 쓰면 정상.
+
+→ 결론: **어느 OS도 마찰 0은 아니다.** Windows는 셸·인코딩·ACL·UAC, Linux는 PEP 668·버전 스큐. **`[SHELL]`이 두 세계의 공통분모**이고, 신 데몬의 `[WRITE:b64]`가 그 위에 인코딩·개행 정규화를 얹는다. (혼재 버전 이슈는 "서버 재가동 시 자동 재접속"으로 fleet을 일괄 업그레이드하면 해소된다 — 4절 복원력 참조.)
+
+---
+
 ## 재현
 
 ```bash
