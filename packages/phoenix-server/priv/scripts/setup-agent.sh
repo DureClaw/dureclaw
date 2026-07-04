@@ -56,24 +56,36 @@ _ts_tui() {
     echo ""
     for i in "${!lines[@]}"; do
       local label="${lines[$i]%%|*}"
+      local num=$((i+1))
       if [[ $i -eq $idx ]]; then
-        printf "  \033[1;32m> %s\033[0m\n" "$label"
+        printf "  \033[1;32m[%d] > %s\033[0m\n" "$num" "$label"
       else
-        printf "    %s\n" "$label"
+        printf "  [%d]   %s\n" "$num" "$label"
       fi
     done
     echo ""
-    echo "  [↑/↓] select   [Enter] connect   [q] quit"
+    echo "  [1-9] 번호 선택   [↑/↓ · j/k] 이동   [Enter] 연결   [q] 종료"
 
     local key
     IFS= read -rsn1 key
     case "$key" in
       $'\x1b')
-        IFS= read -rsn2 -t 0.1 key
+        # 커서키: ESC [ A/B (normal) 또는 ESC O A/B (application 모드) 모두 처리.
+        # 타임아웃을 넉넉히(0.4s) — SSH/느린 터미널에서 시퀀스 유실 방지.
+        IFS= read -rsn2 -t 0.4 key
         case "$key" in
-          '[A') [[ $idx -gt 0 ]] && ((idx--)) ;;
-          '[B') [[ $idx -lt $((${#lines[@]}-1)) ]] && ((idx++)) ;;
+          '[A'|'OA') [[ $idx -gt 0 ]] && ((idx--)) ;;
+          '[B'|'OB') [[ $idx -lt $((${#lines[@]}-1)) ]] && ((idx++)) ;;
         esac ;;
+      [1-9])
+        # 숫자 = 해당 서버 즉시 선택·연결
+        if (( key >= 1 && key <= ${#lines[@]} )); then
+          tput cnorm 2>/dev/null
+          PHOENIX="${lines[$((key-1))]#*|}"
+          return 0
+        fi ;;
+      k|K) [[ $idx -gt 0 ]] && ((idx--)) ;;
+      j|J) [[ $idx -lt $((${#lines[@]}-1)) ]] && ((idx++)) ;;
       '') # Enter
         tput cnorm 2>/dev/null
         PHOENIX="${lines[$idx]#*|}"
