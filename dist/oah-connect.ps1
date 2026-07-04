@@ -41,31 +41,65 @@ function Get-TailscalePeers {
     return $peers
 }
 
-function Show-Menu($items) {
-    $idx = 0
+# 번호 입력 폴백 — iex 파이프 등 비대화형/화면깨짐 환경에서 항상 동작.
+function Read-MenuFallback($items) {
+    Write-Host ""
+    Write-Host "  OAH  Connect to Server" -ForegroundColor Cyan
+    Write-Host "  --------------------------------------" -ForegroundColor DarkGray
+    for ($i = 0; $i -lt $items.Count; $i++) {
+        Write-Host ("  [{0}] {1}" -f ($i + 1), $items[$i].Label)
+    }
+    Write-Host ""
     while ($true) {
-        Clear-Host
-        Write-Host ""
-        Write-Host "  OAH  Connect to Server" -ForegroundColor Cyan
-        Write-Host "  --------------------------------------" -ForegroundColor DarkGray
-        Write-Host ""
-        for ($i = 0; $i -lt $items.Count; $i++) {
-            if ($i -eq $idx) {
-                Write-Host "  > $($items[$i].Label)" -ForegroundColor Green
-            } else {
-                Write-Host "    $($items[$i].Label)" -ForegroundColor White
+        $sel = Read-Host "  번호 선택 (1-$($items.Count)), q=종료"
+        if ($sel -match '^[Qq]$') { return $null }
+        if ($sel -match '^\d+$' -and [int]$sel -ge 1 -and [int]$sel -le $items.Count) {
+            return $items[[int]$sel - 1]
+        }
+        Write-Host "  올바른 번호를 입력하세요." -ForegroundColor Yellow
+    }
+}
+
+function Show-Menu($items) {
+    # 입력이 리다이렉트된(iex 파이프) 환경에서는 화살표 메뉴가 깨지므로 번호 입력으로.
+    try { if ([Console]::IsInputRedirected) { return (Read-MenuFallback $items) } } catch { return (Read-MenuFallback $items) }
+
+    try {
+        $idx = 0
+        while ($true) {
+            Clear-Host
+            Write-Host ""
+            Write-Host "  OAH  Connect to Server" -ForegroundColor Cyan
+            Write-Host "  --------------------------------------" -ForegroundColor DarkGray
+            Write-Host ""
+            for ($i = 0; $i -lt $items.Count; $i++) {
+                $n = $i + 1
+                if ($i -eq $idx) {
+                    Write-Host ("  [{0}] > {1}" -f $n, $items[$i].Label) -ForegroundColor Green
+                } else {
+                    Write-Host ("  [{0}]   {1}" -f $n, $items[$i].Label) -ForegroundColor White
+                }
+            }
+            Write-Host ""
+            Write-Host "  [1-9] 번호   [Up/Down] 이동   [Enter] 연결   [Q] 종료" -ForegroundColor DarkGray
+
+            $key = [System.Console]::ReadKey($true)
+            # 숫자 키 → 즉시 선택·연결
+            $ch = $key.KeyChar
+            if ($ch -ge '1' -and $ch -le '9') {
+                $n = [int]::Parse($ch)
+                if ($n -ge 1 -and $n -le $items.Count) { return $items[$n - 1] }
+            }
+            switch ($key.Key) {
+                "UpArrow"   { if ($idx -gt 0) { $idx-- } }
+                "DownArrow" { if ($idx -lt $items.Count - 1) { $idx++ } }
+                "Enter"     { return $items[$idx] }
+                "Q"         { return $null }
             }
         }
-        Write-Host ""
-        Write-Host "  [Up/Down] select   [Enter] connect   [Q] quit" -ForegroundColor DarkGray
-
-        $key = [System.Console]::ReadKey($true)
-        switch ($key.Key) {
-            "UpArrow"   { if ($idx -gt 0) { $idx-- } }
-            "DownArrow" { if ($idx -lt $items.Count - 1) { $idx++ } }
-            "Enter"     { return $items[$idx] }
-            "Q"         { return $null }
-        }
+    } catch {
+        # 실제 콘솔이 아니면 ReadKey가 실패 → 번호 입력으로 폴백
+        return (Read-MenuFallback $items)
     }
 }
 
