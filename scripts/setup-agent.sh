@@ -539,7 +539,7 @@ echo ""
 echo " ⚠  oah 명령어가 없다면 다음을 실행하세요:"
 echo "      export PATH=\"\$HOME/.local/bin:\$PATH\""
 echo "    (새 터미널을 열면 자동 적용됩니다)"
-echo " ✅ 설정값이 $(case "${SHELL:-}" in */zsh) echo ~/.zshrc ;; */fish) echo ~/.config/fish/config.fish ;; *) echo ~/.bashrc ;; esac) 에 저장되었습니다."
+echo " ✅ 설정값이 $(case "${SHELL:-}" in (*/zsh) echo ~/.zshrc ;; (*/fish) echo ~/.config/fish/config.fish ;; (*) echo ~/.bashrc ;; esac) 에 저장되었습니다."
 echo ""
 
 exec env \
