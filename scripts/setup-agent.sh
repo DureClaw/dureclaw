@@ -352,17 +352,16 @@ if [[ "$USE_NODE" == "true" ]]; then
     BACKEND="remote-pi"
     echo "→ 브레인 위임 모드: AI 태스크를 ${BRAIN_URL} 로 위임 (pi 설치 생략)"
   else
-    # pi coding agent (기본 백엔드). pi.dev/install.sh 는 npm 글로벌 prefix 에 설치
+    # baryon-cli (기본 백엔드). npm 글로벌 prefix 에 baryon 바이너리 설치.
     command -v npm &>/dev/null && export PATH="$(npm config get prefix 2>/dev/null)/bin:$PATH"
-    export PATH="$HOME/.local/bin:$HOME/.local/share/pi-node/current/bin:$PATH"
-    if ! command -v pi &>/dev/null; then
-      echo "→ pi coding agent 설치 시도 중..."
-      curl -fsSL https://pi.dev/install.sh | sh 2>/dev/null \
-        || (command -v npm &>/dev/null && npm install -g --ignore-scripts @earendil-works/pi-coding-agent 2>/dev/null) \
-        || echo "⚠ pi 설치 실패 (npm 없음/미지원). [SHELL] 태스크만 사용 가능."
+    export PATH="$HOME/.local/bin:$PATH"
+    if ! command -v baryon &>/dev/null; then
+      echo "→ baryon-cli 설치 시도 중..."
+      command -v npm &>/dev/null && npm install -g @baryonlabs/cli 2>/dev/null \
+        || echo "⚠ baryon-cli 설치 실패 (npm 없음/미지원). [SHELL] 태스크만 사용 가능."
       command -v npm &>/dev/null && export PATH="$(npm config get prefix 2>/dev/null)/bin:$PATH"
     fi
-    BACKEND="pi"
+    BACKEND="baryon"
     if command -v zeroclaw &>/dev/null; then
       BACKEND="zeroclaw"
       echo "→ ZeroClaw 감지됨 — AI 백엔드로 사용"
@@ -407,6 +406,7 @@ CFG
     PROJECT_DIR="$DIR" \
     BRAIN_URL="${BRAIN_URL:-}" \
     BRAIN_TOKEN="${BRAIN_TOKEN:-}" \
+    PI_BIN="${PI_BIN:-$(command -v baryon 2>/dev/null || echo baryon)}" \
     node "$JS_BUNDLE"
 fi
 
@@ -487,15 +487,21 @@ else
   fi
 fi
 
-# ─── 3. pi coding agent ─────────────────────────────────────────────────────
+# ─── 3. baryon coding agent (baryon-cli) ─────────────────────────────────────
+# baryon 은 pi 코딩 에이전트의 래퍼 — `baryon -p "..."` == `pi -p "..."` (옵션 패스스루).
+# 데몬은 PI_BIN=baryon 으로 이 CLI 를 호출한다.
 
 command -v npm &>/dev/null && export PATH="$(npm config get prefix 2>/dev/null)/bin:$PATH"
-export PATH="$HOME/.local/bin:$HOME/.local/share/pi-node/current/bin:$PATH"
-if ! command -v pi &>/dev/null; then
-  echo "→ pi coding agent 설치 중..."
-  curl -fsSL https://pi.dev/install.sh | sh \
-    || (command -v npm &>/dev/null && npm install -g --ignore-scripts @earendil-works/pi-coding-agent)
-  command -v npm &>/dev/null && export PATH="$(npm config get prefix 2>/dev/null)/bin:$PATH"
+export PATH="$HOME/.local/bin:$PATH"
+if ! command -v baryon &>/dev/null; then
+  echo "→ baryon-cli 설치 중..."
+  if command -v npm &>/dev/null; then
+    npm install -g @baryonlabs/cli \
+      || echo "⚠ baryon-cli 설치 실패 (npm 오류). [SHELL] 태스크만 사용 가능."
+    export PATH="$(npm config get prefix 2>/dev/null)/bin:$PATH"
+  else
+    echo "⚠ npm 이 없어 baryon-cli 를 설치할 수 없습니다. Node.js/npm 설치 후 다시 실행하세요."
+  fi
 fi
 
 # ─── 4. Work Key ──────────────────────────────────────────────────────────────
@@ -548,4 +554,5 @@ exec env \
   AGENT_ROLE="$ROLE" \
   WORK_KEY="${WK:-}" \
   PROJECT_DIR="$DIR" \
+  PI_BIN="${PI_BIN:-$(command -v baryon 2>/dev/null || echo baryon)}" \
   "$EXE"

@@ -181,20 +181,20 @@ if ($env:BRAIN_URL) {
     Write-Host "-> brain delegation mode: AI tasks → $env:BRAIN_URL (skip local pi)"
 } else {
     $BACKEND = "none"
-    foreach ($cmd in @("claude", "pi", "opencode", "zeroclaw", "aider")) {
+    foreach ($cmd in @("claude", "baryon", "pi", "opencode", "zeroclaw", "aider")) {
         if (Get-Command $cmd -ErrorAction SilentlyContinue) { $BACKEND = $cmd; break }
     }
-    if ($BACKEND -eq "none" -and -not (Get-Command pi -ErrorAction SilentlyContinue)) {
-        Write-Host "-> installing pi coding agent..."
+    if ($BACKEND -eq "none" -and -not (Get-Command baryon -ErrorAction SilentlyContinue)) {
+        Write-Host "-> installing baryon-cli..."
         try {
             if (Get-Command npm -ErrorAction SilentlyContinue) {
-                npm install -g --ignore-scripts @earendil-works/pi-coding-agent
+                npm install -g @baryonlabs/cli
             } elseif (Get-Command bun -ErrorAction SilentlyContinue) {
-                bun install -g @earendil-works/pi-coding-agent
+                bun install -g @baryonlabs/cli
             }
-            if (Get-Command pi -ErrorAction SilentlyContinue) { $BACKEND = "pi" }
+            if (Get-Command baryon -ErrorAction SilentlyContinue) { $BACKEND = "baryon" }
         } catch {
-            Write-Host "[warn] pi install failed. Only [SHELL] tasks available."
+            Write-Host "[warn] baryon-cli install failed. Only [SHELL] tasks available."
         }
     }
 }

@@ -28,7 +28,7 @@
  *   AGENT_MACHINE  machine label (default: hostname)
  *   WORK_KEY       Active Work Key (LN-YYYYMMDD-XXX). Auto-created if omitted.
  *   PROJECT_DIR    Working directory for the coding agent (default: process.cwd())
- *   PI_BIN         Path to pi coding-agent binary (default: pi)
+ *   PI_BIN         Path to coding-agent binary (default: baryon — @baryonlabs/cli, pi 래퍼)
  *   OPENCODE_BIN   Path to opencode binary (legacy fallback; default: opencode)
  *   BRAIN_URL      Sub-node: master pi endpoint to delegate AI tasks (keyless node)
  *   BRAIN_TOKEN    Shared fleet token for brain auth (Bearer)
@@ -58,7 +58,7 @@ import {
 
 // ─── Version ─────────────────────────────────────────────────────────────────
 
-const AGENT_VERSION = "0.4.2";
+const AGENT_VERSION = "0.4.3";
 
 // --version flag
 if (process.argv.includes("--version") || process.argv.includes("-v")) {
@@ -75,7 +75,9 @@ const AGENT_MACHINE = process.env.AGENT_MACHINE ?? hostname();
 let AGENT_ROLE = process.env.AGENT_ROLE ?? process.env.ROLE ?? "orchestrator";
 let AGENT_NAME = process.env.AGENT_NAME ?? `${AGENT_ROLE}@${AGENT_MACHINE}`;
 const PROJECT_DIR = process.env.PROJECT_DIR ?? process.cwd();
-const PI_BIN          = process.env.PI_BIN          ?? "pi";
+// baryon-cli(@baryonlabs/cli) 가 기본 코딩 에이전트. `baryon -p "..."` 는 pi 로 패스스루된다.
+// pi 를 직접 쓰려면 PI_BIN=pi 로 오버라이드.
+const PI_BIN          = process.env.PI_BIN          ?? "baryon";
 const OPENCODE_BIN    = process.env.OPENCODE_BIN    ?? "opencode";
 const ZEROCLAW_BIN    = process.env.ZEROCLAW_BIN    ?? "zeroclaw";
 const CLAUDE_BIN      = process.env.CLAUDE_BIN      ?? "claude";
@@ -1394,7 +1396,8 @@ function buildAgentCmd(backend: string, prompt: string): string[] {
     case "claude":
       return [CLAUDE_BIN, "-p", prompt];
 
-    // Pi coding agent (@earendil-works/pi-coding-agent)  — `pi -p "<prompt>"`
+    // baryon-cli(@baryonlabs/cli) 또는 pi  — `baryon -p "<prompt>"` (baryon 이 pi 로 패스스루)
+    case "baryon":
     case "pi":
     case "pi-agent":
       return [PI_BIN, "-p", prompt];

@@ -90,7 +90,7 @@ export function detectPreferredModel(): string {
   if (process.env.GEMINI_API_KEY || has("gemini")) return "gemini-2.5-pro";
   if (has("ollama")) return `ollama:${process.env.OLLAMA_MODEL ?? "gemma4"}`;
   if (has("claude")) return "claude-sonnet-4-6";
-  if (has("pi")) return "pi/auto";
+  if (has("baryon") || has("pi")) return "pi/auto";  // baryon = pi 래퍼(@baryonlabs/cli)
   if (has("opencode")) return "opencode/auto";
   return "claude-haiku-4-5";
 }
@@ -106,7 +106,7 @@ export function detectCapabilities(): string[] {
   if (ram !== null) caps.push(`ram:${ram}g`);
 
   // AI backends
-  if (has("pi"))             caps.push("pi");             // Pi coding agent
+  if (has("baryon") || has("pi")) caps.push("pi");        // baryon-cli(=pi 래퍼) 또는 pi
   if (has("opencode"))       caps.push("opencode");       // OpenCode (legacy)
   if (has("zeroclaw"))       caps.push("zeroclaw");
   if (has("claude"))         caps.push("claude-cli");    // Claude Code CLI
