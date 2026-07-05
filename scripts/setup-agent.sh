@@ -43,6 +43,8 @@ _ts_tui() {
   local lines=()
   while read -r line; do lines+=("$line"); done < <(_ts_online_peers)
   [[ ${#lines[@]} -eq 0 ]] && return 1
+  # 대화형 터미널이 없으면(완전 headless) 픽커 불가 → 호출부가 안내 메시지로 폴백.
+  [[ -r /dev/tty ]] || return 1
 
   local idx=0
   tput civis 2>/dev/null
@@ -66,14 +68,17 @@ _ts_tui() {
     echo ""
     echo "  [1-9] 번호 선택   [↑/↓ · j/k] 이동   [Enter] 연결   [q] 종료"
 
-    local key
-    IFS= read -rsn1 key
+    local key rest
+    # /dev/tty에서 읽는다 — `bash <(curl ...)`로 stdin이 파이프여도 키 입력이 동작.
+    # (stdin이 파이프면 read가 즉시 반환돼 메뉴가 무한 재출력되던 문제 해결)
+    IFS= read -rsn1 key < /dev/tty
     case "$key" in
       $'\x1b')
-        # 커서키: ESC [ A/B (normal) 또는 ESC O A/B (application 모드) 모두 처리.
-        # 타임아웃을 넉넉히(0.4s) — SSH/느린 터미널에서 시퀀스 유실 방지.
-        IFS= read -rsn2 -t 0.4 key
-        case "$key" in
+        # 커서키: ESC 다음 2바이트를 블로킹으로 읽는다.
+        # macOS 기본 bash 3.2는 소수 `read -t`(예: -t 0.4/-t 0.1)를 지원하지 않으므로
+        # 타임아웃을 쓰지 않는다. 화살표는 3바이트가 한 번에 오므로 안전(ESC 단독 종료는 q).
+        IFS= read -rsn2 rest < /dev/tty
+        case "$rest" in
           '[A'|'OA') [[ $idx -gt 0 ]] && ((idx--)) ;;
           '[B'|'OB') [[ $idx -lt $((${#lines[@]}-1)) ]] && ((idx++)) ;;
         esac ;;
