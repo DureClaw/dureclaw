@@ -82,6 +82,11 @@ jobs:
             arch: arm64
             runner: macos-14
             bun_target: bun-darwin-arm64
+          # Intel Mac (x86_64) — arm64 러너에서 크로스컴파일
+          - os: darwin
+            arch: x64
+            runner: macos-14
+            bun_target: bun-darwin-x64
           - os: linux
             arch: x64
             runner: ubuntu-22.04
