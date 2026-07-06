@@ -48,10 +48,10 @@ flowchart TB
     WC --> SS
     EP --> WC
 
-    AD <-->|"WS work:{WK} · task.assign/result"| WC
-    WCLAW <-->|"WS work:{WK}"| WC
-    MCPB <-->|"WS work:{WK}"| WC
-    SIM <-->|"WS work:{WK}"| WC
+    AD <-->|"WS work:WK · task.assign/result"| WC
+    WCLAW <-->|"WS work:WK"| WC
+    MCPB <-->|"WS work:WK"| WC
+    SIM <-->|"WS work:WK"| WC
 
     AD -->|"코딩 태스크"| BE["코딩 백엔드<br/>baryon(pi) · claude-cli · ollama …"]
     AD -.->|"remote-pi 위임"| BRAIN["마스터 brain<br/>/brain/exec :4111"]
