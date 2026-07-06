@@ -4,7 +4,7 @@
 > **범위**: 전체 시스템의 구성요소·데이터모델·통신 프로토콜·핵심 흐름·배포.
 > **최종 검증**: 2026-07-06 (코드 대조: `packages/phoenix-server/lib`, `packages/agent-daemon/src`, `scripts/`, `.github/workflows/`).
 >
-> 이 문서는 **정본(canonical) 아키텍처 레퍼런스**다. 마케팅/실측 리포트는 `docs/REPORT_*.md`, 통신 규약 상세는 `docs/PROTOCOL.md`를 참조. 문서 간 관계는 [§13 문서 맵](#13-문서-맵)에.
+> 이 문서는 **정본(canonical) 아키텍처 레퍼런스**다. 마케팅/실측 리포트는 `docs/REPORT_*.md`, 통신 규약 상세는 `docs/PROTOCOL.md`를 참조. 문서 간 관계는 [§12 문서 맵](#12-문서-맵)에.
 
 ---
 
@@ -13,7 +13,7 @@
 - **정본 제품명**: **DureClaw**. 내부 코드네임/OTP 앱은 **`open-agent-harness` (oah)** — 바이너리(`oah-agent`), CLI(`oah`), 환경변수(`OAH_*`), Elixir 모듈(`HarnessServer`)에 남아 있다. 둘은 같은 것을 가리킨다.
 - **한 줄 정의**: Claude Code(오케스트레이터 두뇌) + Phoenix(Elixir) WebSocket 협력 버스. Mac이 조율하는 동안 GPU 서버·Linux·Windows·라즈베리파이·브라우저가 **같은 사설망(Tailscale) 위 하나의 버스**에 붙어 동시에 일한다.
 
-> ⚠️ **네이밍 표류(알려진 이슈)**: 구 도메인 `open-agent-harness.baryon.ai` 잔재가 일부 옛 문서에 있으나, **현재 정본 도메인은 `dureclaw.baryon.ai`**. [§12](#12-버전--네이밍-정합성-알려진-불일치) 참조.
+> ⚠️ **네이밍 표류(알려진 이슈)**: 구 도메인 `open-agent-harness.baryon.ai` 잔재가 일부 옛 문서에 있으나, **현재 정본 도메인은 `dureclaw.baryon.ai`**. [§11](#11-버전--네이밍-정합성-알려진-불일치) 참조.
 
 ---
 
@@ -85,7 +85,7 @@ StateStore → ChatStore → Phoenix.PubSub → Presence → Endpoint
 
 머신당 **노드 데몬**. `#!/usr/bin/env bun` (Node 폴백 겸용, `spawn-compat.ts`가 Bun/Node spawn 통일). 본체 `index.ts`(~2100줄). `AGENT_VERSION = "0.4.3"` (`index.ts:61`).
 
-핵심 서브시스템은 [§4 통신](#4-통신-프로토콜)·[§8 백엔드](#8-코딩-백엔드)·[§9 brain](#9-brain-노드-위임)에서 상술. 요약 상수:
+핵심 서브시스템은 [§4 통신](#4-통신-프로토콜)·[§7 백엔드](#7-코딩-백엔드)·[§8 brain](#8-brain-노드-위임)에서 상술. 요약 상수:
 
 | 상수 | 값 | 위치 |
 |---|---|---|
@@ -152,7 +152,7 @@ DETS (영속)                              ETS (휘발)
 └─ :harness_tokens   token → meta          (token_approved? 직접 조회)
 ```
 
-- **Work Key 형식**: 코드 `generate_work_key`는 **`WK-<8hex>`** 생성 (`state_store.ex:530`). 단 moduledoc/일부 문서/CLAUDE.md는 레거시 **`LN-YYYYMMDD-XXX`**를 참조 — 둘이 혼재하며 `LN-` 재빌드 카운터(`:852`)도 있음. **신규 키는 `WK-`.** ([§12](#12-버전--네이밍-정합성-알려진-불일치))
+- **Work Key 형식**: 코드 `generate_work_key`는 **`WK-<8hex>`** 생성 (`state_store.ex:530`). 단 moduledoc/일부 문서/CLAUDE.md는 레거시 **`LN-YYYYMMDD-XXX`**를 참조 — 둘이 혼재하며 `LN-` 재빌드 카운터(`:852`)도 있음. **신규 키는 `WK-`.** ([§11](#11-버전--네이밍-정합성-알려진-불일치))
 - **태스크 생명주기**: `queued`(dispatch) → `running`(progress ack) → `done`/`failed`(result). 타임스탬프 first-write 보존.
 
 ---
@@ -301,11 +301,7 @@ sequenceDiagram
 
 ---
 
-## 7. (예약) — 아래 §8~§10에서 백엔드·brain·학습루프 상술
-
----
-
-## 8. 코딩 백엔드
+## 7. 코딩 백엔드
 
 데몬은 태스크를 코딩 CLI에 위임한다. `buildAgentCmd()` (`index.ts:1389-1436`):
 
@@ -328,7 +324,7 @@ sequenceDiagram
 
 ---
 
-## 9. Brain 노드 위임
+## 8. Brain 노드 위임
 
 "로컬 손 / 원격 두뇌" — provider 인증(pi/claude 키)을 **마스터 한 대**만 보유하고 함대가 공유한다.
 
@@ -348,7 +344,7 @@ sequenceDiagram
 
 ---
 
-## 10. 평가 · 학습(RSI) 루프 + 스킬 레지스트리
+## 9. 평가 · 학습(RSI) 루프 + 스킬 레지스트리
 
 ```mermaid
 flowchart LR
@@ -370,7 +366,7 @@ flowchart LR
 
 ---
 
-## 11. 배포 아키텍처
+## 10. 배포 아키텍처
 
 **세 개의 독립 채널** + 프로덕션 Fly.
 
@@ -397,7 +393,7 @@ flowchart LR
 
 ---
 
-## 12. 버전 · 네이밍 정합성 (알려진 불일치)
+## 11. 버전 · 네이밍 정합성 (알려진 불일치)
 
 문서화 시 주의할 **실제 코드상의 표류**:
 
@@ -413,7 +409,7 @@ flowchart LR
 
 ---
 
-## 13. 문서 맵
+## 12. 문서 맵
 
 이 문서를 정본 진입점으로, 상세는 각 문서에:
 
