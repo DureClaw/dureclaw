@@ -1,0 +1,198 @@
+name: E2E
+
+# 실제 실행 스모크 — OS 별로 서버와 노드를 같은 러너에 띄우고
+# "가입 → 접속 → 작업 지시 → 실행 → 결과" 를 끝까지 확인한다.
+# (러너끼리는 네트워크가 안 이어지므로 OS 마다 자기 서버를 띄운다)
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+# 마스터 비밀키는 서버에만 준다. 노드는 키 없이 가입(/api/join)하는 실제 경로를 탄다.
+jobs:
+  # ── Linux: 소스 서버 + Bun 에이전트 + Node 18 번들 에이전트(RPi armv7 경로) ──
+  linux:
+    name: Linux — server · Bun agent · Node 18 bundle agent
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@v1
+        with: { elixir-version: "1.17", otp-version: "27" }
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: latest }
+      - uses: actions/setup-node@v4
+        with: { node-version: "18" }
+      - uses: actions/cache@v4
+        with:
+          path: |
+            packages/phoenix-server/deps
+            packages/phoenix-server/_build
+          key: e2e-mix-${{ runner.os }}-${{ hashFiles('packages/phoenix-server/mix.lock') }}
+
+      - name: Start server
+        working-directory: packages/phoenix-server
+        run: |
+          mix local.hex --force && mix local.rebar --force
+          mix deps.get && mix compile
+          OAH_SECRET=ci-secret OAH_BIND_IP=127.0.0.1 PORT=4000 OAH_DATA_DIR=$RUNNER_TEMP/oahdata \
+            nohup mix run --no-halt > $RUNNER_TEMP/server.log 2>&1 &
+
+      - run: bun install
+      - name: Wait for server + work key
+        run: bun test/e2e/smoke.ts --token ci-secret --ensure-wk-only --timeout 180
+
+      - name: Start agents
+        run: |
+          STATE_SERVER=ws://127.0.0.1:4000 AGENT_ROLE=builder AGENT_NAME=builder@ci-bun HOME=$(mktemp -d) \
+            nohup bun packages/agent-daemon/src/index.ts > $RUNNER_TEMP/agent-bun.log 2>&1 &
+          # Pages 가 배포하는 oah-agent.js 와 같은 빌드 → Node 18 로 실행
+          bun build packages/agent-daemon/src/node-entry.ts --target=node --format=cjs --outfile=$RUNNER_TEMP/oah-agent.js
+          node --version
+          STATE_SERVER=ws://127.0.0.1:4000 AGENT_ROLE=builder AGENT_NAME=builder@ci-node HOME=$(mktemp -d) \
+            nohup node $RUNNER_TEMP/oah-agent.js > $RUNNER_TEMP/agent-node.log 2>&1 &
+
+      - name: Bun agent runs a task
+        run: bun test/e2e/smoke.ts --token ci-secret --agent builder@ci-bun --cmd "[SHELL] echo hello-bun && uname -s" --expect hello-bun
+      - name: Node 18 agent runs a task
+        run: bun test/e2e/smoke.ts --token ci-secret --agent builder@ci-node --cmd "[SHELL] echo hello-node && uname -s" --expect hello-node
+
+      - name: Logs
+        if: always()
+        run: for f in $RUNNER_TEMP/*.log; do echo "::group::$f"; tail -n 80 "$f"; echo "::endgroup::"; done
+
+  # ── macOS: DureClaw.app(메뉴 막대 서버 앱) + 컴파일된 에이전트 바이너리 ──────
+  macos:
+    name: macOS — DureClaw.app server · compiled agent
+    runs-on: macos-14
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@v1
+        with: { elixir-version: "1.17", otp-version: "27" }
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: latest }
+
+      - name: Build server release + app
+        run: |
+          cd packages/phoenix-server
+          mix local.hex --force && mix local.rebar --force
+          MIX_ENV=prod mix deps.get --only prod
+          MIX_ENV=prod mix release harness_server --overwrite
+          cd ../..
+          packages/mac-app/build.sh "$PWD/packages/phoenix-server/_build/prod/rel/harness_server" 0.0.0-e2e
+
+      - name: Launch app
+        run: |
+          mkdir -p ~/.dureclaw/server && touch ~/.dureclaw/server/.welcomed
+          open packages/mac-app/dist/DureClaw.app
+
+      - run: bun install
+      - name: App server is up and created a default work key
+        # 앱이 OAH_TRUST_LOOPBACK=1 로 띄우므로 localhost 는 토큰 없이 접근
+        run: bun test/e2e/smoke.ts --expect-wk --ensure-wk-only --timeout 120
+
+      - name: Start compiled agent
+        run: |
+          cd packages/agent-daemon
+          bun build src/index.ts --compile --outfile=$RUNNER_TEMP/oah-agent
+          STATE_SERVER=ws://127.0.0.1:4000 AGENT_ROLE=builder AGENT_NAME=builder@ci-mac HOME=$(mktemp -d) \
+            nohup $RUNNER_TEMP/oah-agent > $RUNNER_TEMP/agent.log 2>&1 &
+
+      - name: Agent runs a task
+        run: bun test/e2e/smoke.ts --agent builder@ci-mac --cmd "[SHELL] echo hello-mac && sw_vers -productName" --expect hello-mac
+
+      - name: Quitting the app stops the server
+        run: |
+          osascript -e 'tell application id "ai.baryon.dureclaw" to quit'
+          for i in $(seq 1 30); do pgrep -f "dureclaw_app" >/dev/null || break; sleep 1; done
+          if pgrep -f "dureclaw_app"; then echo "::error::server still running after app quit"; exit 1; fi
+          echo "server stopped with the app ✓"
+
+      - name: Logs
+        if: always()
+        run: |
+          for f in $RUNNER_TEMP/*.log ~/.dureclaw/server/logs/server.log; do
+            [ -f "$f" ] && { echo "::group::$f"; tail -n 80 "$f"; echo "::endgroup::"; }
+          done
+
+  # ── Windows: 설치 프로그램 무인 설치 → 작업 실행 → 제거 ─────────────────────
+  windows:
+    name: Windows — installer install · task · uninstall
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@v1
+        with: { elixir-version: "1.17", otp-version: "27" }
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: latest }
+
+      - name: Start server
+        working-directory: packages/phoenix-server
+        run: |
+          mix local.hex --force; mix local.rebar --force
+          mix deps.get; mix compile
+          if ($LASTEXITCODE -ne 0) { throw "mix compile failed" }
+          $env:OAH_SECRET = "ci-secret"; $env:OAH_BIND_IP = "127.0.0.1"; $env:PORT = "4000"; $env:OAH_DATA_DIR = "$env:RUNNER_TEMP\oahdata"
+          Start-Process cmd.exe -ArgumentList '/c', "mix run --no-halt > `"$env:RUNNER_TEMP\server.log`" 2>&1" -WindowStyle Hidden
+
+      - run: bun install
+      - name: Wait for server + work key
+        run: bun test/e2e/smoke.ts --token ci-secret --ensure-wk-only --timeout 300
+
+      - name: Build installer
+        run: |
+          cd packages/agent-daemon
+          bun build src/index.ts --compile --target=bun-windows-x64 --outfile=../windows-installer/oah-agent.exe
+          cd ../windows-installer
+          & "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /target:winexe /win32icon:dureclaw.ico /out:DureClaw.exe Launcher.cs
+          if ($LASTEXITCODE -ne 0) { throw "csc failed" }
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress }
+          & $iscc /DAppVersion=0.0.0-e2e dureclaw-agent.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed" }
+
+      - name: Silent install
+        run: |
+          $p = Start-Process -Wait -PassThru packages\windows-installer\Output\DureClaw-Agent-Setup.exe `
+            -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/SERVER=127.0.0.1', '/ROLE=builder', '/NAME=builder@ci-win'
+          if ($p.ExitCode -ne 0) { throw "installer exit $($p.ExitCode)" }
+          $app = "$env:LOCALAPPDATA\Programs\DureClaw"
+          foreach ($f in 'DureClaw.exe', 'DureClawTray.ps1', 'oah-agent.exe', 'unins000.exe') {
+            if (-not (Test-Path "$app\$f")) { throw "missing $f" }
+          }
+          $run = (Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run').'DureClaw Agent'
+          if (-not $run) { throw "autostart Run key missing" }
+          Get-Content "$HOME\.oah\config"
+          if (-not (Select-String -Path "$HOME\.oah\config" -Pattern '^PHOENIX=ws://127.0.0.1:4000$' -Quiet)) { throw "server address not normalized" }
+
+      - name: Installed agent runs a task
+        run: bun test/e2e/smoke.ts --token ci-secret --agent builder@ci-win --cmd "[SHELL] echo hello-win & ver" --expect hello-win --timeout 180
+
+      - name: Silent uninstall cleans up
+        run: |
+          $app = "$env:LOCALAPPDATA\Programs\DureClaw"
+          $p = Start-Process -Wait -PassThru "$app\unins000.exe" -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES'
+          Start-Sleep 5
+          bun test/e2e/smoke.ts --token ci-secret --agent builder@ci-win --absent --timeout 90
+          if ($LASTEXITCODE -ne 0) { throw "agent still online after uninstall" }
+          if (Test-Path "$app\oah-agent.exe") { throw "app files left behind" }
+          if ((Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run').'DureClaw Agent') { throw "Run key left behind" }
+          if (Get-Process oah-agent -ErrorAction SilentlyContinue) { throw "oah-agent still running" }
+          "uninstall clean ✓"
+
+      - name: Logs
+        if: always()
+        run: |
+          foreach ($f in "$env:RUNNER_TEMP\server.log", "$env:LOCALAPPDATA\DureClaw\logs\tray.log", "$env:LOCALAPPDATA\DureClaw\logs\agent.log", "$env:LOCALAPPDATA\DureClaw\logs\agent.log.1") {
+            if (Test-Path $f) { "::group::$f"; Get-Content $f -Tail 80; "::endgroup::" }
+          }
