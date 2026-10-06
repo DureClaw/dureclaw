@@ -12,8 +12,6 @@ defmodule HarnessServer.Auth do
 
   import Plug.Conn
 
-  @secret_file Path.join(System.get_env("OAH_DATA_DIR", "data"), "server.secret")
-
   # ── Secret lifecycle ──────────────────────────────────────────────────────────
 
   @doc "Load or generate the server secret. Called at application start."
@@ -28,8 +26,14 @@ defmodule HarnessServer.Auth do
     end
   end
 
+  # Resolved at runtime — a module attribute would freeze the build machine's
+  # OAH_DATA_DIR (or the cwd-relative "data") into the release.
+  defp secret_file, do: Path.join(System.get_env("OAH_DATA_DIR", "data"), "server.secret")
+
   defp load_from_file do
-    case File.read(@secret_file) do
+    file = secret_file()
+
+    case File.read(file) do
       {:ok, s} ->
         s = String.trim(s)
         Application.put_env(:harness_server, :oah_secret, s)
@@ -37,9 +41,9 @@ defmodule HarnessServer.Auth do
 
       {:error, _} ->
         s = :crypto.strong_rand_bytes(32) |> Base.encode64(padding: false)
-        File.mkdir_p!(Path.dirname(@secret_file))
-        File.write!(@secret_file, s)
-        File.chmod!(@secret_file, 0o600)
+        File.mkdir_p!(Path.dirname(file))
+        File.write!(file, s)
+        File.chmod!(file, 0o600)
         Application.put_env(:harness_server, :oah_secret, s)
         s
     end

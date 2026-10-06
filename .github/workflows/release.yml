@@ -179,9 +179,50 @@ jobs:
             packages/windows-installer/oah-agent-windows-x64.exe
           retention-days: 7
 
+  # macOS: 메뉴 막대 서버 앱 (DureClaw.app → DureClaw-Server-mac-arm64.dmg)
+  build-mac-app:
+    name: Build macOS server app
+    runs-on: macos-14
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: "1.17"
+          otp-version: "27"
+
+      - name: Build release
+        working-directory: packages/phoenix-server
+        env:
+          MIX_ENV: prod
+        run: |
+          mix local.hex --force
+          mix local.rebar --force
+          mix deps.get --only prod
+          mix release harness_server --overwrite
+
+      - name: Build app + dmg
+        run: |
+          TAG="${{ github.ref_name || inputs.tag }}"
+          VER="${TAG#v}"
+          [[ "$VER" =~ ^[0-9] ]] || VER="0.0.0-dev"
+          packages/mac-app/build.sh "$PWD/packages/phoenix-server/_build/prod/rel/harness_server" "$VER"
+          # artifact 를 평평하게 — 하위 폴더째 올라가면 release 의 files 패턴에 안 걸린다
+          cp packages/mac-app/dist/DureClaw-Server-mac-arm64.dmg .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dureclaw-mac-app
+          path: DureClaw-Server-mac-arm64.dmg
+          retention-days: 7
+
   release:
     name: Publish GitHub Release
-    needs: [build-server, build-agent, build-windows-installer]
+    needs: [build-server, build-agent, build-windows-installer, build-mac-app]
     runs-on: ubuntu-latest
     if: always()   # build 일부 실패해도 실행
 
@@ -232,6 +273,12 @@ jobs:
 
             무인 설치: `DureClaw-Agent-Setup.exe /VERYSILENT /SERVER=ws://100.x.x.x:4000 /ROLE=builder`
 
+            ### macOS — 서버 앱 (터미널 불필요, Apple Silicon)
+
+            **`DureClaw-Server-mac-arm64.dmg`** 를 열어 DureClaw 를 응용 프로그램 폴더로 끌어 놓고 실행 →
+            메뉴 막대에서 서버 상태·노드 연결 주소·노드 추가 명령을 확인합니다.
+            서명되지 않은 앱이라 처음 한 번은 우클릭 → 열기 (또는 시스템 설정 → 개인정보 보호 및 보안 → 그래도 열기).
+
             ### 워커 에이전트 바이너리
 
             | 파일 | 플랫폼 |
@@ -244,5 +291,6 @@ jobs:
             dist/*.tar.gz
             dist/oah-agent-*
             dist/**/DureClaw-Agent-Setup.exe
+            dist/**/DureClaw-Server-mac-arm64.dmg
           generate_release_notes: true
           fail_on_unmatched_files: false

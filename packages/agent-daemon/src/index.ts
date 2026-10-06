@@ -58,7 +58,7 @@ import {
 
 // ─── Version ─────────────────────────────────────────────────────────────────
 
-const AGENT_VERSION = "0.4.4";
+const AGENT_VERSION = "0.4.5";
 
 // --version flag
 if (process.argv.includes("--version") || process.argv.includes("-v")) {
