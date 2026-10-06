@@ -105,7 +105,10 @@ jobs:
             nohup $RUNNER_TEMP/oah-agent > $RUNNER_TEMP/agent.log 2>&1 &
 
       - name: Agent runs a task
-        run: bun test/e2e/smoke.ts --agent builder@ci-mac --cmd "[SHELL] echo hello-mac && sw_vers -productName" --expect hello-mac
+        # 작업 지시는 마스터 권한(비밀키)이 필요 — 실제로도 앱의 "Claude Code 연결 명령"이 이 키를 준다
+        run: |
+          TOKEN=$(cat ~/.dureclaw/server/data/server.secret)
+          bun test/e2e/smoke.ts --token "$TOKEN" --agent builder@ci-mac --cmd "[SHELL] echo hello-mac && sw_vers -productName" --expect hello-mac
 
       - name: Quitting the app stops the server
         run: |
@@ -162,9 +165,13 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "ISCC failed" }
 
       - name: Silent install
+        timeout-minutes: 5
         run: |
-          $p = Start-Process -Wait -PassThru packages\windows-installer\Output\DureClaw-Agent-Setup.exe `
+          # Start-Process -Wait 는 자식 프로세스까지 기다린다 — 설치 후 뜬 트레이가 계속 살아 있어
+          # 영원히 멈췄다. 설치 프로그램 프로세스만 기다린다.
+          $p = Start-Process -PassThru packages\windows-installer\Output\DureClaw-Agent-Setup.exe `
             -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/SERVER=127.0.0.1', '/ROLE=builder', '/NAME=builder@ci-win'
+          if (-not $p.WaitForExit(240000)) { throw "installer did not finish in 4 min" }
           if ($p.ExitCode -ne 0) { throw "installer exit $($p.ExitCode)" }
           $app = "$env:LOCALAPPDATA\Programs\DureClaw"
           foreach ($f in 'DureClaw.exe', 'DureClawTray.ps1', 'oah-agent.exe', 'unins000.exe') {
@@ -176,13 +183,16 @@ jobs:
           if (-not (Select-String -Path "$HOME\.oah\config" -Pattern '^PHOENIX=ws://127.0.0.1:4000$' -Quiet)) { throw "server address not normalized" }
 
       - name: Installed agent runs a task
+        timeout-minutes: 5
         run: bun test/e2e/smoke.ts --token ci-secret --agent builder@ci-win --cmd "[SHELL] echo hello-win & ver" --expect hello-win --timeout 180
 
       - name: Silent uninstall cleans up
+        timeout-minutes: 5
         run: |
           $app = "$env:LOCALAPPDATA\Programs\DureClaw"
-          $p = Start-Process -Wait -PassThru "$app\unins000.exe" -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES'
-          Start-Sleep 5
+          # unins000.exe 는 임시 사본을 띄우고 바로 끝난다 → 파일이 사라질 때까지 기다린다
+          Start-Process "$app\unins000.exe" -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES'
+          for ($i = 0; $i -lt 60 -and (Test-Path "$app\oah-agent.exe"); $i++) { Start-Sleep 2 }
           bun test/e2e/smoke.ts --token ci-secret --agent builder@ci-win --absent --timeout 90
           if ($LASTEXITCODE -ne 0) { throw "agent still online after uninstall" }
           if (Test-Path "$app\oah-agent.exe") { throw "app files left behind" }
