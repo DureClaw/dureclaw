@@ -125,3 +125,28 @@ jobs:
       - uses: actions/checkout@v4
       - name: swiftc -typecheck
         run: swiftc -typecheck -target arm64-apple-macos13.0 packages/mac-app/DureClaw.swift
+
+  # ── 홈페이지 (web/) ────────────────────────────────────────────────────────
+  web:
+    name: Web — links · downloads · mobile overflow
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Links, anchors, images + release download URLs
+        run: python3 test/web/check_links.py web
+
+      - name: Playwright
+        run: |
+          pip install playwright==1.48.0
+          python -m playwright install --with-deps chromium
+
+      - name: Mobile (390px) horizontal overflow
+        run: |
+          (cd web && python3 -m http.server 8799 >/dev/null 2>&1 &)
+          sleep 1
+          python3 test/web/mobile_overflow.py http://localhost:8799
