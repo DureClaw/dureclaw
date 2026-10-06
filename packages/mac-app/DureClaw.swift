@@ -134,6 +134,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var quitting = false
     private var restarting = false
     private var externalServer = false
+    private var workKeyEnsured = false
     private let port = configuredPort()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -209,6 +210,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         externalServer = false
+        workKeyEnsured = false
         guard FileManager.default.isExecutableFile(atPath: Paths.serverExe.path) else {
             setStatus("서버 파일 없음 — 앱을 다시 설치해 주세요")
             return
@@ -308,10 +310,48 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 let n = (obj["agents"] as? [Any])?.count ?? 0
                 let prefix = self.externalServer ? "외부 서버 실행 중" : "실행 중"
                 self.setStatus("● \(prefix) · 노드 \(n)개 · 포트 \(self.port)")
+                if !self.externalServer { self.ensureWorkKey() }
             } else if self.server != nil {
                 self.setStatus("시작 중... (포트 \(self.port))")
             }
         }.resume()
+    }
+
+    /// 새 서버에는 Work Key 가 없어 노드가 "Work Key 대기"에 멈춘다.
+    /// 앱이 띄운 서버가 처음 응답하면, 없을 때만 기본 Work Key 를 하나 만든다.
+    private func ensureWorkKey() {
+        DispatchQueue.main.async {
+            guard !self.workKeyEnsured else { return }
+            self.workKeyEnsured = true
+            let base = "http://127.0.0.1:\(self.port)/api/work-keys"
+            var get = URLRequest(url: URL(string: base + "/latest")!)
+            get.timeoutInterval = 3
+            URLSession.shared.dataTask(with: get) { [weak self] _, resp, _ in
+                guard let self = self else { return }
+                let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
+                if code == 200 { return }          // 이미 있음
+                if code != 404 {                    // 아직 준비 안 됨 → 다음 폴링에서 재시도
+                    DispatchQueue.main.async { self.workKeyEnsured = false }
+                    return
+                }
+                var post = URLRequest(url: URL(string: base)!)
+                post.httpMethod = "POST"
+                post.timeoutInterval = 3
+                post.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                post.httpBody = "{}".data(using: .utf8)
+                if let s = readSecret() { post.setValue("Bearer \(s)", forHTTPHeaderField: "Authorization") }
+                URLSession.shared.dataTask(with: post) { [weak self] data, resp, _ in
+                    let ok = (200..<300).contains((resp as? HTTPURLResponse)?.statusCode ?? 0)
+                    let wk = data.flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }?["work_key"] as? String
+                    self?.appendLog(ok ? "default work key created: \(wk ?? "?")\n" : "work key create failed\n")
+                    if !ok { DispatchQueue.main.async { self?.workKeyEnsured = false } }
+                }.resume()
+            }.resume()
+        }
+    }
+
+    private func appendLog(_ line: String) {
+        DispatchQueue.main.async { self.logHandle?.write(line.data(using: .utf8)!) }
     }
 
     // MARK: Actions
