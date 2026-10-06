@@ -629,17 +629,18 @@ defmodule HarnessServer.StateStore do
     dets_to_list(@state_table)
     |> Enum.reduce(%{}, fn {key, _}, acc ->
       case String.split(to_string(key), "-") do
-        ["LN", date, seq] ->
-          # Tolerate non-numeric counters (e.g. a manual LN-…-smoke key) — a
-          # bad parse here used to crash StateStore.init and take down boot.
-          case Integer.parse(seq) do
-            {n, ""} -> Map.update(acc, date, n, &max(&1, n))
-            _ -> acc
-          end
-
-        _ ->
-          acc
+        ["LN", date, seq] -> bump_counter(acc, date, seq)
+        _ -> acc
       end
     end)
+  end
+
+  # Tolerate non-numeric counters (e.g. a manual LN-…-smoke key) — a
+  # bad parse here used to crash StateStore.init and take down boot.
+  defp bump_counter(acc, date, seq) do
+    case Integer.parse(seq) do
+      {n, ""} -> Map.update(acc, date, n, &max(&1, n))
+      _ -> acc
+    end
   end
 end

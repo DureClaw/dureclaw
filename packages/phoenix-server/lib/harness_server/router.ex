@@ -734,7 +734,7 @@ defmodule HarnessServer.Router do
 
   defp crystallize_skill(work_key, eval_id, consensus, wiki, by) do
     c = consensus || %{}
-    goal = (c["goal"] || c[:goal] || "") |> to_string()
+    goal = (field(c, "goal") || "") |> to_string()
     body = (wiki || "") |> to_string() |> String.trim()
     slug = slugify(eval_id)
     ts = DateTime.utc_now() |> DateTime.to_iso8601()
@@ -745,10 +745,10 @@ defmodule HarnessServer.Router do
       "work_key" => work_key,
       "trigger" => goal,
       "procedure" => body,
-      "consensus" => c["mean"] || c[:mean],
-      "votes" => c["votes"] || c[:votes],
-      "graded" => c["graded"] || c[:graded],
-      "evaluators" => c["evaluators"] || c[:evaluators] || [],
+      "consensus" => field(c, "mean"),
+      "votes" => field(c, "votes"),
+      "graded" => field(c, "graded"),
+      "evaluators" => field(c, "evaluators") || [],
       "adopted_by" => by,
       "adopted_at" => ts
     }
@@ -758,6 +758,9 @@ defmodule HarnessServer.Router do
     StateStore.record_skill(work_key, skill)
     skill
   end
+
+  # consensus maps arrive with string or atom keys depending on the caller.
+  defp field(map, key), do: map[key] || map[String.to_atom(key)]
 
   defp slugify(s) do
     s
@@ -786,7 +789,7 @@ defmodule HarnessServer.Router do
   end
 
   defp skill_md(s) do
-    evs = (s["evaluators"] || []) |> Enum.map(&to_string/1) |> Enum.join(", ")
+    evs = (s["evaluators"] || []) |> Enum.map_join(", ", &to_string/1)
 
     """
     ---

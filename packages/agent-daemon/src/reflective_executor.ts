@@ -221,7 +221,7 @@ async function runClaudeCli(
   let lastProgress = Date.now();
   let lineBuffer = "";
 
-  const reader = proc.stdout.getReader();
+  const reader = proc.stdout!.getReader();
   const decoder = new TextDecoder();
 
   try {
@@ -284,7 +284,9 @@ async function runOpenAI(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let OpenAI: any;
   try {
-    const mod = await import("openai");
+    // optional dependency — a variable specifier keeps tsc/bundler from requiring it
+    const optionalDep = "openai";
+    const mod = await import(optionalDep);
     OpenAI = mod.default;
   } catch {
     throw new Error("openai package not installed. Run: bun add openai");
@@ -588,7 +590,7 @@ export async function runPhase1Parallel(
 
   const escalated = results.filter(r => r.escalated);
   if (escalated.length > 0) {
-    console.warn(`[phase1] ${escalated.length} agents escalated: ${escalated.map(r => r.role).join(", ")}`);
+    console.warn(`[phase1] ${escalated.length} agents escalated: ${escalated.map(r => r.agentRole).join(", ")}`);
   }
 
   const totalTokens = results.reduce((sum, r) => sum + r.tokenCount, 0);

@@ -38,7 +38,9 @@ jobs:
           curl -fsSL https://bun.sh/install | bash
           export PATH="$HOME/.bun/bin:$PATH"
           (cd packages/agent-daemon && bun install --frozen-lockfile 2>/dev/null || bun install)
-          bun build packages/agent-daemon/src/index.ts --target=bun --outfile=web/oah-agent.js
+          # node-entry(셰뱅 없음) + --target=node → ws 를 번들에 포함, --format=cjs → 확장자가 .js 라도
+          # Node 18(RPi apt) 이 바로 실행. 같은 파일을 Bun(Windows agent.ps1)도 실행한다.
+          bun build packages/agent-daemon/src/node-entry.ts --target=node --format=cjs --outfile=web/oah-agent.js
 
       - name: Publish scripts as short URLs
         run: |

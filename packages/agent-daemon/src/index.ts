@@ -845,7 +845,7 @@ async function handleTaskAssign(payload: TaskPayload) {
   });
 
   // Resolve effective backend: task-level override > env > auto-detect
-  const taskBackendHint = (payload as Record<string, unknown>).backend as string | undefined;
+  const taskBackendHint = (payload as unknown as Record<string, unknown>).backend as string | undefined;
   const resolvedBackend = (() => {
     const b = taskBackendHint ?? AGENT_BACKEND;
     return b === "auto" ? autoSelectBackend() : b;
@@ -1035,7 +1035,7 @@ async function handleShellTask(payload: TaskPayload) {
       } catch { /* closed */ }
     };
 
-    await Promise.all([readStream(proc.stdout), readStream(proc.stderr)]);
+    await Promise.all([readStream(proc.stdout!), readStream(proc.stderr!)]);
     exitCode = await proc.exited;
     clearTimeout(killer);
     clearInterval(progressTimer);
@@ -1308,7 +1308,7 @@ async function runOpenCode(
   const effectiveDir = (globalThis as Record<string, unknown>)["EFFECTIVE_PROJECT_DIR"] as string ?? PROJECT_DIR;
 
   // Task-level backend override > env AGENT_BACKEND > auto-detect from capabilities
-  const taskBackend = (payload as Record<string, unknown>).backend as string | undefined;
+  const taskBackend = (payload as unknown as Record<string, unknown>).backend as string | undefined;
   const agentCmd = buildAgentCmd(taskBackend ?? AGENT_BACKEND, systemPrompt);
 
   const proc = spawn({
@@ -1330,7 +1330,7 @@ async function runOpenCode(
   const PROGRESS_INTERVAL = 10_000;
 
   const readOutput = async () => {
-    const reader = proc.stdout.getReader();
+    const reader = proc.stdout!.getReader();
     const decoder = new TextDecoder();
     try {
       while (true) {
@@ -1354,7 +1354,7 @@ async function runOpenCode(
   };
 
   const readStderr = async () => {
-    const reader = proc.stderr.getReader();
+    const reader = proc.stderr!.getReader();
     const decoder = new TextDecoder();
     try {
       while (true) {
@@ -1562,7 +1562,7 @@ async function captureCmd(cmd: string[]): Promise<string> {
   const proc = spawn({ cmd, cwd: effectiveDir, stdout: "pipe", stderr: "pipe", env: process.env });
   let out = "";
   const decoder = new TextDecoder();
-  const reader = proc.stdout.getReader();
+  const reader = proc.stdout!.getReader();
   try {
     while (true) {
       const { done, value } = await reader.read();
@@ -1999,9 +1999,12 @@ console.log(`
 `);
 
 // Resolve a token (secret / cache / enrollment) before the first connect.
-await resolveToken();
-connect();
-startBrainServer();
+// No top-level await: the Node bundle is CommonJS (a bare .js file that Node 18
+// loads as CJS), and CJS cannot contain top-level await.
+void resolveToken().then(() => {
+  connect();
+  startBrainServer();
+});
 
 // Start mailbox polling after a brief delay to let WebSocket settle
 setTimeout(() => {

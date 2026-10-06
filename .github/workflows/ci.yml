@@ -1,0 +1,124 @@
+name: CI
+
+# push·PR 마다 도는 기본 품질 게이트. 릴리스(release.yml)와 별개로,
+# 깨진 코드가 main 에 쌓이기 전에 잡는다.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Phoenix 서버 (Elixir) ──────────────────────────────────────────────────
+  server:
+    name: Server — compile · format · credo
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: packages/phoenix-server
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: erlef/setup-beam@v1
+        with:
+          elixir-version: "1.17"
+          otp-version: "27"
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            packages/phoenix-server/deps
+            packages/phoenix-server/_build
+          key: mix-${{ runner.os }}-${{ hashFiles('packages/phoenix-server/mix.lock') }}
+
+      - name: Deps
+        run: |
+          mix local.hex --force
+          mix local.rebar --force
+          mix deps.get
+
+      - name: Compile (warnings are errors)
+        run: mix compile --warnings-as-errors --force
+
+      - name: Format
+        run: mix format --check-formatted
+
+      - name: Credo (strict — 프로젝트 규칙)
+        run: mix credo --strict
+
+  # ── 에이전트 데몬 (TypeScript/Bun) ─────────────────────────────────────────
+  agent:
+    name: Agent — typecheck · tests · Node bundle smoke
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: actions/setup-node@v4
+        with:
+          # RPi(armv7) 노드가 apt 로 받는 버전 — WebSocket 이 내장되지 않은 Node 18
+          node-version: "18"
+
+      - name: Install
+        run: bun install
+
+      - name: Typecheck (agent-daemon)
+        run: bunx tsc --noEmit -p packages/agent-daemon
+
+      - name: Tests (test/)
+        run: bun test test/
+
+      - name: Node bundle smoke
+        # Pages 가 배포하는 oah-agent.js 와 같은 방식으로 빌드해 Node 에서 기동되는지 확인.
+        # (예전엔 ws 가 번들에서 빠지고 ESM 이라 Node 18 에서 시작하자마자 죽었다)
+        run: |
+          bun build packages/agent-daemon/src/node-entry.ts --target=node --format=cjs --outfile=/tmp/oah-agent.js
+          export STATE_SERVER=ws://127.0.0.1:9 HOME=$(mktemp -d)
+          timeout 8 node /tmp/oah-agent.js > /tmp/node.log 2>&1 || true
+          cat /tmp/node.log | head -20
+          grep -q "agent-daemon v" /tmp/node.log
+          grep -q "connecting" /tmp/node.log
+          ! grep -q "ERR_MODULE_NOT_FOUND\|SyntaxError\|TypeError" /tmp/node.log
+
+  # ── 설치 스크립트 문법 ────────────────────────────────────────────────────
+  scripts:
+    name: Scripts — bash · PowerShell syntax
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: bash -n
+        run: |
+          fail=0
+          for f in $(git ls-files '*.sh') scripts/oah packages/phoenix-server/priv/scripts/oah; do
+            [ -f "$f" ] || continue
+            if ! bash -n "$f"; then echo "::error file=$f::bash syntax error"; fail=1; fi
+          done
+          exit $fail
+
+      - name: PowerShell parse
+        shell: pwsh
+        run: |
+          $fail = $false
+          foreach ($f in git ls-files '*.ps1') {
+            $errs = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $f), [ref]$null, [ref]$errs)
+            if ($errs) { $fail = $true; $errs | ForEach-Object { Write-Host "::error file=$f::$($_.Message)" } }
+          }
+          if ($fail) { exit 1 }
+
+  # ── Mac 앱 (Swift) ────────────────────────────────────────────────────────
+  mac-app:
+    name: Mac app — swift typecheck
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: swiftc -typecheck
+        run: swiftc -typecheck -target arm64-apple-macos13.0 packages/mac-app/DureClaw.swift

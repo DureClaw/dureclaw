@@ -174,52 +174,6 @@ defmodule HarnessServer.WorkChannel do
     {:reply, {:ok, %{broadcast: true}}, socket}
   end
 
-  # Aggregate a scored result into the eval loop. Results without a score are
-  # ignored — only measurable runs feed improvement tracking.
-  defp maybe_record_eval(work_key, task_id, msg) do
-    case Map.get(msg, "score") do
-      nil ->
-        :ok
-
-      score ->
-        # For a peer evaluation the score belongs to the GRADED agent's output,
-        # with the evaluator recorded separately (agent-to-agent dialog).
-        StateStore.record_eval(work_key, %{
-          "task_id" => task_id,
-          "agent" => Map.get(msg, "graded") || Map.get(msg, "from"),
-          "evaluator" => Map.get(msg, "evaluator"),
-          "eval_id" => Map.get(msg, "eval_id"),
-          "goal" => Map.get(msg, "goal"),
-          "backend" => Map.get(msg, "backend"),
-          "score" => score,
-          "exit_code" => Map.get(msg, "exit_code"),
-          "ts" => Map.get(msg, "ts")
-        })
-    end
-  end
-
-  defp maybe_dispatch_unblocked(task_id, default_wk) do
-    for task_payload <- StateStore.complete_dependency(task_id) do
-      wk = Map.get(task_payload, "work_key", default_wk)
-      HarnessServer.Endpoint.broadcast("work:#{wk}", "task.assign", task_payload)
-    end
-  end
-
-  # Find a capable agent from presence, excluding the blocked agent.
-  # Returns agent name string or nil.
-  defp find_capable_agent(presences, requires, exclude_agent) do
-    presences
-    |> Enum.reject(fn {name, _} -> name == exclude_agent end)
-    |> Enum.find(fn {_name, %{metas: [meta | _]}} ->
-      caps = Map.get(meta, :capabilities, [])
-      Enum.all?(requires, &(&1 in caps))
-    end)
-    |> case do
-      {name, _} -> name
-      nil -> nil
-    end
-  end
-
   # task.assign is a command. Real work orders (arbitrary instructions) may only
   # originate from the master (single command origin). The one exception is the
   # eval loop's peer-grading delegation ([GRADE]), an internal worker→peer
@@ -238,15 +192,6 @@ defmodule HarnessServer.WorkChannel do
     else
       {:reply, {:error, %{reason: "dispatch requires master credential"}}, socket}
     end
-  end
-
-  # Master may dispatch anything; workers may only relay peer-grading ([GRADE]).
-  defp dispatch_allowed?(socket, payload) do
-    Map.get(socket.assigns, :is_master, false) or
-      payload
-      |> Map.get("instructions", "")
-      |> String.trim_leading()
-      |> String.starts_with?("[GRADE]")
   end
 
   @impl true
@@ -351,6 +296,63 @@ defmodule HarnessServer.WorkChannel do
   @impl true
   def handle_in(_event, _payload, socket) do
     {:reply, {:error, %{reason: "unknown_event"}}, socket}
+  end
+
+  # ─── Helpers ───────────────────────────────────────────────────────────────
+
+  # Aggregate a scored result into the eval loop. Results without a score are
+  # ignored — only measurable runs feed improvement tracking.
+  defp maybe_record_eval(work_key, task_id, msg) do
+    case Map.get(msg, "score") do
+      nil ->
+        :ok
+
+      score ->
+        # For a peer evaluation the score belongs to the GRADED agent's output,
+        # with the evaluator recorded separately (agent-to-agent dialog).
+        StateStore.record_eval(work_key, %{
+          "task_id" => task_id,
+          "agent" => Map.get(msg, "graded") || Map.get(msg, "from"),
+          "evaluator" => Map.get(msg, "evaluator"),
+          "eval_id" => Map.get(msg, "eval_id"),
+          "goal" => Map.get(msg, "goal"),
+          "backend" => Map.get(msg, "backend"),
+          "score" => score,
+          "exit_code" => Map.get(msg, "exit_code"),
+          "ts" => Map.get(msg, "ts")
+        })
+    end
+  end
+
+  defp maybe_dispatch_unblocked(task_id, default_wk) do
+    for task_payload <- StateStore.complete_dependency(task_id) do
+      wk = Map.get(task_payload, "work_key", default_wk)
+      HarnessServer.Endpoint.broadcast("work:#{wk}", "task.assign", task_payload)
+    end
+  end
+
+  # Find a capable agent from presence, excluding the blocked agent.
+  # Returns agent name string or nil.
+  defp find_capable_agent(presences, requires, exclude_agent) do
+    presences
+    |> Enum.reject(fn {name, _} -> name == exclude_agent end)
+    |> Enum.find(fn {_name, %{metas: [meta | _]}} ->
+      caps = Map.get(meta, :capabilities, [])
+      Enum.all?(requires, &(&1 in caps))
+    end)
+    |> case do
+      {name, _} -> name
+      nil -> nil
+    end
+  end
+
+  # Master may dispatch anything; workers may only relay peer-grading ([GRADE]).
+  defp dispatch_allowed?(socket, payload) do
+    Map.get(socket.assigns, :is_master, false) or
+      payload
+      |> Map.get("instructions", "")
+      |> String.trim_leading()
+      |> String.starts_with?("[GRADE]")
   end
 
   # ─── Terminate ─────────────────────────────────────────────────────────────

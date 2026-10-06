@@ -18,6 +18,7 @@
     "sim": "bun run packages/sim-agent/src/cli.ts sim"
   },
   "devDependencies": {
+    "@opencode-ai/plugin": "^1.18.34",
     "@types/node": "^22.0.0",
     "typescript": "^5.7.0"
   },
