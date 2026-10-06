@@ -72,11 +72,20 @@ defmodule HarnessServer.StateStore do
 
   @doc "Return the most recently created work key, or nil."
   def latest_work_key do
-    case list_work_keys() do
+    # Newest by creation time. Keys used to be LN-YYYYMMDD-NNN, where sorting by
+    # name was chronological; random WK-xxxxxxxx keys made "last by name" arbitrary,
+    # so nodes could join (and REST dispatch could target) an old work key.
+    case dets_to_list(@state_table) do
       [] -> nil
-      keys -> List.last(keys)
+      entries -> entries |> Enum.max_by(&created_sort_key/1) |> elem(0)
     end
   end
+
+  defp created_sort_key({key, state}) when is_map(state) do
+    {to_string(Map.get(state, :created_at) || Map.get(state, "created_at") || ""), to_string(key)}
+  end
+
+  defp created_sort_key({key, _}), do: {"", to_string(key)}
 
   @doc "Enqueue a message in an agent's mailbox."
   def enqueue_mailbox(agent_name, msg) do

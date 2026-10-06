@@ -1,63 +1,12 @@
 /**
- * Mode B — Distributed infra integration tests
- * Requires Phoenix server running on localhost:4000
+ * Mode B — distributed infra package checks.
+ *
+ * The live-server HTTP checks that used to live here assumed an unauthenticated
+ * server already running on :4000. They are superseded by the ExUnit suite in
+ * packages/phoenix-server/test (auth, enrollment, work keys, dispatch → result
+ * over the channel), which boots the server in-process and runs in CI.
  */
-import { describe, it, expect, beforeAll } from "bun:test";
-
-const BASE = "http://localhost:4000";
-
-async function get(path: string) {
-  const res = await fetch(`${BASE}${path}`);
-  return { status: res.status, body: await res.json() };
-}
-
-describe("Mode B — Phoenix server", () => {
-  it("health check responds OK", async () => {
-    const { status, body } = await get("/api/health");
-    expect(status).toBe(200);
-    expect((body as any).ok).toBe(true);
-  });
-
-  it("work-keys endpoint returns array", async () => {
-    const { status, body } = await get("/api/work-keys");
-    expect(status).toBe(200);
-    expect(Array.isArray((body as any).work_keys)).toBe(true);
-  });
-
-  it("presence endpoint returns agents array", async () => {
-    const { status, body } = await get("/api/presence");
-    expect(status).toBe(200);
-    expect(Array.isArray((body as any).agents)).toBe(true);
-  });
-
-  it("POST /api/task creates task and returns task_id", async () => {
-    const res = await fetch(`${BASE}/api/task`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        instructions: "test task from mode_b.test.ts",
-        role: "builder",
-      }),
-    });
-    expect(res.status).toBe(201);
-    const body = (await res.json()) as any;
-    expect(typeof body.task_id).toBe("string");
-    expect(typeof body.work_key).toBe("string");
-  });
-
-  it("POST /api/task/:id/result stores result", async () => {
-    const taskId = `test-${Date.now()}`;
-    const res = await fetch(`${BASE}/api/task/${taskId}/result`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "done", output: "unit test result" }),
-    });
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as any;
-    expect(body.ok).toBe(true);
-    expect(body.task_id).toBe(taskId);
-  });
-});
+import { describe, it, expect } from "bun:test";
 
 describe("Mode B — oah-mcp package", () => {
   it("oah-mcp entry point exists", async () => {

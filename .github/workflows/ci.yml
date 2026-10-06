@@ -15,7 +15,7 @@ concurrency:
 jobs:
   # ── Phoenix 서버 (Elixir) ──────────────────────────────────────────────────
   server:
-    name: Server — compile · format · credo
+    name: Server — compile · format · credo · tests
     runs-on: ubuntu-22.04
     defaults:
       run:
@@ -50,6 +50,9 @@ jobs:
       - name: Credo (strict — 프로젝트 규칙)
         run: mix credo --strict
 
+      - name: Integration tests (ExUnit — 가입·토큰·Work Key·지시→결과)
+        run: mix test --warnings-as-errors
+
   # ── 에이전트 데몬 (TypeScript/Bun) ─────────────────────────────────────────
   agent:
     name: Agent — typecheck · tests · Node bundle smoke
@@ -72,9 +75,8 @@ jobs:
       - name: Typecheck (agent-daemon)
         run: bunx tsc --noEmit -p packages/agent-daemon
 
-      - name: Tests (mode A — 서버 불필요)
-        # mode_b 는 떠 있는 서버가 필요한 통합 테스트 → server-integration 잡에서 실행
-        run: bun test test/mode_a.test.ts
+      - name: Tests (test/)
+        run: bun test test/
 
       - name: Node bundle smoke
         # Pages 가 배포하는 oah-agent.js 와 같은 방식으로 빌드해 Node 에서 기동되는지 확인.
