@@ -436,6 +436,19 @@ PHOENIX=ws://SERVER_IP:4000 ROLE=executor bash <(curl -fsSL https://open-agent-h
 
 > 자동으로 Python 에이전트(`agent.py`)를 선택합니다. Node.js 불필요.
 
+#### Windows — 설치 프로그램 (권장, 터미널 불필요)
+
+1. [최신 릴리스](https://github.com/DureClaw/dureclaw/releases/latest)에서 **`DureClaw-Agent-Setup.exe`** 다운로드 → 실행
+2. 서버 주소 입력 (비우면 같은 LAN의 `oah.local` / Tailscale 피어에서 자동 탐색) · 역할 선택 → 설치
+3. 끝. 관리자 권한 없이 설치되고, **Windows 로그인 시 자동 연결**되며 트레이 아이콘에서 상태·로그·다시 연결·설정을 관리합니다.
+
+```powershell
+# 무인 설치 (여러 PC 일괄 배포)
+DureClaw-Agent-Setup.exe /VERYSILENT /SERVER=ws://SERVER_IP:4000 /ROLE=builder [/NAME=...] [/BRAIN=http://...]
+```
+
+> 설정은 `%USERPROFILE%\.oah\config`(터미널 설치와 같은 파일), 로그는 `%LOCALAPPDATA%\DureClaw\logs`. 제거는 "앱 및 기능"에서.
+
 #### Windows — PowerShell (x64)
 
 ```powershell
@@ -468,7 +481,7 @@ PHOENIX=ws://SERVER_IP:4000 ROLE=tester WK=LN-20260418-001 bash <(curl -fsSL htt
 | Linux | x64 · arm64 | 네이티브 바이너리 | claude-cli · pi · ollama |
 | Linux | armv7l (RPi 4/5) | Node.js + oah-agent.js | claude-cli · 브레인 위임 |
 | Linux | armv6l (RPi Zero W) | Python + agent.py | 브레인 위임(remote-pi) · 로컬 결정론 스킬 |
-| Windows | x64 | PowerShell / CMD | claude-cli · pi |
+| Windows | x64 | 설치 프로그램(트레이) · PowerShell / CMD | claude-cli · pi |
 
 ### 구성도
 

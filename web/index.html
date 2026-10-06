@@ -218,6 +218,26 @@ nav {
 }
 .copy-btn:hover { background: rgba(0,232,122,0.15); border-color: var(--green); }
 .copy-btn.copied { color: var(--cyan); border-color: var(--cyan); background: rgba(0,212,255,0.1); }
+.dl-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--cyan); color: #fff; text-decoration: none;
+  font-family: inherit; font-size: 13px; font-weight: 600;
+  padding: 10px 18px; border-radius: 6px; border: 1px solid var(--cyan2);
+  transition: background 0.2s, transform 0.1s; white-space: nowrap;
+}
+.dl-btn:hover { background: var(--cyan2); }
+.dl-btn:active { transform: translateY(1px); }
+.dl-btn.sm { font-size: 12px; padding: 7px 14px; }
+.dl-btn .dl-sub { font-weight: 400; font-size: 11px; opacity: 0.85; }
+.win-dl {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 12px 16px;
+  margin: 18px 0 6px; padding: 14px 16px;
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 8px;
+}
+.win-dl-text { font-size: 12.5px; color: var(--text2); line-height: 1.6; flex: 1 1 260px; }
+.win-dl-text strong { color: var(--white); }
+.win-dl-text code { word-break: break-all; }
+.win-dl.hero { max-width: 680px; margin-top: 10px; }
 .install-note { font-size: 11px; color: var(--text3); letter-spacing: 0.5px; margin-bottom: 48px; margin-top: 10px; }
 .install-note a { color: var(--text2); text-decoration: none; }
 .install-note a:hover { color: var(--cyan); }
@@ -637,6 +657,12 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
       </div>
     </div>
 
+    <div class="win-dl hero">
+      <div class="win-dl-text">🪟 <strong>Windows PC를 팀원으로 추가</strong> — 터미널 없이 설치 프로그램으로.<br/>
+        실행 → 서버 주소(비우면 자동 탐색)·역할 입력 → 끝. 로그인 시 자동 연결, 트레이에서 상태 확인.</div>
+      <a class="dl-btn" href="https://github.com/DureClaw/dureclaw/releases/latest/download/DureClaw-Agent-Setup.exe" download>⬇ Windows용 다운로드 <span class="dl-sub">Setup.exe · x64</span></a>
+    </div>
+
     <p class="install-note">
       서버 자동 시작 · Claude Code MCP 자동 등록 · Tailscale 보안 안내 포함 ·
       <a href="https://github.com/DureClaw/dureclaw" target="_blank">소스 보기 ↗</a>
@@ -1041,19 +1067,24 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
       <div class="platform-card">
         <div class="platform-icon">🪟</div>
         <div class="platform-name">Windows 10 / 11</div>
-        <div class="platform-sub">PowerShell · x86_64</div>
+        <div class="platform-sub">설치 프로그램 · x86_64</div>
         <div class="platform-tags">
           <span class="platform-tag ok">워커 ✓</span>
+          <span class="platform-tag binary">설치형 exe</span>
           <span class="platform-tag docker">Docker</span>
+        </div>
+        <div style="margin:12px 0 10px">
+          <a class="dl-btn sm" href="https://github.com/DureClaw/dureclaw/releases/latest/download/DureClaw-Agent-Setup.exe" download>⬇ DureClaw-Agent-Setup.exe</a>
         </div>
         <div class="term">
           <div class="t-bar"><span class="t-dot" style="background:#ff5f57"></span><span class="t-dot" style="background:#febc2e"></span><span class="t-dot" style="background:#28c840"></span></div>
-          <div><span class="t-prompt">PS&gt; </span><span class="t-cmd">irm https://dureclaw.baryon.ai/agent.ps1 | iex</span></div>
-          <div><span class="t-dim">→ 서버 자동 탐색 (oah.local · Tailscale 피어)</span></div>
-          <div><span class="t-ok">✅ pi 설치 완료</span></div>
+          <div><span class="t-dim">① Setup.exe 실행 (관리자 권한 불필요)</span></div>
+          <div><span class="t-dim">② 서버 주소 — 비우면 oah.local · Tailscale 자동 탐색</span></div>
+          <div><span class="t-ok">✅ 트레이 상주 · 로그인 시 자동 연결</span></div>
           <div><span class="t-ok">→ builder@DESKTOP-WIN 연결 완료</span></div>
         </div>
-        <div class="platform-status" style="margin-top:8px"><span class="dot"></span>워커 지원 · PowerShell 설치 스크립트</div>
+        <div style="margin-top:8px;font-size:10.5px;color:var(--text3)">터미널 선호 시: <code>irm https://dureclaw.baryon.ai/agent.ps1 | iex</code></div>
+        <div class="platform-status" style="margin-top:8px"><span class="dot"></span>워커 지원 · 설치 프로그램 / PowerShell</div>
       </div>
 
       <div class="platform-card">
@@ -1211,8 +1242,13 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
       </div>
 
     </div>
+    <div class="win-dl">
+      <div class="win-dl-text">🪟 <strong>Windows는 명령어 없이</strong> — 설치 프로그램을 받아 실행하고 서버 주소·역할만 입력하면 된다.<br/>
+        여러 PC 일괄 배포: <code>DureClaw-Agent-Setup.exe /VERYSILENT /SERVER=ws://서버IP:4000 /ROLE=builder</code></div>
+      <a class="dl-btn" href="https://github.com/DureClaw/dureclaw/releases/latest/download/DureClaw-Agent-Setup.exe" download>⬇ Windows용 다운로드</a>
+    </div>
     <p style="margin-top:12px;font-size:11px;color:var(--text3);">
-      Work Key 생략 시 서버에서 자동 감지 · 에이전트 이름 미지정 시 <code>역할@머신이름</code>으로 자동 설정 · Windows는 PowerShell 스크립트 지원
+      Work Key 생략 시 서버에서 자동 감지 · 에이전트 이름 미지정 시 <code>역할@머신이름</code>으로 자동 설정 · Windows는 설치 프로그램(트레이) 또는 PowerShell 스크립트
     </p>
   </div>
 </section>

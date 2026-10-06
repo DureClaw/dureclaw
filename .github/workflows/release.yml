@@ -123,9 +123,63 @@ jobs:
           path: packages/agent-daemon/oah-agent-${{ matrix.os }}-${{ matrix.arch }}
           retention-days: 7
 
+  # Windows: 에이전트 exe + 설치 프로그램(DureClaw-Agent-Setup.exe, Inno Setup)
+  build-windows-installer:
+    name: Build Windows installer
+    runs-on: windows-latest
+    continue-on-error: true
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Build agent exe
+        working-directory: packages/agent-daemon
+        run: |
+          bun install
+          bun build src/index.ts --compile --target=bun-windows-x64 --outfile=../windows-installer/oah-agent.exe
+          Copy-Item ../windows-installer/oah-agent.exe ../windows-installer/oah-agent-windows-x64.exe
+
+      - name: Build launcher (DureClaw.exe)
+        working-directory: packages/windows-installer
+        run: |
+          $csc = "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
+          & $csc /nologo /target:winexe /win32icon:dureclaw.ico /out:DureClaw.exe Launcher.cs
+          if ($LASTEXITCODE -ne 0) { throw "csc failed" }
+
+      - name: Build installer
+        working-directory: packages/windows-installer
+        run: |
+          $tag = "${{ github.ref_name || inputs.tag }}"
+          $ver = $tag -replace '^v', ''
+          if ($ver -notmatch '^\d') { $ver = "0.0.0-dev" }
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            choco install innosetup -y --no-progress
+          }
+          & $iscc "/DAppVersion=$ver" dureclaw-agent.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed" }
+          Get-ChildItem Output
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dureclaw-windows
+          path: |
+            packages/windows-installer/Output/DureClaw-Agent-Setup.exe
+            packages/windows-installer/oah-agent-windows-x64.exe
+          retention-days: 7
+
   release:
     name: Publish GitHub Release
-    needs: [build-server, build-agent]
+    needs: [build-server, build-agent, build-windows-installer]
     runs-on: ubuntu-latest
     if: always()   # build 일부 실패해도 실행
 
@@ -169,6 +223,13 @@ jobs:
 
             > Intel Mac은 사전빌드 없음 — `bash <(curl ...)` 한 줄 실행 시 자동으로 소스 빌드로 폴백됩니다.
 
+            ### Windows — 설치 프로그램 (터미널 불필요)
+
+            **`DureClaw-Agent-Setup.exe`** 를 받아 실행 → 서버 주소(비우면 자동 탐색)·역할 입력 → 끝.
+            관리자 권한 없이 설치되고, 로그인 시 자동 연결되며 트레이 아이콘에서 상태·로그·설정을 관리합니다.
+
+            무인 설치: `DureClaw-Agent-Setup.exe /VERYSILENT /SERVER=ws://100.x.x.x:4000 /ROLE=builder`
+
             ### 워커 에이전트 바이너리
 
             | 파일 | 플랫폼 |
@@ -176,8 +237,10 @@ jobs:
             | `oah-agent-darwin-arm64` | macOS Apple Silicon |
             | `oah-agent-linux-x64` | Linux x86_64 |
             | `oah-agent-linux-arm64` | Linux arm64 |
+            | `oah-agent-windows-x64.exe` | Windows x64 (설치 프로그램 없이 단독 실행) |
           files: |
             dist/*.tar.gz
             dist/oah-agent-*
+            dist/DureClaw-Agent-Setup.exe
           generate_release_notes: true
           fail_on_unmatched_files: false
