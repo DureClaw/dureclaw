@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Changelog — DureClaw</title>
+<meta name="description" content="버전별 변경 내역."/>
+
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+
+<!-- ── SEO / canonical / icons ── -->
+<link rel="canonical" href="https://dureclaw.baryon.ai/changelog/"/>
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
+<meta name="author" content="DureClaw · Baryon Labs"/>
+<meta name="keywords" content="DureClaw, 두레클로, 분산 AI 에이전트, multi-agent orchestration, Claude Code 플러그인, edgeclaw, webclaw, deskclaw, keyless edge, LLM as compiler, 결정 동결, RPA, GPIO, Raspberry Pi, 멀티머신 AI, distributed AI agents"/>
+<meta name="theme-color" content="#0284c7"/>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+<link rel="icon" href="/favicon-256.png" sizes="256x256" type="image/png"/>
+<link rel="apple-touch-icon" href="/favicon-256.png"/>
+<link rel="sitemap" type="application/xml" href="/sitemap.xml"/>
+
+<!-- ── Open Graph ── -->
+<meta property="og:type" content="website"/>
+<meta property="og:site_name" content="DureClaw"/>
+<meta property="og:locale" content="ko_KR"/>
+<meta property="og:url" content="https://dureclaw.baryon.ai/changelog/"/>
+<meta property="og:title" content="Changelog — DureClaw"/>
+<meta property="og:description" content="버전별 변경 내역."/>
+<meta property="og:image" content="https://dureclaw.baryon.ai/screenshots/hero-banner.jpg"/>
+<meta property="og:image:width" content="1400"/>
+<meta property="og:image:height" content="594"/>
+<meta property="og:image:alt" content="DureClaw Cooperative — Unified AI Robotics Ecosystem"/>
+
+<!-- ── Twitter ── -->
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:title" content="Changelog — DureClaw"/>
+<meta name="twitter:description" content="버전별 변경 내역."/>
+<meta name="twitter:image" content="https://dureclaw.baryon.ai/screenshots/hero-banner.jpg"/>
+
+<!-- ── AI / LLM crawlers (GEO/AEO) ── -->
+<link rel="alternate" type="text/markdown" title="llms.txt" href="/llms.txt"/>
+
+
+<link rel="stylesheet" href="/assets/site.css"/>
+</head>
+<body>
+<nav>
+  <div class="container">
+    <div class="nav-inner">
+      <a href="/" class="nav-logo">Dure<span>Claw</span></a>
+      <div class="nav-links">
+        <a href="/start/">설치 가이드</a>
+        <a href="/how/">구조와 원리</a>
+        <a href="/showcase/">데모·활용</a>
+        <a href="/developers/">개발자</a>
+        <a href="/changelog/" class="active">Changelog</a>
+        <a href="https://github.com/DureClaw/dureclaw/tree/main/docs" target="_blank">문서</a>
+      </div>
+      <a href="https://github.com/DureClaw/dureclaw" class="nav-gh" target="_blank">GitHub ↗</a>
+    </div>
+  </div>
+</nav>
+
+<header class="page-hero">
+  <div class="container">
+    <a href="/" class="crumb">← DureClaw 홈</a>
+    <h1>Changelog</h1>
+    <p>버전별 변경 내역.</p>
+  </div>
+</header>
+
+<section class="section" id="changelog">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-num">→</span>
+      <h2 class="section-title"><em>Changelog</em></h2>
+    </div>
+    <div class="cl-grid">
+
+      <div class="cl-card">
+        <div class="cl-card-ver">v0.5.0 <span class="cl-badge">latest</span></div>
+        <div class="cl-card-date">2026-06-16</div>
+        <ul class="cl-items">
+          <li><span class="cl-tag feat">feature</span>5단계 학습 루프 — 관측→종합→목적화→지식화→<b>학습·선택</b> (승인이 아니라 사람이 학습)</li>
+          <li><span class="cl-tag feat">feature</span>결정론적 스킬 결정화 — 채택된 산출물을 재추론 없이 재실행 가능한 <code>SKILL.md</code>로 동결</li>
+          <li><span class="cl-tag feat">feature</span>코딩 백엔드 <b>pi</b> 전환 (<code>@earendil-works/pi-coding-agent</code>) — opencode 대체</li>
+          <li><span class="cl-tag feat">feature</span>브레인 노드 위임 — 마스터 단일 인증, 키 없는 서브노드(Pi Zero 포함)가 마스터 pi로 위임</li>
+          <li><span class="cl-tag feat">feature</span>Windows 무설정 자동탐색 — mDNS(oah.local) + Tailscale 피어 스캔</li>
+          <li><span class="cl-tag fix">fix</span>Windows <code>agent.ps1</code> 출력 인코딩(mojibake) 수정 + 도달성 진단</li>
+        </ul>
+      </div>
+
+      <div class="cl-card">
+        <div class="cl-card-ver">v0.4.0</div>
+        <div class="cl-card-date">2025-05-04</div>
+        <ul class="cl-items">
+          <li><span class="cl-tag sec">security</span>Bearer token auth (OAH_SECRET) — REST + WebSocket 전체 보호</li>
+          <li><span class="cl-tag sec">security</span>Work Key 무작위화 → <code>WK-&lt;8hex&gt;</code></li>
+          <li><span class="cl-tag sec">security</span>Phoenix 서버 Tailscale IP 바인드 (0.0.0.0 제거)</li>
+          <li><span class="cl-tag sec">security</span><code>OAH_BIND_IP</code>로 바인드 주소 명시 지정</li>
+          <li><span class="cl-tag feat">feature</span>대시보드 URL 해시 네비게이션 (탭/에이전트 상태 북마크)</li>
+          <li><span class="cl-tag feat">feature</span>🖥 Monitors 탭 — GPU/RAM/ollama 실시간 모니터링</li>
+        </ul>
+      </div>
+
+      <div class="cl-card">
+        <div class="cl-card-ver">v0.3.0</div>
+        <div class="cl-card-date">2025-04</div>
+        <ul class="cl-items">
+          <li><span class="cl-tag feat">feature</span><code>--version</code> 플래그 + presence 버전 메타데이터</li>
+          <li><span class="cl-tag feat">feature</span>CI GitHub Releases 바이너리 자동 빌드/배포</li>
+          <li><span class="cl-tag feat">feature</span>mailbox 폴링 폴백 — WebSocket task.assign 유실 방지</li>
+          <li><span class="cl-tag fix">fix</span>POST /api/task 커스텀 task_id 존중</li>
+          <li><span class="cl-tag fix">fix</span>에이전트 설치 시 PATH + rc 파일 영속 저장</li>
+        </ul>
+      </div>
+
+      <div class="cl-card">
+        <div class="cl-card-ver">v0.2.0</div>
+        <div class="cl-card-date">2025-03</div>
+        <ul class="cl-items">
+          <li><span class="cl-tag feat">feature</span>파일 변경 추적 탭 — ARTIFACT 이벤트 실시간 표시</li>
+          <li><span class="cl-tag feat">feature</span>에이전트 대화 탭 — 이벤트 타임라인</li>
+          <li><span class="cl-tag feat">feature</span>WK State 편집기 — 공유 컨텍스트 직접 수정</li>
+          <li><span class="cl-tag feat">feature</span>Tailscale 사설망 통합 — 원격 머신 에이전트 연결</li>
+          <li><span class="cl-tag feat">feature</span>DETS 영속 상태 — 재시작 후 Work Key 유지</li>
+        </ul>
+      </div>
+
+      <div class="cl-card">
+        <div class="cl-card-ver">v0.1.0</div>
+        <div class="cl-card-date">2025-02</div>
+        <ul class="cl-items">
+          <li><span class="cl-tag feat">feature</span>Phoenix WebSocket 채널 기반 태스크 오케스트레이션</li>
+          <li><span class="cl-tag feat">feature</span><code>[SHELL]</code> 태스크 원격 에이전트 실행</li>
+          <li><span class="cl-tag feat">feature</span>Work Key 생성/관리 + 에이전트 presence 추적</li>
+          <li><span class="cl-tag feat">feature</span>REST API + 대시보드 기본 UI</li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<div class="lb-bg" id="lb" onclick="closeLB()">
+  <img class="lb-img" id="lb-img" src="" alt=""/>
+</div>
+
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-left">
+        <strong>DureClaw (두레클로)</strong> · MIT License · Seungwoo Hong (홍승우)
+      </div>
+      <div class="footer-links">
+        <a href="https://github.com/DureClaw/dureclaw" target="_blank">GitHub</a>
+        <a href="https://github.com/DureClaw/dureclaw/blob/main/docs/METHODOLOGY.md" target="_blank">방법론</a>
+        <a href="https://github.com/DureClaw/dureclaw/blob/main/README.md" target="_blank">README</a>
+        <a href="https://github.com/DureClaw/dureclaw/tree/main/examples/fix-agent" target="_blank">fix-agent 예시</a>
+        <a href="https://github.com/DureClaw/dureclaw/issues" target="_blank">이슈</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="/assets/site.js"></script>
+</body>
+</html>

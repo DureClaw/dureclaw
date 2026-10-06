@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>개발자 레퍼런스 — DureClaw</title>
+<meta name="description" content="Phoenix 채널 이벤트와 REST API."/>
+
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+
+<!-- ── SEO / canonical / icons ── -->
+<link rel="canonical" href="https://dureclaw.baryon.ai/developers/"/>
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
+<meta name="author" content="DureClaw · Baryon Labs"/>
+<meta name="keywords" content="DureClaw, 두레클로, 분산 AI 에이전트, multi-agent orchestration, Claude Code 플러그인, edgeclaw, webclaw, deskclaw, keyless edge, LLM as compiler, 결정 동결, RPA, GPIO, Raspberry Pi, 멀티머신 AI, distributed AI agents"/>
+<meta name="theme-color" content="#0284c7"/>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+<link rel="icon" href="/favicon-256.png" sizes="256x256" type="image/png"/>
+<link rel="apple-touch-icon" href="/favicon-256.png"/>
+<link rel="sitemap" type="application/xml" href="/sitemap.xml"/>
+
+<!-- ── Open Graph ── -->
+<meta property="og:type" content="website"/>
+<meta property="og:site_name" content="DureClaw"/>
+<meta property="og:locale" content="ko_KR"/>
+<meta property="og:url" content="https://dureclaw.baryon.ai/developers/"/>
+<meta property="og:title" content="개발자 레퍼런스 — DureClaw"/>
+<meta property="og:description" content="Phoenix 채널 이벤트와 REST API."/>
+<meta property="og:image" content="https://dureclaw.baryon.ai/screenshots/hero-banner.jpg"/>
+<meta property="og:image:width" content="1400"/>
+<meta property="og:image:height" content="594"/>
+<meta property="og:image:alt" content="DureClaw Cooperative — Unified AI Robotics Ecosystem"/>
+
+<!-- ── Twitter ── -->
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:title" content="개발자 레퍼런스 — DureClaw"/>
+<meta name="twitter:description" content="Phoenix 채널 이벤트와 REST API."/>
+<meta name="twitter:image" content="https://dureclaw.baryon.ai/screenshots/hero-banner.jpg"/>
+
+<!-- ── AI / LLM crawlers (GEO/AEO) ── -->
+<link rel="alternate" type="text/markdown" title="llms.txt" href="/llms.txt"/>
+
+
+<link rel="stylesheet" href="/assets/site.css"/>
+</head>
+<body>
+<nav>
+  <div class="container">
+    <div class="nav-inner">
+      <a href="/" class="nav-logo">Dure<span>Claw</span></a>
+      <div class="nav-links">
+        <a href="/start/">설치 가이드</a>
+        <a href="/how/">구조와 원리</a>
+        <a href="/showcase/">데모·활용</a>
+        <a href="/developers/" class="active">개발자</a>
+        <a href="/changelog/">Changelog</a>
+        <a href="https://github.com/DureClaw/dureclaw/tree/main/docs" target="_blank">문서</a>
+      </div>
+      <a href="https://github.com/DureClaw/dureclaw" class="nav-gh" target="_blank">GitHub ↗</a>
+    </div>
+  </div>
+</nav>
+
+<header class="page-hero">
+  <div class="container">
+    <a href="/" class="crumb">← DureClaw 홈</a>
+    <h1>개발자 레퍼런스</h1>
+    <p>Phoenix 채널 이벤트와 REST API.</p>
+  </div>
+</header>
+
+<section class="section" id="events">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-num">→</span>
+      <h2 class="section-title">채널 <em>이벤트</em></h2>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>EVENT</th><th>DIRECTION</th><th>PAYLOAD (주요 필드)</th><th>설명</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><span class="ev">task.assign</span></td><td><span class="dir">orch → agent</span></td><td><span class="payload">to, task_id, role, instructions</span></td><td><span class="desc">태스크 할당. 대상 agent가 AI 백엔드 실행.</span></td></tr>
+          <tr><td><span class="ev">task.progress</span></td><td><span class="dir">agent → all</span></td><td><span class="payload">task_id, message, output_tail</span></td><td><span class="desc">10초마다 진행 상황 브로드캐스트.</span></td></tr>
+          <tr><td><span class="ev">task.result</span></td><td><span class="dir">agent → all</span></td><td><span class="payload">task_id, exit_code, artifacts[]</span></td><td><span class="desc">태스크 완료 보고. ARTIFACT: 라인 자동 파싱.</span></td></tr>
+          <tr><td><span class="ev">task.cancel</span></td><td><span class="dir">orch → agent</span></td><td><span class="payload">task_id</span></td><td><span class="desc">실행 중 태스크 취소. AbortController 신호.</span></td></tr>
+          <tr><td><span class="ev">task.blocked</span></td><td><span class="dir">any → all</span></td><td><span class="payload">task_id, reason</span></td><td><span class="desc">진행 불가. orchestrator가 재배정 판단.</span></td></tr>
+          <tr><td><span class="ev">state.update</span></td><td><span class="dir">any → server</span></td><td><span class="payload">key: value</span></td><td><span class="desc">Work Key 상태 업데이트 (DETS 영속).</span></td></tr>
+          <tr><td><span class="ev">mailbox.post</span></td><td><span class="dir">any → target</span></td><td><span class="payload">to, body</span></td><td><span class="desc">오프라인이면 큐잉, 온라인이면 즉시 전달.</span></td></tr>
+          <tr><td><span class="ev">agent.hello</span></td><td><span class="dir">server → all</span></td><td><span class="payload">agent, role, machine</span></td><td><span class="desc">에이전트 JOIN 알림.</span></td></tr>
+          <tr><td><span class="ev">agent.bye</span></td><td><span class="dir">server → all</span></td><td><span class="payload">agent, role</span></td><td><span class="desc">에이전트 퇴장 알림.</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="api">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-num">→</span>
+      <h2 class="section-title">REST <em>API</em></h2>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>METHOD</th><th>ENDPOINT</th><th>설명</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><span class="chip green">GET</span></td><td><span class="ev">/api/health</span></td><td><span class="desc">서버 상태 · work_key 개수</span></td></tr>
+          <tr><td><span class="chip green">GET</span></td><td><span class="ev">/api/presence</span></td><td><span class="desc">온라인 에이전트 목록 (name, role, machine)</span></td></tr>
+          <tr><td><span class="chip green">GET</span></td><td><span class="ev">/api/work-keys</span></td><td><span class="desc">Work Key 목록</span></td></tr>
+          <tr><td><span class="chip green">GET</span></td><td><span class="ev">/api/work-keys/latest</span></td><td><span class="desc">최신 Work Key (없으면 404)</span></td></tr>
+          <tr><td><span class="chip orange">POST</span></td><td><span class="ev">/api/work-keys</span></td><td><span class="desc">새 Work Key 발급</span></td></tr>
+          <tr><td><span class="chip orange">POST</span></td><td><span class="ev">/api/task</span></td><td><span class="desc">태스크 디스패치 <span class="payload">{ role, to, instructions }</span></span></td></tr>
+          <tr><td><span class="chip green">GET</span></td><td><span class="ev">/api/task/:id</span></td><td><span class="desc">태스크 결과 폴링</span></td></tr>
+          <tr><td><span class="chip orange">POST</span></td><td><span class="ev">/api/task/:id/result</span></td><td><span class="desc">태스크 결과 저장 · 채널 브로드캐스트</span></td></tr>
+          <tr><td><span class="chip green">GET</span></td><td><span class="ev">/api/state/:wk</span></td><td><span class="desc">Work Key 상태 조회</span></td></tr>
+          <tr><td><span class="chip purple">PATCH</span></td><td><span class="ev">/api/state/:wk</span></td><td><span class="desc">Work Key 상태 업데이트</span></td></tr>
+          <tr><td><span class="chip green">GET</span></td><td><span class="ev">/api/mailbox/:agent</span></td><td><span class="desc">에이전트 mailbox 읽기</span></td></tr>
+          <tr><td><span class="chip orange">POST</span></td><td><span class="ev">/api/mailbox/:agent</span></td><td><span class="desc">에이전트 mailbox 메시지 전송</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<div class="lb-bg" id="lb" onclick="closeLB()">
+  <img class="lb-img" id="lb-img" src="" alt=""/>
+</div>
+
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-left">
+        <strong>DureClaw (두레클로)</strong> · MIT License · Seungwoo Hong (홍승우)
+      </div>
+      <div class="footer-links">
+        <a href="https://github.com/DureClaw/dureclaw" target="_blank">GitHub</a>
+        <a href="https://github.com/DureClaw/dureclaw/blob/main/docs/METHODOLOGY.md" target="_blank">방법론</a>
+        <a href="https://github.com/DureClaw/dureclaw/blob/main/README.md" target="_blank">README</a>
+        <a href="https://github.com/DureClaw/dureclaw/tree/main/examples/fix-agent" target="_blank">fix-agent 예시</a>
+        <a href="https://github.com/DureClaw/dureclaw/issues" target="_blank">이슈</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="/assets/site.js"></script>
+</body>
+</html>

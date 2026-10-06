@@ -100,505 +100,8 @@
 }
 </script>
 
-<style>
-:root {
-  --bg:       #ffffff;
-  --bg2:      #f8fafc;
-  --bg3:      #f1f5f9;
-  --border:   #e2e8f0;
-  --border2:  #cbd5e1;
-  --text:     #1e293b;
-  --text2:    #475569;
-  --text3:    #94a3b8;
-  --cyan:     #0284c7;
-  --cyan2:    #0369a1;
-  --green:    #059669;
-  --green2:   #047857;
-  --orange:   #ea580c;
-  --orange2:  #c2410c;
-  --purple:   #7c3aed;
-  --red:      #dc2626;
-  --white:    #0f172a;
-}
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 14px;
-  line-height: 1.6;
-  overflow-x: hidden;
-}
-
-.container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
-
-/* NAV */
-nav {
-  position: sticky; top: 0; z-index: 100;
-  border-bottom: 1px solid var(--border);
-  background: rgba(255,255,255,0.92);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-}
-.nav-inner { display: flex; align-items: center; justify-content: space-between; height: 52px; }
-.nav-logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 15px; color: var(--white); letter-spacing: -0.5px; text-decoration: none; }
-.nav-logo span { color: var(--cyan); }
-.nav-links { display: flex; gap: 28px; }
-.nav-links a { color: var(--text2); font-size: 12px; text-decoration: none; letter-spacing: 1px; transition: color 0.2s; }
-.nav-links a:hover { color: var(--cyan); }
-.nav-gh {
-  display: flex; align-items: center; gap: 6px;
-  background: var(--border); border: 1px solid var(--border2);
-  color: var(--text); font-size: 11px; font-family: inherit;
-  padding: 5px 12px; border-radius: 4px;
-  text-decoration: none; transition: border-color 0.2s, color 0.2s;
-}
-.nav-gh:hover { border-color: var(--cyan); color: var(--cyan); }
-
-/* HERO */
-.hero { padding: 80px 0 60px; position: relative; overflow: hidden; }
-.hero::before {
-  content: '';
-  position: absolute; top: -200px; left: 50%; transform: translateX(-50%);
-  width: 800px; height: 600px;
-  background: radial-gradient(ellipse at center, rgba(2,132,199,0.05) 0%, transparent 70%);
-  pointer-events: none;
-}
-.hero-badge {
-  display: inline-flex; align-items: center; gap: 8px;
-  background: rgba(0,212,255,0.06); border: 1px solid rgba(0,212,255,0.2);
-  color: var(--cyan); font-size: 11px; letter-spacing: 2px;
-  padding: 5px 14px; border-radius: 2px; margin-bottom: 28px;
-}
-.hero-badge::before {
-  content: ''; width: 6px; height: 6px; border-radius: 50%;
-  background: var(--cyan); box-shadow: 0 0 8px var(--cyan);
-  animation: pulse 2s infinite;
-}
-@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-
-.hero h1 {
-  font-family: 'Syne', sans-serif;
-  font-size: clamp(36px, 6vw, 64px);
-  font-weight: 800; color: var(--white);
-  letter-spacing: -2px; line-height: 1.0; margin-bottom: 16px;
-}
-.hero h1 em { font-style: normal; color: var(--cyan); }
-.hero-sub-ko { font-size: 12px; color: var(--text3); margin-bottom: 6px; letter-spacing: 0.5px; }
-.hero-sub { font-size: 15px; color: var(--text2); max-width: 580px; line-height: 1.7; margin-bottom: 44px; }
-
-/* INSTALL BLOCK */
-.install-block {
-  background: var(--bg2); border: 1px solid var(--border2);
-  border-radius: 6px; overflow: hidden; max-width: 680px;
-  margin-bottom: 8px; box-shadow: 0 0 40px rgba(0,212,255,0.06);
-}
-.install-block + .install-block { margin-top: 0; }
-.install-bar {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 8px 16px; border-bottom: 1px solid var(--border);
-  background: var(--bg3);
-}
-.install-bar-dots { display: flex; gap: 6px; }
-.install-bar-dots span { width: 10px; height: 10px; border-radius: 50%; background: var(--border2); }
-.install-bar-label { font-size: 10px; color: var(--text3); letter-spacing: 1px; }
-.install-cmd { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px; gap: 12px; }
-.install-cmd code { color: var(--green); font-size: 13px; word-break: break-all; }
-.install-cmd code .dim { color: var(--text3); }
-.install-cmd code .url { color: var(--cyan); }
-.install-cmd code .kw { color: var(--orange); }
-.copy-btn {
-  flex-shrink: 0;
-  background: rgba(0,232,122,0.08); border: 1px solid rgba(0,232,122,0.25);
-  color: var(--green); font-family: inherit; font-size: 11px;
-  padding: 6px 14px; border-radius: 3px; cursor: pointer; letter-spacing: 1px;
-  transition: background 0.2s, border-color 0.2s; white-space: nowrap;
-}
-.copy-btn:hover { background: rgba(0,232,122,0.15); border-color: var(--green); }
-.copy-btn.copied { color: var(--cyan); border-color: var(--cyan); background: rgba(0,212,255,0.1); }
-.dl-btn {
-  display: inline-flex; align-items: center; gap: 8px;
-  background: var(--cyan); color: #fff; text-decoration: none;
-  font-family: inherit; font-size: 13px; font-weight: 600;
-  padding: 10px 18px; border-radius: 6px; border: 1px solid var(--cyan2);
-  transition: background 0.2s, transform 0.1s; white-space: nowrap;
-}
-.dl-btn:hover { background: var(--cyan2); }
-.dl-btn:active { transform: translateY(1px); }
-.dl-btn.sm { font-size: 12px; padding: 7px 14px; }
-.dl-btn .dl-sub { font-weight: 400; font-size: 11px; opacity: 0.85; }
-.win-dl {
-  display: flex; align-items: center; flex-wrap: wrap; gap: 12px 16px;
-  margin: 18px 0 6px; padding: 14px 16px;
-  background: var(--bg2); border: 1px solid var(--border); border-radius: 8px;
-}
-.win-dl-text { font-size: 12.5px; color: var(--text2); line-height: 1.6; flex: 1 1 260px; }
-.win-dl-text strong { color: var(--white); }
-.win-dl-text code { word-break: break-all; }
-.win-dl.hero { max-width: 680px; margin-top: 10px; }
-.install-note { font-size: 11px; color: var(--text3); letter-spacing: 0.5px; margin-bottom: 48px; margin-top: 10px; }
-.install-note a { color: var(--text2); text-decoration: none; }
-.install-note a:hover { color: var(--cyan); }
-
-/* WHAT GRID */
-.what-grid {
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px;
-  background: var(--border); border: 1px solid var(--border);
-  border-radius: 6px; overflow: hidden; margin-bottom: 80px;
-}
-.what-item { background: var(--bg); padding: 24px 22px; }
-.what-item-label { font-size: 9px; letter-spacing: 2px; color: var(--text3); margin-bottom: 8px; text-transform: uppercase; }
-.what-item-title { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; color: var(--white); margin-bottom: 8px; }
-.what-item p { font-size: 12px; color: var(--text2); line-height: 1.6; }
-
-/* SECTION */
-.section { margin-bottom: 80px; }
-.section-header { display: flex; align-items: baseline; gap: 16px; margin-bottom: 24px; }
-.section-num { font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 800; letter-spacing: 3px; color: var(--text3); }
-.section-title { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 700; color: var(--white); letter-spacing: -0.5px; }
-.section-title em { font-style: normal; color: var(--cyan); }
-
-/* TERMINAL MOCKUP */
-.term {
-  background: #0f172a; border: 1px solid #1e293b;
-  border-radius: 4px; padding: 10px 12px; margin-top: 12px;
-  font-size: 10px; line-height: 1.7; overflow: hidden;
-}
-.term .t-bar { display: flex; gap: 5px; margin-bottom: 8px; }
-.term .t-dot { width: 7px; height: 7px; border-radius: 50%; }
-.term .t-prompt { color: #475569; }
-.term .t-cmd { color: #38bdf8; }
-.term .t-ok { color: #34d399; }
-.term .t-dim { color: #334155; }
-.term .t-warn { color: #fb923c; }
-
-/* PLATFORM GRID */
-.platform-grid {
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
-  margin-bottom: 80px;
-}
-.platform-card {
-  background: var(--bg2); border: 1px solid var(--border);
-  border-radius: 6px; padding: 20px 22px;
-  transition: border-color 0.2s;
-}
-.platform-card:hover { border-color: var(--border2); }
-.platform-icon { font-size: 24px; margin-bottom: 10px; }
-.platform-name { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; color: var(--white); margin-bottom: 4px; }
-.platform-sub { font-size: 11px; color: var(--text3); margin-bottom: 10px; letter-spacing: 0.3px; }
-.platform-tags { display: flex; flex-wrap: wrap; gap: 5px; }
-.platform-tag {
-  font-size: 9px; letter-spacing: 1px; font-weight: 700;
-  padding: 2px 7px; border-radius: 2px;
-  background: var(--bg3); border: 1px solid var(--border); color: var(--text3);
-}
-.platform-tag.ok { background: rgba(5,150,105,0.08); border-color: rgba(5,150,105,0.25); color: var(--green); }
-.platform-tag.docker { background: rgba(2,132,199,0.08); border-color: rgba(2,132,199,0.25); color: var(--cyan); }
-.platform-tag.binary { background: rgba(234,88,12,0.08); border-color: rgba(234,88,12,0.25); color: var(--orange); }
-.platform-status { display: flex; align-items: center; gap: 6px; margin-top: 10px; font-size: 10px; color: var(--text3); }
-.platform-status .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 5px var(--green); }
-
-/* ARCH BOX */
-.arch-ascii {
-  background: var(--bg2); border: 1px solid var(--border);
-  border-radius: 6px; padding: 32px 40px;
-  font-size: 12px; color: var(--text2); line-height: 2;
-  overflow-x: auto;
-}
-.arch-ascii .c1 { color: var(--cyan); font-weight: 700; }
-.arch-ascii .c2 { color: var(--green); font-weight: 700; }
-.arch-ascii .c3 { color: var(--orange); font-weight: 700; }
-.arch-ascii .dim { color: var(--text3); }
-.arch-ascii .arrow { color: var(--border2); }
-
-/* INSTALL STEPS */
-.steps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-.step-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
-.step-header { padding: 16px 20px 12px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; gap: 14px; }
-.step-num-badge {
-  width: 32px; height: 32px; border-radius: 6px;
-  display: flex; align-items: center; justify-content: center;
-  font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 800;
-  flex-shrink: 0;
-}
-.step-num-badge.s1 { background: rgba(2,132,199,0.12); color: var(--cyan); }
-.step-num-badge.s2 { background: rgba(5,150,105,0.12); color: var(--green); }
-.step-num-badge.s3 { background: rgba(234,88,12,0.12); color: var(--orange); }
-.step-header-text {}
-.step-title { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; color: var(--white); }
-.step-sub { font-size: 10px; color: var(--text3); letter-spacing: 0.5px; margin-top: 2px; }
-.step-body { padding: 16px 20px; }
-.step-cmd {
-  background: var(--bg3); border: 1px solid var(--border);
-  border-radius: 3px; padding: 10px 12px;
-  font-size: 11px; color: var(--green);
-  cursor: pointer; display: block; width: 100%;
-  font-family: inherit; text-align: left; margin-bottom: 8px;
-  transition: border-color 0.15s, background 0.15s;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.step-cmd:last-of-type { margin-bottom: 0; }
-.step-cmd:hover { border-color: var(--border2); background: var(--bg2); }
-.step-cmd.cyan { color: var(--cyan); }
-.step-cmd.orange { color: var(--orange); }
-.step-note { margin-top: 12px; padding: 10px 12px; background: rgba(0,212,255,0.04); border: 1px solid rgba(0,212,255,0.1); border-radius: 3px; font-size: 10px; color: var(--text2); line-height: 1.6; }
-.step-note strong { color: var(--cyan); }
-
-/* PARALLEL FLOW */
-.parallel-box {
-  background: var(--bg2); border: 1px solid var(--border);
-  border-radius: 6px; padding: 28px 32px;
-}
-.parallel-timeline {
-  display: flex; flex-direction: column; gap: 0;
-}
-.pt-row {
-  display: grid; grid-template-columns: 80px 1fr;
-  gap: 20px; position: relative;
-}
-.pt-row:not(:last-child)::after {
-  content: '';
-  position: absolute; left: 38px; top: 36px; bottom: 0;
-  width: 1px; background: var(--border);
-}
-.pt-time {
-  font-size: 10px; color: var(--text3); padding-top: 18px;
-  text-align: right; letter-spacing: 0.5px;
-}
-.pt-content { padding: 14px 0 20px; }
-.pt-label { font-size: 9px; letter-spacing: 2px; color: var(--text3); margin-bottom: 6px; text-transform: uppercase; }
-.pt-agents { display: flex; gap: 10px; flex-wrap: wrap; }
-.pt-agent {
-  display: flex; align-items: center; gap: 8px;
-  background: var(--bg3); border: 1px solid var(--border);
-  border-radius: 4px; padding: 8px 14px;
-  font-size: 11px;
-}
-.pt-agent.active { border-color: var(--border2); }
-.pt-agent .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-.pt-agent .dot.cyan   { background: var(--cyan); box-shadow: 0 0 6px var(--cyan); animation: pulse 2s infinite; }
-.pt-agent .dot.orange { background: var(--orange); box-shadow: 0 0 6px var(--orange); animation: pulse 2s infinite; }
-.pt-agent .dot.purple { background: var(--purple); box-shadow: 0 0 6px var(--purple); animation: pulse 2s infinite; }
-.pt-agent .dot.green  { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 2s infinite; }
-.pt-agent .dot.grey   { background: var(--border2); }
-.pt-agent-name { color: var(--text); }
-.pt-agent-task { color: var(--text3); font-size: 10px; }
-.pt-arrow { color: var(--text3); margin: 0 4px; }
-.pt-result {
-  margin-top: 8px; padding: 8px 12px;
-  background: rgba(0,232,122,0.04); border: 1px solid rgba(0,232,122,0.15);
-  border-radius: 3px; font-size: 11px; color: var(--green2);
-}
-.pt-result strong { color: var(--green); }
-
-/* ONE-LINER BLOCK */
-.oneliner-block {
-  background: var(--bg2); border: 1px solid var(--border2);
-  border-radius: 6px; overflow: hidden;
-}
-.oneliner-row {
-  display: grid; grid-template-columns: 120px 1fr auto;
-  align-items: center; gap: 0;
-  border-bottom: 1px solid var(--border);
-  padding: 0;
-}
-.oneliner-row:last-child { border-bottom: none; }
-.oneliner-label {
-  padding: 14px 16px; font-size: 10px; color: var(--text3);
-  letter-spacing: 1px; border-right: 1px solid var(--border);
-  background: var(--bg3);
-}
-.oneliner-label .role-badge {
-  display: inline-block; padding: 2px 6px; border-radius: 2px;
-  font-size: 9px; font-weight: 700; letter-spacing: 1px; margin-bottom: 4px;
-}
-.oneliner-cmd { padding: 14px 16px; font-size: 11.5px; color: var(--green); word-break: break-all; }
-.oneliner-cmd .dim { color: var(--text3); }
-.oneliner-cmd .kw  { color: var(--cyan); }
-.oneliner-cmd .val { color: var(--orange); }
-.oneliner-copy {
-  padding: 14px 16px;
-  background: none; border: none; border-left: 1px solid var(--border);
-  color: var(--text3); font-family: inherit; font-size: 10px;
-  cursor: pointer; letter-spacing: 1px; white-space: nowrap;
-  transition: color 0.2s;
-}
-.oneliner-copy:hover { color: var(--cyan); }
-
-/* TABLE */
-.table-wrap { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
-table { width: 100%; border-collapse: collapse; }
-thead { background: var(--bg2); }
-th { padding: 10px 16px; font-size: 10px; font-weight: 700; color: var(--text3); letter-spacing: 2px; text-align: left; border-bottom: 1px solid var(--border); }
-td { padding: 9px 16px; font-size: 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
-tr:last-child td { border-bottom: none; }
-tr:nth-child(even) td { background: var(--bg2); }
-.ev { color: var(--cyan); font-weight: 500; }
-.dir { color: var(--text3); font-size: 10px; }
-.desc { color: var(--text2); }
-.payload { color: var(--green); font-size: 11px; }
-
-/* CHIPS */
-.chip { display: inline-block; padding: 2px 7px; border-radius: 2px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; }
-.chip.cyan   { background: rgba(0,212,255,0.1); color: var(--cyan); }
-.chip.green  { background: rgba(0,232,122,0.1); color: var(--green); }
-.chip.orange { background: rgba(255,140,66,0.1); color: var(--orange); }
-.chip.purple { background: rgba(140,107,255,0.1); color: var(--purple); }
-
-/* SCREENSHOTS */
-.ss-featured { width: 100%; border-radius: 10px; border: 1px solid var(--border2); display: block; margin-bottom: 16px; box-shadow: 0 4px 24px rgba(0,0,0,.08); }
-.ss-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-.ss-item { display: flex; flex-direction: column; gap: 8px; }
-.ss-item img { width: 100%; border-radius: 8px; border: 1px solid var(--border); display: block; box-shadow: 0 2px 10px rgba(0,0,0,.06); transition: transform .2s, box-shadow .2s; cursor: zoom-in; }
-.ss-item img:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,.12); }
-.ss-caption { font-size: 11px; color: var(--text3); text-align: center; line-height: 1.4; }
-.ss-caption strong { color: var(--text2); display: block; margin-bottom: 2px; }
-@media (max-width: 900px) { .ss-grid { grid-template-columns: 1fr; } }
-
-/* lightbox */
-.lb-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,.85); z-index:9999; align-items:center; justify-content:center; cursor:zoom-out; }
-.lb-bg.open { display:flex; }
-.lb-img { max-width:92vw; max-height:90vh; border-radius:8px; box-shadow:0 8px 40px rgba(0,0,0,.5); }
-
-/* CHANGELOG */
-.cl-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
-.cl-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 20px 22px; }
-.cl-card-ver { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 800; color: var(--white); letter-spacing: -0.3px; display: flex; align-items: center; gap: 8px; }
-.cl-badge { font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 20px; letter-spacing: .5px; background: var(--cyan); color: #fff; }
-.cl-card-date { font-size: 10px; color: var(--text3); margin: 4px 0 12px; }
-.cl-items { list-style: none; display: flex; flex-direction: column; gap: 7px; }
-.cl-items li { font-size: 11px; color: var(--text2); display: flex; align-items: baseline; gap: 7px; line-height: 1.5; }
-.cl-tag { font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 3px; letter-spacing: .4px; flex-shrink: 0; text-transform: uppercase; }
-.cl-tag.feat { background: rgba(2,132,199,.12); color: var(--cyan); }
-.cl-tag.fix  { background: rgba(245,158,11,.12); color: #d97706; }
-.cl-tag.sec  { background: rgba(220,38,38,.12);  color: var(--red); }
-@media (max-width: 900px) { .cl-grid { grid-template-columns: 1fr; } }
-
-/* FOR-WHO PERSONAS */
-.fw-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 0; }
-.fw-card {
-  background: var(--bg2); border: 1px solid var(--border);
-  border-radius: 8px; padding: 24px 22px;
-  transition: border-color 0.2s, transform 0.2s;
-}
-.fw-card:hover { border-color: var(--border2); transform: translateY(-2px); }
-.fw-icon { font-size: 28px; margin-bottom: 12px; }
-.fw-who { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; color: var(--white); margin-bottom: 6px; }
-.fw-situation { font-size: 12px; color: var(--text3); margin-bottom: 12px; letter-spacing: 0.2px; }
-.fw-pain { font-size: 12px; color: var(--text2); padding: 10px 12px; background: rgba(220,38,38,0.05); border: 1px solid rgba(220,38,38,0.12); border-radius: 4px; margin-bottom: 8px; line-height: 1.6; }
-.fw-gain { font-size: 12px; color: var(--text2); padding: 10px 12px; background: rgba(5,150,105,0.05); border: 1px solid rgba(5,150,105,0.15); border-radius: 4px; line-height: 1.6; }
-.fw-gain strong { color: var(--green); }
-.fw-pain strong { color: var(--red); }
-@media (max-width: 900px) { .fw-grid { grid-template-columns: 1fr; } }
-
-/* HOW-IT-WORKS */
-.how-row {
-  display: grid; grid-template-columns: 1fr 40px 1fr 40px 1fr;
-  gap: 0; align-items: stretch; margin-bottom: 0;
-}
-.how-step {
-  background: var(--bg2); border: 1px solid var(--border);
-  border-radius: 8px; padding: 20px 18px;
-}
-.how-arrow {
-  display: flex; align-items: center; justify-content: center;
-  color: var(--border2); font-size: 20px;
-}
-.how-num { font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 800; letter-spacing: 3px; color: var(--text3); margin-bottom: 6px; }
-.how-title { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; color: var(--white); margin-bottom: 6px; }
-.how-desc { font-size: 11px; color: var(--text2); line-height: 1.6; }
-.how-code { margin-top: 10px; background: var(--bg3); border: 1px solid var(--border); border-radius: 3px; padding: 8px 10px; font-size: 10px; color: var(--green); word-break: break-all; }
-.how-code .dim { color: var(--text3); }
-.how-code .cyan { color: var(--cyan); }
-@media (max-width: 900px) {
-  .how-row { grid-template-columns: 1fr; }
-  .how-arrow { transform: rotate(90deg); height: 32px; }
-}
-
-/* DEMO SECTION */
-.demo-video-placeholder {
-  width: 100%; aspect-ratio: 16/9;
-  border: 2px dashed var(--border2); border-radius: 10px;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  background: var(--bg2); margin-bottom: 48px; gap: 10px;
-}
-.demo-video-placeholder .dvp-icon { font-size: 40px; opacity: 0.4; }
-.demo-video-placeholder .dvp-label { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; color: var(--text3); }
-.demo-video-placeholder .dvp-sub { font-size: 11px; color: var(--text3); letter-spacing: 0.5px; }
-
-.demo-scenes { display: flex; flex-direction: column; gap: 0; }
-.demo-scene {
-  display: grid; grid-template-columns: 260px 1fr;
-  border: 1px solid var(--border); border-bottom: none; overflow: hidden;
-}
-.demo-scene:first-child { border-radius: 8px 8px 0 0; }
-.demo-scene:last-child  { border-bottom: 1px solid var(--border); border-radius: 0 0 8px 8px; }
-.demo-scene-shot {
-  border-right: 1px solid var(--border); background: var(--bg3);
-  display: flex; align-items: center; justify-content: center;
-  min-height: 140px; position: relative; overflow: hidden;
-}
-.demo-scene-shot img { width: 100%; height: 100%; object-fit: cover; display: block; cursor: zoom-in; transition: transform 0.2s; }
-.demo-scene-shot img:hover { transform: scale(1.03); }
-.demo-scene-shot .shot-empty {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 6px; padding: 20px; width: 100%; height: 100%;
-}
-.demo-scene-shot .shot-empty span { font-size: 22px; opacity: 0.3; }
-.demo-scene-shot .shot-empty p { font-size: 10px; color: var(--text3); text-align: center; letter-spacing: 0.5px; }
-.demo-scene-body { padding: 20px 24px; }
-.demo-scene-meta { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-.demo-scene-num {
-  font-family: 'Syne', sans-serif; font-size: 10px; font-weight: 800;
-  letter-spacing: 2px; color: var(--text3);
-}
-.demo-scene-time { font-size: 10px; color: var(--text3); background: var(--bg3); padding: 2px 8px; border-radius: 20px; }
-.demo-scene-title { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; color: var(--white); margin-bottom: 6px; }
-.demo-scene-script { font-size: 12px; color: var(--text2); line-height: 1.7; }
-.demo-scene-script .narr { font-style: italic; color: var(--text3); }
-.demo-scene-script code { background: var(--bg3); padding: 1px 6px; border-radius: 3px; color: var(--green); font-size: 11px; }
-.demo-scene-script .highlight { color: var(--cyan); font-weight: 600; }
-@media (max-width: 700px) {
-  .demo-scene { grid-template-columns: 1fr; }
-  .demo-scene-shot { min-height: 100px; border-right: none; border-bottom: 1px solid var(--border); }
-}
-
-/* FOOTER */
-footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px; }
-.footer-inner { display: flex; align-items: center; justify-content: space-between; }
-.footer-left { font-size: 12px; color: var(--text3); }
-.footer-left strong { color: var(--text2); }
-.footer-links { display: flex; gap: 20px; }
-.footer-links a { font-size: 11px; color: var(--text3); text-decoration: none; }
-.footer-links a:hover { color: var(--cyan); }
-
-/* RESPONSIVE */
-@media (max-width: 900px) {
-  .platform-grid { grid-template-columns: repeat(2, 1fr); }
-  .steps-grid { grid-template-columns: 1fr; }
-  .oneliner-row { grid-template-columns: 1fr; }
-  .footer-inner { flex-direction: column; gap: 12px; text-align: center; }
-  .nav-links { display: none; }
-  .hero h1 { font-size: 32px; letter-spacing: -1px; }
-}
-@media (max-width: 600px) {
-  .parallel-box { padding: 16px; }
-  .arch-ascii { padding: 20px; }
-}
-
-/* ANIMATIONS */
-@keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-.hero > * { animation: fadeUp 0.6s ease both; }
-.hero > *:nth-child(1) { animation-delay: 0.05s; }
-.hero > *:nth-child(2) { animation-delay: 0.12s; }
-.hero > *:nth-child(3) { animation-delay: 0.18s; }
-.hero > *:nth-child(4) { animation-delay: 0.24s; }
-.hero > *:nth-child(5) { animation-delay: 0.30s; }
-.hero > *:nth-child(6) { animation-delay: 0.36s; }
-.hero > *:nth-child(7) { animation-delay: 0.42s; }
-</style>
+<link rel="stylesheet" href="/assets/site.css"/>
 </head>
 <body>
 
@@ -608,22 +111,14 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
     <div class="nav-inner">
       <a href="/" class="nav-logo">Dure<span>Claw</span></a>
       <div class="nav-links">
-        <a href="#how-it-works">시작하기</a>
-        <a href="#demo">데모</a>
-        <a href="#ecosystem">에코시스템</a>
-        <a href="#layers">레이어</a>
-        <a href="#vs-ssh">vs SSH</a>
-        <a href="#hardware">하드웨어</a>
-        <a href="#install">설치</a>
-        <a href="#platforms">지원 환경</a>
-        <a href="#screenshots">스크린샷</a>
-        <a href="#changelog">Changelog</a>
+        <a href="/start/">설치 가이드</a>
+        <a href="/how/">구조와 원리</a>
+        <a href="/showcase/">데모·활용</a>
+        <a href="/developers/">개발자</a>
+        <a href="/changelog/">Changelog</a>
         <a href="https://github.com/DureClaw/dureclaw/tree/main/docs" target="_blank">문서</a>
       </div>
-      <a href="https://github.com/DureClaw/dureclaw" class="nav-gh" target="_blank">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-        GitHub
-      </a>
+      <a href="https://github.com/DureClaw/dureclaw" class="nav-gh" target="_blank">GitHub ↗</a>
     </div>
   </div>
 </nav>
@@ -632,42 +127,140 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
 <section class="hero">
   <div class="container">
     <img src="/screenshots/hero-banner.jpg" alt="DureClaw 멀티머신 AI 팀 오케스트레이션" style="width:100%;border-radius:8px;margin-bottom:40px;display:block;" />
-    <div class="hero-badge">Claude Code 네이티브 플러그인 · v0.4.0 · 오픈소스</div>
+    <div class="hero-badge">Claude Code 네이티브 플러그인 · v0.4.5 · 오픈소스</div>
     <p class="hero-sub-ko">두레클로 — <a href="https://en.wikipedia.org/wiki/Dure" target="_blank" style="color:var(--text3);text-decoration:none;border-bottom:1px solid var(--border2);">두레(협동 경작)</a> 정신을 AI 에이전트에 담다</p>
     <h1>내 모든 머신이<br/><em>AI 팀</em>이 된다</h1>
     <p class="hero-sub">
-      Claude Code를 <strong>창 하나</strong>에서만 쓰고 있다면?<br/>
-      DureClaw는 내 <strong style="color:var(--cyan)">모든 머신</strong>을 하나의 팀으로 연결한다.<br/>
-      Mac이 오케스트레이트하는 동안, GPU 서버·Linux 박스·라즈베리파이가 <strong style="color:var(--green)">동시에</strong> 일한다.
+      Mac에서 Claude에게 말하면, 집·회사에 흩어진 <strong style="color:var(--cyan)">Windows PC·Linux 서버·라즈베리파이</strong>가
+      일을 나눠 받아 <strong style="color:var(--green)">동시에</strong> 처리하고 결과를 돌려준다.
     </p>
 
-    <div class="install-block">
-      <div class="install-bar">
-        <div class="install-bar-dots">
-          <span style="background:#ff5f57"></span>
-          <span style="background:#febc2e"></span>
-          <span style="background:#28c840"></span>
+    <div class="cta-grid" id="download">
+      <div class="cta-card primary">
+        <div class="cta-os">① 본부 · Mac</div>
+        <div class="cta-title">🍎 서버 앱 설치</div>
+        <div class="cta-desc">팀을 지휘할 Mac에 한 번만. 내려받아 Applications로 끌어놓고 실행하면 메뉴 막대에서 서버가 돈다.</div>
+        <a class="dl-btn" href="https://github.com/DureClaw/dureclaw/releases/latest/download/DureClaw-Server-mac-arm64.dmg" download>⬇ Mac용 다운로드 <span class="dl-sub">Apple Silicon</span></a>
+      </div>
+      <div class="cta-card">
+        <div class="cta-os">② 팀원 · Windows</div>
+        <div class="cta-title">🪟 노드 설치 프로그램</div>
+        <div class="cta-desc">일을 맡길 PC에. 실행 → 서버 주소(비우면 자동 탐색)·역할 입력 → 끝. 로그인 시 자동 연결.</div>
+        <a class="dl-btn" href="https://github.com/DureClaw/dureclaw/releases/latest/download/DureClaw-Agent-Setup.exe" download>⬇ Windows용 다운로드 <span class="dl-sub">x64</span></a>
+      </div>
+      <div class="cta-card">
+        <div class="cta-os">② 팀원 · Linux · 라즈베리파이 · Mac</div>
+        <div class="cta-title">🐧 한 줄 명령</div>
+        <div class="cta-desc">터미널에 붙여 넣기. <code>서버주소</code>는 Mac 앱 메뉴의 “노드 연결 주소 복사”로 얻는다.</div>
+        <div class="cta-cmd">
+          <code>PHOENIX=ws://서버주소:4000 bash &lt;(curl -fsSL https://dureclaw.baryon.ai/agent)</code>
+          <button class="copy-btn" onclick="copyCmd(this, 'PHOENIX=ws://서버주소:4000 bash <(curl -fsSL https://dureclaw.baryon.ai/agent)')">복사</button>
         </div>
-        <span class="install-bar-label">한 줄 설치 — 서버 + MCP + Tailscale 안내 포함</span>
-        <span style="width:40px"></span>
-      </div>
-      <div class="install-cmd">
-        <code><span class="dim">bash &lt;(curl -fsSL </span><span class="url">https://dureclaw.baryon.ai/install</span><span class="dim">)</span></code>
-        <button class="copy-btn" onclick="copyCmd(this, 'bash <(curl -fsSL https://dureclaw.baryon.ai/install)')">복사</button>
       </div>
     </div>
-
-    <div class="win-dl hero">
-      <div class="win-dl-text">🪟 <strong>Windows PC를 팀원으로 추가</strong> — 터미널 없이 설치 프로그램으로.<br/>
-        실행 → 서버 주소(비우면 자동 탐색)·역할 입력 → 끝. 로그인 시 자동 연결, 트레이에서 상태 확인.</div>
-      <a class="dl-btn" href="https://github.com/DureClaw/dureclaw/releases/latest/download/DureClaw-Agent-Setup.exe" download>⬇ Windows용 다운로드 <span class="dl-sub">Setup.exe · x64</span></a>
-    </div>
-
     <p class="install-note">
-      서버 자동 시작 · Claude Code MCP 자동 등록 · Tailscale 보안 안내 포함 ·
-      <a href="https://github.com/DureClaw/dureclaw" target="_blank">소스 보기 ↗</a>
+      터미널이 편하다면 Mac 서버도 한 줄로: <code>bash &lt;(curl -fsSL https://dureclaw.baryon.ai/install)</code> ·
+      <a href="/start/">플랫폼별 자세한 설치 →</a>
     </p>
+  </div>
+</section>
 
+<!-- WHAT -->
+<section class="section" id="what">
+  <div class="container">
+    <div class="explain">
+      <div class="explain-img"><img src="/images/concept.webp" width="1400" height="933" alt="가운데 Mac의 리더 로봇이 Windows PC, Linux 서버, 라즈베리파이, GPU 워크스테이션의 로봇들에게 일을 나눠주는 그림" loading="lazy"/></div>
+      <div>
+        <h3>DureClaw는 무엇인가요?</h3>
+        <p>여러 대의 컴퓨터를 <strong>하나의 팀</strong>으로 묶어 주는 도구입니다. 역할은 셋뿐입니다.</p>
+        <ul>
+          <li><span class="ic">🧠</span><strong>두뇌</strong> — Mac에서 쓰는 Claude Code. 무엇을 할지 생각하고 일을 나눕니다.</li>
+          <li><span class="ic">🤲</span><strong>손</strong> — 각 컴퓨터에 설치된 작은 에이전트. 받은 일을 실행하고 결과를 보고합니다.</li>
+          <li><span class="ic">🚌</span><strong>버스</strong> — Mac의 서버 앱. 두뇌와 손을 실시간으로 이어 줍니다.</li>
+        </ul>
+        <p style="font-size:13px">Windows에서만 되는 엑셀 작업, GPU 서버의 학습, 라즈베리파이의 센서 — 기계마다 잘하는 일을 한 번의 지시로 동시에 돌립니다.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW TO START -->
+<section class="section" id="steps">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-num">→</span>
+      <h2 class="section-title">3단계면 <em>팀 완성</em></h2>
+    </div>
+    <div class="steps3">
+      <div class="s3-card">
+        <img src="/images/step1-server.webp" width="720" height="720" alt="Mac에서 버튼 하나로 서버 앱을 켜는 그림" loading="lazy"/>
+        <div class="s3-body">
+          <div class="s3-no">STEP 01</div>
+          <div class="s3-title">Mac에 서버 앱 설치</div>
+          <div class="s3-desc"><a href="#download">DureClaw.dmg</a>를 내려받아 실행. 메뉴 막대에 아이콘이 생기면 서버가 켜진 것입니다.</div>
+        </div>
+      </div>
+      <div class="s3-card">
+        <img src="/images/step2-connect.webp" width="720" height="720" alt="Windows PC와 라즈베리파이가 잠금 표시가 있는 안전한 선으로 Mac에 연결되는 그림" loading="lazy"/>
+        <div class="s3-body">
+          <div class="s3-no">STEP 02</div>
+          <div class="s3-title">다른 컴퓨터 연결</div>
+          <div class="s3-desc">Windows는 설치 프로그램, Linux·라즈베리파이는 한 줄 명령. <strong>비밀번호·키를 나눠 줄 필요 없이</strong> 같은 사설망(Tailscale)이면 자동 승인됩니다.</div>
+        </div>
+      </div>
+      <div class="s3-card">
+        <img src="/images/step3-talk.webp" width="720" height="720" alt="사람이 노트북에 메시지를 쓰면 작업 카드가 여러 컴퓨터로 날아가고 완료 표시가 돌아오는 그림" loading="lazy"/>
+        <div class="s3-body">
+          <div class="s3-no">STEP 03</div>
+          <div class="s3-title">Claude에게 말하기</div>
+          <div class="s3-desc">Claude Code에서 <code>/두레팀</code> 또는 “윈도우에서 빌드하고 라즈베리파이로 테스트해줘”. 배분·실행·결과 취합은 알아서.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- WHY -->
+<section class="section" id="why">
+  <div class="container">
+    <div class="explain reverse">
+      <div class="explain-img"><img src="/images/before-after.webp" width="1200" height="800" alt="왼쪽은 엉킨 케이블과 경고 표시, 오른쪽은 하나의 깔끔한 버스로 연결된 로봇들을 비교한 그림" loading="lazy"/></div>
+      <div>
+        <h3>원격 접속(SSH)과 뭐가 다른가요?</h3>
+        <p>SSH는 기계마다 접속 방법·인증·명령어가 다릅니다. 특히 Windows가 섞이는 순간 설정이 급격히 어려워집니다.</p>
+        <ul>
+          <li><span class="ic">✅</span><strong>들어오는 문을 열지 않는다</strong> — 각 컴퓨터가 서버로 먼저 연결하므로 방화벽·포트 설정이 필요 없습니다.</li>
+          <li><span class="ic">✅</span><strong>OS 차이를 감춘다</strong> — Windows·Linux·Mac에 같은 방식으로 일을 시키고 같은 형식으로 결과를 받습니다.</li>
+          <li><span class="ic">✅</span><strong>여러 대를 한 번에</strong> — 한 줄 지시로 여러 기계가 동시에 움직입니다.</li>
+        </ul>
+        <a class="more-link" href="/how/#vs-ssh">실측 비교 보기 →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SAFE -->
+<section class="section" id="safe">
+  <div class="container">
+    <div class="explain">
+      <div class="explain-img"><img src="/images/keyless.webp" width="1200" height="800" alt="마스터 키는 Mac 금고에 두고 다른 로봇들에게는 개별 배지만 나눠주는 그림" loading="lazy"/></div>
+      <div>
+        <h3>키 없이도 안전하게</h3>
+        <p>마스터 비밀키는 Mac 한 곳에만 있습니다. 다른 컴퓨터에는 복사하지 않습니다.</p>
+        <ul>
+          <li><span class="ic">🎫</span><strong>개인 출입증</strong> — 새 컴퓨터가 가입을 요청하면 서버가 그 컴퓨터 전용 토큰을 발급합니다. 필요하면 하나씩 회수할 수 있습니다.</li>
+          <li><span class="ic">🔒</span><strong>사설망 자동 승인</strong> — 같은 Tailscale 망이면 클릭 없이 승인, 밖에서 오면 운영자가 확인합니다.</li>
+          <li><span class="ic">🧭</span><strong>지시는 한 곳에서만</strong> — 팀원 컴퓨터는 일을 받고 보고만 할 수 있고, 다른 컴퓨터에 지시할 수 없습니다.</li>
+        </ul>
+        <a class="more-link" href="/how/#how-it-works">키리스 접근 자세히 →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOR WHO -->
+<section class="section" id="for-who">
+  <div class="container">
     <!-- 이런 분을 위해 -->
     <p style="font-size:11px;letter-spacing:2px;color:var(--text3);margin-bottom:14px;text-transform:uppercase;">이런 분을 위해</p>
     <div class="fw-grid">
@@ -693,1123 +286,44 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
         <div class="fw-gain"><strong>DureClaw:</strong> 팀장 Claude가 태스크 배분 → 모든 머신이 협력해서 결과 통합.</div>
       </div>
     </div>
+
   </div>
 </section>
 
-<!-- HOW IT WORKS -->
-<section class="section" id="how-it-works" style="padding-top:0">
+<!-- DEMO -->
+<section class="section" id="see">
   <div class="container">
     <div class="section-header">
       <span class="section-num">→</span>
-      <h2 class="section-title">3분이면 <em>팀 완성</em></h2>
+      <h2 class="section-title">실제로 <em>돌아가는 모습</em></h2>
     </div>
-    <div class="how-row">
-      <div class="how-step">
-        <div class="how-num">STEP 01</div>
-        <div class="how-title">한 줄로 설치</div>
-        <div class="how-desc">Claude Code 플러그인 + Phoenix 서버 + MCP 등록까지 자동으로 처리된다.</div>
-        <div class="how-code"><span class="dim">bash &lt;(curl -fsSL </span><span class="cyan">dureclaw.baryon.ai/install</span><span class="dim">)</span></div>
-      </div>
-      <div class="how-arrow">→</div>
-      <div class="how-step">
-        <div class="how-num">STEP 02</div>
-        <div class="how-title">워커 머신 연결 <span style="font-size:11px;color:var(--green);border:1px solid var(--green);border-radius:20px;padding:1px 7px;vertical-align:middle">keyless</span></div>
-        <div class="how-desc">다른 머신에서 한 줄 실행. <strong>시크릿 불필요</strong> — 노드가 서버에 가입 요청하면 사설망(Tailscale) 피어는 자동 승인·토큰 발급.</div>
-        <div class="how-code"><span class="dim">bash &lt;(curl -fsSL </span><span class="cyan">…/agent</span><span class="dim">)</span><br/><span class="dim" style="opacity:.6"># OAH_SECRET 없이 자동 등록</span></div>
-      </div>
-      <div class="how-arrow">→</div>
-      <div class="how-step">
-        <div class="how-num">STEP 03</div>
-        <div class="how-title">Claude에게 말하기</div>
-        <div class="how-desc">Claude Code에서 슬래시 명령 하나. 팀 구성부터 태스크 배분까지 Claude가 알아서 한다.</div>
-        <div class="how-code"><span class="cyan">/두레팀</span> <span class="dim">또는 "팀 설정해줘"</span></div>
-      </div>
-    </div>
-
-    <!-- keyless access -->
-    <div style="margin-top:24px;border:1px solid var(--border);border-radius:12px;padding:18px 20px;background:var(--bg2)">
-      <div style="font:700 15px 'Syne',sans-serif;color:var(--white)">🔑 키리스 접근 — 시크릿을 미리 나눠주지 않는다</div>
-      <p style="color:var(--text2);font-size:13px;margin:8px 0 14px;max-width:820px">
-        노드는 공유 시크릿을 몰라도 됩니다. 서버에 <strong>가입 요청</strong>하면 서버가 승인 후 <strong>노드별 토큰</strong>을 발급합니다.
-        마스터 시크릿은 어디에도 복사되지 않고, 토큰은 노드마다 개별 폐기할 수 있습니다.
-      </p>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px">
-        <div style="border:1px solid var(--border);border-radius:10px;padding:12px 14px;background:var(--bg3)">
-          <div style="font:700 13px 'Syne',sans-serif;color:var(--green)">① 가입 · 자동 승인</div>
-          <div style="color:var(--text2);font-size:12px;margin-top:5px">노드가 <code>POST /api/join</code> → <strong>Tailscale 사설망 피어는 즉시 자동 승인</strong>(zero-click). 밖에서 오면 운영자 승인 대기.</div>
-        </div>
-        <div style="border:1px solid var(--border);border-radius:10px;padding:12px 14px;background:var(--bg3)">
-          <div style="font:700 13px 'Syne',sans-serif;color:var(--cyan)">② 노드별 토큰</div>
-          <div style="color:var(--text2);font-size:12px;margin-top:5px">서버가 per-node 토큰 발급 → 노드가 캐시. 다음부턴 즉시 재접속. 마스터 시크릿 무노출·개별 폐기 가능.</div>
-        </div>
-        <div style="border:1px solid var(--border);border-radius:10px;padding:12px 14px;background:var(--bg3)">
-          <div style="font:700 13px 'Syne',sans-serif;color:var(--purple)">③ 단일 지시자</div>
-          <div style="color:var(--text2);font-size:12px;margin-top:5px">워커는 <strong>연결·수신·보고만</strong>. 업무지시(디스패치)는 <strong>마스터 한 곳</strong>에서만 — 워커 토큰으로는 지시 불가.</div>
-        </div>
-      </div>
-      <div style="margin-top:12px;font-size:12px;color:var(--text3)">Windows·RPi Zero처럼 인증을 두기 어려운 머신도 그대로 합류. <span style="color:var(--text2)">키 없는 손, 하나의 두뇌.</span></div>
-    </div>
+    <p class="lead">대시보드에서 여러 에이전트가 동시에 일을 받아 처리하는 장면입니다.</p>
+    <img class="ss-featured" src="/screenshots/dureclaw-dashboard-demo.gif" alt="DureClaw 대시보드 라이브 데모 — 에이전트 팀 태스크 디스패치" loading="lazy"/>
+    <p style="margin-top:12px"><a class="more-link" href="/showcase/">스크린샷·시나리오 데모·하드웨어 활용 더 보기 →</a></p>
   </div>
 </section>
 
-<!-- ECOSYSTEM -->
-<section class="section" id="ecosystem" style="padding-top:0">
+<!-- MORE -->
+<section class="section" id="more">
   <div class="container">
     <div class="section-header">
-      <span class="section-num">★</span>
-      <h2 class="section-title">에코시스템 — <em>한 두뇌, 여러 손</em></h2>
+      <span class="section-num">→</span>
+      <h2 class="section-title">더 <em>알아보기</em></h2>
     </div>
-    <p style="color:var(--text2); margin:-8px 0 22px; max-width:760px">
-      마스터(Claude)가 <strong>두뇌</strong>, 각 claw는 <strong>서로 다른 손</strong>입니다.
-      같은 버스·같은 keyless 위임으로 물리 세계·브라우저·데스크톱 어디로든 손을 뻗습니다.
-      <span style="color:var(--text3)">One brain, many hands — one bus, one keyless delegation.</span>
-    </p>
-
-    <div style="font:600 12px/1 'JetBrains Mono',monospace; color:var(--text3); letter-spacing:.5px; margin:0 0 10px">네이티브 노드 / NATIVE NODES</div>
-    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px; margin-bottom:22px">
-      <a href="https://github.com/DureClaw/edgeclaw" target="_blank" style="display:block; text-decoration:none; border:1px solid var(--border); border-radius:10px; padding:16px; background:var(--bg2)">
-        <div style="font:700 15px 'Syne',sans-serif; color:var(--white)">edgeclaw <span style="color:var(--green)">↗</span></div>
-        <div style="color:var(--text2); font-size:12.5px; margin:6px 0 8px">OS·물리 노드. 단일 정적 Go 바이너리 — Win·Mac·Linux·Pi Zero·riscv… shell·sensor·GPIO·LED·부저·릴레이·신호탑까지(승인=물리 결과).</div>
-        <span style="font-size:11px; color:var(--green); border:1px solid var(--green); border-radius:20px; padding:2px 8px">go · gpio · cross-platform</span>
-      </a>
-      <a href="https://github.com/DureClaw/webclaw" target="_blank" style="display:block; text-decoration:none; border:1px solid var(--border); border-radius:10px; padding:16px; background:var(--bg2)">
-        <div style="font:700 15px 'Syne',sans-serif; color:var(--white)">webclaw <span style="color:var(--cyan)">↗</span></div>
-        <div style="color:var(--text2); font-size:12.5px; margin:6px 0 8px">브라우저 노드. Chrome MV3 확장 — 브라우저를 fleet에 빌려준다(fetch·DOM, CORS-free, 상시). 순수 JS.</div>
-        <span style="font-size:11px; color:var(--cyan); border:1px solid var(--cyan); border-radius:20px; padding:2px 8px">chrome-extension · browser</span>
-      </a>
-      <a href="https://github.com/DureClaw/deskclaw" target="_blank" style="display:block; text-decoration:none; border:1px solid var(--border); border-radius:10px; padding:16px; background:var(--bg2)">
-        <div style="font:700 15px 'Syne',sans-serif; color:var(--white)">deskclaw <span style="color:var(--purple)">↗</span></div>
-        <div style="color:var(--text2); font-size:12.5px; margin:6px 0 8px">데스크톱 GUI 노드. Win/macOS — 눈(스크린샷)+손(클릭·타이핑·앱실행). <strong>RPA record→replay</strong>: 한 번 가르치면 LLM 없이 재생.</div>
-        <span style="font-size:11px; color:var(--purple); border:1px solid var(--purple); border-radius:20px; padding:2px 8px">go · desktop · rpa</span>
-      </a>
-    </div>
-
-    <div style="font:600 12px/1 'JetBrains Mono',monospace; color:var(--text3); letter-spacing:.5px; margin:0 0 10px">어댑터 / ADAPTERS — 기존 도구를 fleet에</div>
-    <div style="border:1px solid var(--border); border-radius:10px; padding:14px 16px; background:var(--bg2); margin-bottom:22px; color:var(--text2); font-size:12.5px">
-      <a href="https://github.com/DureClaw/picoclaw" target="_blank" style="color:var(--cyan2); text-decoration:none">picoclaw</a>(Go) ·
-      <a href="https://github.com/DureClaw/nanobot" target="_blank" style="color:var(--cyan2); text-decoration:none">nanobot</a>(Py) ·
-      <a href="https://github.com/DureClaw/zeroclaw" target="_blank" style="color:var(--cyan2); text-decoration:none">zeroclaw</a>(Rust) ·
-      <a href="https://github.com/DureClaw/nullclaw" target="_blank" style="color:var(--cyan2); text-decoration:none">nullclaw</a>(Zig)
-      — 각 repo에 <code>dureclaw/</code> 브리지를 더해 같은 버스에 합류.
-    </div>
-
-    <div style="font:600 12px/1 'JetBrains Mono',monospace; color:var(--text3); letter-spacing:.5px; margin:0 0 10px">문서·데모 / DOCS & DEMO</div>
-    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px">
-      <a href="https://github.com/DureClaw/whitepaper" target="_blank" style="display:block; text-decoration:none; border:1px solid var(--border); border-radius:10px; padding:16px; background:var(--bg2)">
-        <div style="font:700 15px 'Syne',sans-serif; color:var(--white)">📄 whitepaper <span style="color:var(--orange)">↗</span></div>
-        <div style="color:var(--text2); font-size:12.5px; margin:6px 0 0">기술 백서 — 아키텍처·원칙·보안·사례. 한국어판 / English PDF.</div>
-      </a>
-      <a href="https://github.com/DureClaw/dure-factory-public" target="_blank" style="display:block; text-decoration:none; border:1px solid var(--border); border-radius:10px; padding:16px; background:var(--bg2)">
-        <div style="font:700 15px 'Syne',sans-serif; color:var(--white)">🏭 dure-factory <span style="color:var(--orange)">↗</span></div>
-        <div style="color:var(--text2); font-size:12.5px; margin:6px 0 0">분산 엣지 × 제조 MES 데모 — 센싱→종합→승인→결정 동결. DureClaw + Open MES Korea.</div>
-      </a>
-      <a href="https://github.com/hongsw/clawfit" target="_blank" style="display:block; text-decoration:none; border:1px solid var(--border); border-radius:10px; padding:16px; background:var(--bg2)">
-        <div style="font:700 15px 'Syne',sans-serif; color:var(--white)">🗺 clawfit <span style="color:var(--cyan)">↗</span></div>
-        <div style="color:var(--text2); font-size:12.5px; margin:6px 0 0">Claude Code 에코시스템 맵 — 162+ 도구를 7계층(L1–L7)으로 분류·추천. DureClaw가 어디에 있는지(<strong>L2</strong>) 보여준다.</div>
-      </a>
-    </div>
-    <div style="margin-top:14px; font-size:12px; color:var(--text3)">전체 조직 / all repos → <a href="https://github.com/DureClaw" target="_blank" style="color:var(--cyan2)">github.com/DureClaw</a></div>
-  </div>
-</section>
-
-<!-- LAYERS -->
-<section class="section" id="layers" style="padding-top:0">
-  <div class="container">
-    <div class="section-header">
-      <span class="section-num">≣</span>
-      <h2 class="section-title">어디에 <em>위치하는가</em> — L4→L0 수직 스택</h2>
-    </div>
-    <p style="color:var(--text2); margin:-8px 0 22px; max-width:780px">
-      Claude Code 에코시스템에서 대부분의 메타팩토리는 <strong>L3</strong>에서 구조/설정을 뱉고 외부 런타임에 넘깁니다.
-      DureClaw는 팀을 <strong>생성(L3)</strong>할 뿐 아니라, 그 팀이 실제로 도는 <strong>런타임(L1)·물리 실행(L0)</strong>을 소유하고,
-      산출물을 평가해 되먹이는 <strong>자기개선(L4)</strong>까지 한 몸으로 가진 <strong>유일한 수직 스택</strong>입니다.
-      <span style="color:var(--text3)">One vertical from self-improvement down to the physical actuator.</span>
-    </p>
-
-    <div style="display:flex; flex-direction:column; gap:10px">
-      <!-- L4 -->
-      <div style="display:flex; gap:14px; align-items:stretch; border:1px solid var(--orange); border-radius:10px; padding:14px 16px; background:var(--bg2)">
-        <div style="flex:0 0 52px; display:flex; flex-direction:column; align-items:center; justify-content:center; border-right:1px solid var(--border); padding-right:12px">
-          <div style="font:800 20px 'Syne',sans-serif; color:var(--orange)">L4</div>
-        </div>
-        <div style="flex:1">
-          <div style="font:700 15px 'Syne',sans-serif; color:var(--white)">RSI / 자기개선 <span style="font-size:11px; color:var(--orange); border:1px solid var(--orange); border-radius:20px; padding:1px 8px; margin-left:6px">★ DureClaw 고유</span></div>
-          <div style="color:var(--text2); font-size:12.5px; margin-top:5px">5단계 학습 루프(관측→종합→목적화→지식화→학습·선택) + eval + <strong>결정 동결</strong>. 팀 산출물을 평가해 결정론적 스킬로 결정화하고 L3 패턴에 되먹임 — <em>팩토리 자체를 진화</em>. <span style="color:var(--text3)">Recursive self-improvement above the meta-factory.</span></div>
-        </div>
-      </div>
-      <!-- L3 -->
-      <div style="display:flex; gap:14px; align-items:stretch; border:1px solid var(--purple); border-radius:10px; padding:14px 16px; background:var(--bg2)">
-        <div style="flex:0 0 52px; display:flex; flex-direction:column; align-items:center; justify-content:center; border-right:1px solid var(--border); padding-right:12px">
-          <div style="font:800 20px 'Syne',sans-serif; color:var(--purple)">L3</div>
-        </div>
-        <div style="flex:1">
-          <div style="font:700 15px 'Syne',sans-serif; color:var(--white)">Meta-Factory / Team-Architecture <span style="font-size:11px; color:var(--text3); margin-left:6px">이웃: Archon · meta-harness</span></div>
-          <div style="color:var(--text2); font-size:12.5px; margin-top:5px">도메인 문장 → 에이전트 팀 + 스킬. <code>/dureclaw</code> 6패턴(Pipeline · Fan-out/in · Expert Pool · Producer-Reviewer · Supervisor · Hierarchical).</div>
-        </div>
-      </div>
-      <!-- L2 -->
-      <div style="display:flex; gap:14px; align-items:stretch; border:1px solid var(--cyan); border-radius:10px; padding:14px 16px; background:var(--bg2)">
-        <div style="flex:0 0 52px; display:flex; flex-direction:column; align-items:center; justify-content:center; border-right:1px solid var(--border); padding-right:12px">
-          <div style="font:800 20px 'Syne',sans-serif; color:var(--cyan)">L2</div>
-        </div>
-        <div style="flex:1">
-          <div style="font:700 15px 'Syne',sans-serif; color:var(--white)">Cross-Harness Workflow <span style="font-size:11px; color:var(--text3); margin-left:6px">이웃: ECC</span></div>
-          <div style="color:var(--text2); font-size:12.5px; margin-top:5px">스킬·룰·훅 표준화 + 플러그인 마켓플레이스 로더 — 여러 하니스 간 공통 규약.</div>
-        </div>
-      </div>
-      <!-- L1 -->
-      <div style="display:flex; gap:14px; align-items:stretch; border:1px solid var(--green); border-radius:10px; padding:14px 16px; background:var(--bg2)">
-        <div style="flex:0 0 52px; display:flex; flex-direction:column; align-items:center; justify-content:center; border-right:1px solid var(--border); padding-right:12px">
-          <div style="font:800 20px 'Syne',sans-serif; color:var(--green)">L1</div>
-        </div>
-        <div style="flex:1">
-          <div style="font:700 15px 'Syne',sans-serif; color:var(--white)">Orchestration Runtime <span style="font-size:11px; color:var(--green); border:1px solid var(--green); border-radius:20px; padding:1px 8px; margin-left:6px">★ DureClaw 고유</span></div>
-          <div style="color:var(--text2); font-size:12.5px; margin-top:5px">Phoenix Channel 버스 + MCP + Work Key + DETS 영속 + <strong>keyless brain 위임</strong>. 팀이 실제로 실행되는 분산 메시지 버스.</div>
-        </div>
-      </div>
-      <!-- L0 -->
-      <div style="display:flex; gap:14px; align-items:stretch; border:1px solid var(--red); border-radius:10px; padding:14px 16px; background:var(--bg2)">
-        <div style="flex:0 0 52px; display:flex; flex-direction:column; align-items:center; justify-content:center; border-right:1px solid var(--border); padding-right:12px">
-          <div style="font:800 20px 'Syne',sans-serif; color:var(--red)">L0</div>
-        </div>
-        <div style="flex:1">
-          <div style="font:700 15px 'Syne',sans-serif; color:var(--white)">Physical Execution <span style="font-size:11px; color:var(--red); border:1px solid var(--red); border-radius:20px; padding:1px 8px; margin-left:6px">★ DureClaw 고유</span></div>
-          <div style="color:var(--text2); font-size:12.5px; margin-top:5px"><strong>edgeclaw</strong>(shell·GPIO·신호탑·PA) · <strong>webclaw</strong>(브라우저) · <strong>deskclaw</strong>(GUI). Win·mac·Linux·Pi·riscv — 물리 액추에이터까지 "승인=물리 결과".</div>
-        </div>
-      </div>
-    </div>
-
-    <div style="margin-top:16px; font-size:12px; color:var(--text3)">
-      Archon은 런타임 결정론을 만든다. DureClaw는 L4 결정 동결로 <em>그 결정론을 L0 엣지에 직접 내린다</em> — 생성·실행·자기개선을 한 수직으로.
-    </div>
-
-    <!-- clawfit lens -->
-    <div style="margin-top:22px; border:1px solid var(--border); border-radius:10px; padding:16px 18px; background:var(--bg3)">
-      <div style="font:700 14px 'Syne',sans-serif; color:var(--white)">🗺 clawfit 에코시스템 맵에서 보면 — DureClaw = <span style="color:var(--purple)">L2</span></div>
-      <p style="color:var(--text2); font-size:12.5px; margin:8px 0 10px; max-width:820px">
-        <a href="https://github.com/hongsw/clawfit" target="_blank" style="color:var(--cyan2); text-decoration:none">clawfit</a> 은 Claude Code 에코시스템의 <strong>162+ 도구를 7계층(L1–L7)</strong>으로 분류하는 추천 엔진·생태계 맵입니다.
-        그 기준에서 DureClaw는 <strong>L2 — Meta wrappers / harnesses / orchestration</strong>: Claude Code·pi 같은 <strong>L1 베이스 런타임</strong> 위에 올라타는 메타-래퍼/오케스트레이션 슬롯입니다(이웃: SuperClaude · Archon · oh-my-*).
-      </p>
-      <p style="color:var(--text2); font-size:12.5px; margin:0 0 12px; max-width:820px">
-        ⚠️ <strong>두 렌즈는 직교합니다.</strong> clawfit의 L1–L7은 <em>"성숙도 사다리가 아니라 아키텍처 역할"</em>을 가르는 <strong>가로 렌즈</strong>(어느 슬롯인가). 위의 L4→L0은 <strong>세로 렌즈</strong> — DureClaw가 그 L2 역할을 하면서 실제로 <strong>자기개선(L4)부터 물리 실행(L0)까지 몇 계층을 직접 소유하는가</strong>를 보여줍니다. 같은 사물의 다른 축.
-      </p>
-      <div style="display:flex; gap:10px; flex-wrap:wrap; font-size:12px">
-        <a href="https://github.com/hongsw/clawfit" target="_blank" style="color:var(--cyan2); text-decoration:none; border:1px solid var(--border); border-radius:20px; padding:3px 12px; background:var(--bg2)">clawfit — 에코시스템 맵 ↗</a>
-        <a href="https://github.com/hongsw/clawfit/blob/main/docs/reference-levels.md" target="_blank" style="color:var(--cyan2); text-decoration:none; border:1px solid var(--border); border-radius:20px; padding:3px 12px; background:var(--bg2)">7계층 택소노미 (L1–L7) ↗</a>
-      </div>
+    <div class="more-grid">
+      <a class="more-card" href="/start/"><div class="mc-ic">🧭</div><div class="mc-title">설치 가이드</div><div class="mc-desc">플랫폼별 설치, 역할(builder·tester…)별 노드 추가, 예시 프로젝트.</div></a>
+      <a class="more-card" href="/how/"><div class="mc-ic">🏗️</div><div class="mc-title">구조와 원리</div><div class="mc-desc">키리스 접근, 레이어 구조, 에코시스템(edgeclaw·webclaw·deskclaw), SSH 비교.</div></a>
+      <a class="more-card" href="/showcase/"><div class="mc-ic">🎬</div><div class="mc-title">데모·활용</div><div class="mc-desc">대시보드, 시나리오 데모, 현장 하드웨어 활용 사례.</div></a>
+      <a class="more-card" href="/developers/"><div class="mc-ic">🛠️</div><div class="mc-title">개발자 레퍼런스</div><div class="mc-desc">Phoenix 채널 이벤트와 REST API.</div></a>
+      <a class="more-card" href="/changelog/"><div class="mc-ic">📝</div><div class="mc-title">Changelog</div><div class="mc-desc">버전별 변경 내역.</div></a>
     </div>
   </div>
 </section>
 
-<!-- VS SSH -->
-<section class="section" id="vs-ssh" style="padding-top:0">
-  <div class="container">
-    <div class="section-header">
-      <span class="section-num">⚡</span>
-      <h2 class="section-title">왜 <em>SSH가 아니라</em> DureClaw인가</h2>
-    </div>
-
-    <div style="border-left:3px solid var(--green);border-radius:8px;padding:14px 18px;margin:0 0 22px;background:var(--bg2)">
-      <div style="font:600 16px/1.5 'Syne',sans-serif;color:var(--white)">
-        SSH는 <span style="color:var(--red)">"이종 인바운드"</span>를 그대로 노출하고,<br/>
-        DureClaw는 그걸 <span style="color:var(--green)">"균질 아웃바운드 + 정규화 마커"</span>로 바꾼다.
-      </div>
-      <div style="color:var(--text2);font-size:13px;margin-top:8px">Linux↔Mac은 둘 다 POSIX라 "키 한 번 → 끝". 하지만 <strong>Windows가 노드에 끼는 순간</strong> SSH가 기대는 전제가 5개 축에서 동시에 깨진다 — <strong>Windows가 낄수록 이 차이가 커진다.</strong></div>
-    </div>
-
-    <div style="overflow-x:auto">
-    <table style="width:100%;border-collapse:collapse;font-size:12.5px;min-width:640px">
-      <thead>
-        <tr style="text-align:left;color:var(--text3);border-bottom:1px solid var(--border)">
-          <th style="padding:8px 10px;font-weight:600">축</th>
-          <th style="padding:8px 10px;font-weight:600;color:var(--red)">SSH — 이종 인바운드 (Windows에서)</th>
-          <th style="padding:8px 10px;font-weight:600;color:var(--green)">DureClaw — 균질 아웃바운드</th>
-        </tr>
-      </thead>
-      <tbody style="color:var(--text2)">
-        <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 10px;color:var(--white);font-weight:600">셸</td><td style="padding:8px 10px">cmd ↔ PowerShell ↔ WSL 혼재 — 따옴표·이스케이프 파손</td><td style="padding:8px 10px"><code>[SHELL]</code> 데몬이 OS별 셸 자동 선택</td></tr>
-        <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 10px;color:var(--white);font-weight:600">경로</td><td style="padding:8px 10px"><code>C:\…</code> 역슬래시·드라이브레터·<code>cd /d</code></td><td style="padding:8px 10px">경로를 그대로 전달, 노드가 로컬 해석</td></tr>
-        <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 10px;color:var(--white);font-weight:600">인코딩</td><td style="padding:8px 10px">cmd 코드페이지 → mojibake</td><td style="padding:8px 10px"><code>[WRITE:b64]</code> 바이트 그대로 기록</td></tr>
-        <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 10px;color:var(--white);font-weight:600">개행</td><td style="padding:8px 10px">CRLF ↔ LF — heredoc·스크립트 깨짐</td><td style="padding:8px 10px">base64 전송 → 개행 무관</td></tr>
-        <tr><td style="padding:8px 10px;color:var(--white);font-weight:600">인증</td><td style="padding:8px 10px">관리자는 <code>administrators_authorized_keys</code> + 무상속 ACL + <strong style="color:var(--red)">UAC 상승</strong></td><td style="padding:8px 10px">keyless 등록 — 인바운드 인증·방화벽·상승 <strong style="color:var(--green)">전부 없음</strong></td></tr>
-      </tbody>
-    </table>
-    </div>
-
-    <div style="margin-top:16px;font-size:12px;color:var(--text3)">
-      실측 실험: 같은 과제(Mac→Windows 파이썬→exe 빌드)에서 DureClaw는 <strong style="color:var(--green)">셋업 0 · 6단계로 exe 완성</strong>, SSH는 <strong style="color:var(--red)">작업 전 인증에서 4번 실패 + UAC 벽</strong>으로 한 줄도 실행 못 함. 차이는 전송 속도가 아니라 <strong>온보딩·인증·이종-OS 정규화의 마찰 제거</strong>다.
-    </div>
-
-    <div style="margin-top:14px;border-left:3px solid var(--cyan);border-radius:8px;padding:12px 16px;background:var(--bg2)">
-      <div style="font:600 14px 'Syne',sans-serif;color:var(--white)">🔄 복원력 · 가시성 — SSH엔 없는 것</div>
-      <div style="color:var(--text2);font-size:12.5px;margin-top:6px">
-        <strong>서버를 재가동·업그레이드해도</strong> 노드가 <strong>자동 재접속</strong>(지수 백오프)하고, <strong>실시간 대시보드</strong>로 fleet 현황을 본다.
-        <span style="color:var(--text3)">SSH는 세션이 끊기면 수동 재연결이고, "누가 살아있나"를 보는 화면이 없다.</span>
-        <br/>실측: 이 프로젝트를 개선·배포하며 서버를 여러 번 재시작했지만 전 노드가 매번 스스로 복귀.
-      </div>
-    </div>
-
-    <div style="margin-top:14px;font-size:12.5px;color:var(--text2)">
-      <strong>균질 Linux↔Linux에서도</strong> SSH엔 구조적 한계가 남습니다 — 인바운드 도달성(NAT/방화벽 뒤 불가) · 1:N 팬아웃 · 지속성 · fleet 가시성 · 셸 밖 능력.
-      실측 한 방: 같은 리눅스 박스에 <strong style="color:var(--red)">SSH inbound :22는 timeout(못 들어감)</strong>인데 <strong style="color:var(--green)">DureClaw는 outbound로 붙어 exe까지 빌드</strong>했습니다.
-      <span style="color:var(--text3)">SSH는 전송 파이프, DureClaw는 fleet 버스 — 레이어가 다릅니다.</span>
-    </div>
-
-    <div style="margin-top:16px">
-      <a href="https://github.com/DureClaw/dureclaw/blob/main/docs/REPORT_dureclaw-vs-ssh.md" target="_blank" style="display:inline-block;text-decoration:none;border:1px solid var(--green);border-radius:24px;padding:9px 20px;background:var(--bg2);color:var(--green);font:700 13px 'Syne',sans-serif">📄 전체 실험 리포트 보기 — 태스크별 수치 · 균질/이종 비교 · 구조적 한계 <span style="color:var(--text3)">↗</span></a>
-    </div>
-  </div>
-</section>
-
-<!-- PLATFORMS -->
-<section class="section" id="platforms">
-  <div class="container">
-    <div class="section-header">
-      <span class="section-num">01</span>
-      <h2 class="section-title">지원 <em>환경</em></h2>
-    </div>
-    <div class="platform-grid">
-
-      <div class="platform-card">
-        <div class="platform-icon">🍎</div>
-        <div class="platform-name">macOS — Apple Silicon</div>
-        <div class="platform-sub">M1 / M2 / M3 / M4 · arm64</div>
-        <div class="platform-tags">
-          <span class="platform-tag ok">서버 ✓</span>
-          <span class="platform-tag ok">워커 ✓</span>
-          <span class="platform-tag binary">사전빌드</span>
-        </div>
-        <div class="term">
-          <div class="t-bar"><span class="t-dot" style="background:#ff5f57"></span><span class="t-dot" style="background:#febc2e"></span><span class="t-dot" style="background:#28c840"></span></div>
-          <div><span class="t-prompt">$ </span><span class="t-cmd">bash &lt;(curl -fsSL https://dureclaw.baryon.ai/server)</span></div>
-          <div><span class="t-ok">✅ darwin-arm64 바이너리 다운로드 완료</span></div>
-          <div><span class="t-ok">✅ Tailscale 연결됨: 100.x.x.x</span></div>
-          <div><span class="t-ok">→ 서버 시작 · ws://100.x.x.x:4000</span></div>
-        </div>
-        <div class="platform-status" style="margin-top:8px"><span class="dot"></span>완전 지원 · 권장 환경</div>
-      </div>
-
-      <div class="platform-card">
-        <div class="platform-icon">💻</div>
-        <div class="platform-name">macOS — Intel</div>
-        <div class="platform-sub">Core i5/i7/i9 · x86_64</div>
-        <div class="platform-tags">
-          <span class="platform-tag ok">서버 ✓</span>
-          <span class="platform-tag ok">워커 ✓</span>
-          <span class="platform-tag binary">사전빌드</span>
-        </div>
-        <div class="term">
-          <div class="t-bar"><span class="t-dot" style="background:#ff5f57"></span><span class="t-dot" style="background:#febc2e"></span><span class="t-dot" style="background:#28c840"></span></div>
-          <div><span class="t-prompt">$ </span><span class="t-cmd">bash &lt;(curl -fsSL https://dureclaw.baryon.ai/server)</span></div>
-          <div><span class="t-ok">✅ darwin-x86_64 바이너리 다운로드 완료</span></div>
-          <div><span class="t-ok">→ 서버 시작 · ws://192.168.x.x:4000</span></div>
-        </div>
-        <div class="platform-status" style="margin-top:8px"><span class="dot"></span>완전 지원</div>
-      </div>
-
-      <div class="platform-card">
-        <div class="platform-icon">🐧</div>
-        <div class="platform-name">Linux — x86_64</div>
-        <div class="platform-sub">Ubuntu / Debian / CentOS · amd64</div>
-        <div class="platform-tags">
-          <span class="platform-tag ok">서버 ✓</span>
-          <span class="platform-tag ok">워커 ✓</span>
-          <span class="platform-tag binary">사전빌드</span>
-          <span class="platform-tag docker">Docker</span>
-        </div>
-        <div class="term">
-          <div class="t-bar"><span class="t-dot" style="background:#ff5f57"></span><span class="t-dot" style="background:#febc2e"></span><span class="t-dot" style="background:#28c840"></span></div>
-          <div><span class="t-prompt">$ </span><span class="t-cmd">ROLE=builder bash &lt;(curl -fsSL https://dureclaw.baryon.ai/agent)</span></div>
-          <div><span class="t-ok">✅ linux-x86_64 에이전트 설치 완료</span></div>
-          <div><span class="t-ok">✅ claude-cli 감지됨</span></div>
-          <div><span class="t-ok">→ builder@gpu-server 연결 완료</span></div>
-        </div>
-        <div class="platform-status" style="margin-top:8px"><span class="dot"></span>완전 지원 · GPU 서버 권장</div>
-      </div>
-
-      <div class="platform-card">
-        <div class="platform-icon">🫐</div>
-        <div class="platform-name">Raspberry Pi 4 / 5</div>
-        <div class="platform-sub">Linux arm64 · aarch64</div>
-        <div class="platform-tags">
-          <span class="platform-tag ok">서버 ✓</span>
-          <span class="platform-tag ok">워커 ✓</span>
-          <span class="platform-tag binary">사전빌드</span>
-        </div>
-        <div class="term">
-          <div class="t-bar"><span class="t-dot" style="background:#ff5f57"></span><span class="t-dot" style="background:#febc2e"></span><span class="t-dot" style="background:#28c840"></span></div>
-          <div><span class="t-prompt">$ </span><span class="t-cmd">ROLE=executor bash &lt;(curl -fsSL https://dureclaw.baryon.ai/agent)</span></div>
-          <div><span class="t-ok">✅ linux-arm64 에이전트 설치 완료</span></div>
-          <div><span class="t-ok">✅ pi 감지됨</span></div>
-          <div><span class="t-ok">→ executor@raspberrypi 연결 완료</span></div>
-        </div>
-        <div class="platform-status" style="margin-top:8px"><span class="dot"></span>완전 지원 · executor 역할 최적</div>
-      </div>
-
-      <div class="platform-card">
-        <div class="platform-icon">📡</div>
-        <div class="platform-name">Raspberry Pi Zero W/2W</div>
-        <div class="platform-sub">WiFi 내장 · armv6 / arm64 · 512MB RAM</div>
-        <div class="platform-tags">
-          <span class="platform-tag ok">워커 ✓</span>
-          <span class="platform-tag binary">JS 번들</span>
-        </div>
-        <div class="term">
-          <div class="t-bar"><span class="t-dot" style="background:#ff5f57"></span><span class="t-dot" style="background:#febc2e"></span><span class="t-dot" style="background:#28c840"></span></div>
-          <div><span class="t-prompt">$ </span><span class="t-cmd">ROLE=executor bash &lt;(curl -fsSL https://dureclaw.baryon.ai/agent)</span></div>
-          <div><span class="t-ok">✅ JS 번들 모드 (armv6)</span></div>
-          <div><span class="t-warn">⚠ aider 경량 모드 사용</span></div>
-          <div><span class="t-ok">→ executor@zero-w 연결 완료 (WiFi)</span></div>
-        </div>
-        <div class="platform-status" style="margin-top:8px"><span class="dot"></span>IoT 센서 · 경량 executor · WiFi로 연결</div>
-      </div>
-
-      <div class="platform-card">
-        <div class="platform-icon">🪟</div>
-        <div class="platform-name">Windows 10 / 11</div>
-        <div class="platform-sub">설치 프로그램 · x86_64</div>
-        <div class="platform-tags">
-          <span class="platform-tag ok">워커 ✓</span>
-          <span class="platform-tag binary">설치형 exe</span>
-          <span class="platform-tag docker">Docker</span>
-        </div>
-        <div style="margin:12px 0 10px">
-          <a class="dl-btn sm" href="https://github.com/DureClaw/dureclaw/releases/latest/download/DureClaw-Agent-Setup.exe" download>⬇ DureClaw-Agent-Setup.exe</a>
-        </div>
-        <div class="term">
-          <div class="t-bar"><span class="t-dot" style="background:#ff5f57"></span><span class="t-dot" style="background:#febc2e"></span><span class="t-dot" style="background:#28c840"></span></div>
-          <div><span class="t-dim">① Setup.exe 실행 (관리자 권한 불필요)</span></div>
-          <div><span class="t-dim">② 서버 주소 — 비우면 oah.local · Tailscale 자동 탐색</span></div>
-          <div><span class="t-ok">✅ 트레이 상주 · 로그인 시 자동 연결</span></div>
-          <div><span class="t-ok">→ builder@DESKTOP-WIN 연결 완료</span></div>
-        </div>
-        <div style="margin-top:8px;font-size:10.5px;color:var(--text3)">터미널 선호 시: <code>irm https://dureclaw.baryon.ai/agent.ps1 | iex</code></div>
-        <div class="platform-status" style="margin-top:8px"><span class="dot"></span>워커 지원 · 설치 프로그램 / PowerShell</div>
-      </div>
-
-      <div class="platform-card">
-        <div class="platform-icon">🐳</div>
-        <div class="platform-name">Docker</div>
-        <div class="platform-sub">모든 플랫폼 · ghcr.io/dureclaw/dureclaw</div>
-        <div class="platform-tags">
-          <span class="platform-tag ok">서버 ✓</span>
-          <span class="platform-tag docker">컨테이너</span>
-        </div>
-        <div class="term">
-          <div class="t-bar"><span class="t-dot" style="background:#ff5f57"></span><span class="t-dot" style="background:#febc2e"></span><span class="t-dot" style="background:#28c840"></span></div>
-          <div><span class="t-prompt">$ </span><span class="t-cmd">docker compose up</span></div>
-          <div><span class="t-ok">✅ ghcr.io/dureclaw/dureclaw:latest</span></div>
-          <div><span class="t-dim">Elixir 불필요 · /data 볼륨 마운트</span></div>
-          <div><span class="t-ok">→ 서버 준비 완료 · :4000</span></div>
-        </div>
-        <div class="platform-status" style="margin-top:8px"><span class="dot"></span>Elixir 없이 즉시 실행</div>
-      </div>
-
-    </div>
-  </div>
-</section>
-
-<!-- ARCHITECTURE -->
-<section class="section" id="architecture">
-  <div class="container">
-    <div class="section-header">
-      <span class="section-num">02</span>
-      <h2 class="section-title">시스템 <em>아키텍처</em></h2>
-    </div>
-    <div class="arch-ascii">
-<pre><span class="c1">① Claude Code</span> <span class="dim">(오케스트레이터, 맥북)</span>
-     <span class="dim">/plugin marketplace add DureClaw/dureclaw</span>
-   <span class="arrow">└─</span> MCP <span class="dim">(oah-mcp)</span> <span class="arrow">→</span> Phoenix WebSocket
-
-<span class="c2">② Phoenix Server</span> <span class="dim">(메시지 버스)</span>
-     <span class="dim">bash &lt;(curl -fsSL https://dureclaw.baryon.ai/server)</span>
-   ws://host:4000
-
-<span class="c3">③ oah-agent</span> <span class="dim">(워커, 각 머신)</span>
-     <span class="dim">PHOENIX=ws://host:4000 ROLE=builder bash &lt;(curl -fsSL https://dureclaw.baryon.ai/agent)</span>
-   <span class="arrow">→</span> WebSocket 연결 <span class="arrow">→</span> task.assign 수신
-   <span class="arrow">→</span> AI 백엔드 실행 <span class="dim">(claude / pi / gemini / aider / codex)</span>
-   <span class="arrow">→</span> task.result 반환</pre>
-    </div>
-  </div>
-</section>
-
-<!-- INSTALL STEPS -->
-<section class="section" id="install">
-  <div class="container">
-    <div class="section-header">
-      <span class="section-num">03</span>
-      <h2 class="section-title">빠른 <em>시작</em></h2>
-    </div>
-
-    <div class="steps-grid">
-      <!-- Step 1 -->
-      <div class="step-card">
-        <div class="step-header">
-          <div class="step-num-badge s1">1</div>
-          <div class="step-header-text">
-            <div class="step-title">Claude Code 플러그인</div>
-            <div class="step-sub">필수 · 로컬 실행 가능</div>
-          </div>
-        </div>
-        <div class="step-body">
-          <button class="step-cmd cyan" onclick="copyText(this, '/plugin marketplace add DureClaw/dureclaw')">/plugin marketplace add DureClaw/dureclaw</button>
-          <div class="step-note">
-            <strong>여기까지만 해도 바로 사용 가능.</strong><br/>
-            Claude Code가 오케스트레이터로 로컬 태스크를 실행한다.
-          </div>
-        </div>
-      </div>
-
-      <!-- Step 2 -->
-      <div class="step-card">
-        <div class="step-header">
-          <div class="step-num-badge s2">2</div>
-          <div class="step-header-text">
-            <div class="step-title">Phoenix 서버 설치</div>
-            <div class="step-sub">멀티머신 확장 시 · Docker/바이너리</div>
-          </div>
-        </div>
-        <div class="step-body">
-          <button class="step-cmd" onclick="copyText(this, 'bash <(curl -fsSL https://dureclaw.baryon.ai/server)')">bash &lt;(curl -fsSL https://dureclaw.baryon.ai/server)</button>
-          <button class="step-cmd orange" onclick="copyText(this, 'USE_DOCKER=1 bash <(curl -fsSL https://dureclaw.baryon.ai/server)')">USE_DOCKER=1 bash &lt;(curl -fsSL …/server)</button>
-          <div class="step-note">
-            <strong>Elixir 불필요.</strong><br/>
-            사전빌드 바이너리 → Docker 자동 선택.<br/>
-            대시보드: <code>http://서버IP:4000/</code>
-          </div>
-        </div>
-      </div>
-
-      <!-- Step 3 -->
-      <div class="step-card">
-        <div class="step-header">
-          <div class="step-num-badge s3">3</div>
-          <div class="step-header-text">
-            <div class="step-title">워커 에이전트 설치</div>
-            <div class="step-sub">각 원격 머신 · /setup-team 자동 안내</div>
-          </div>
-        </div>
-        <div class="step-body">
-          <button class="step-cmd orange" onclick="copyText(this, 'PHOENIX=ws://서버IP:4000 ROLE=builder bash <(curl -fsSL https://dureclaw.baryon.ai/agent)')">PHOENIX=ws://서버IP:4000 ROLE=builder bash &lt;(…)</button>
-          <div class="step-note">
-            <strong>또는 Claude Code에게 말하세요:</strong><br/>
-            "워커 추가해줘" / "팀 설정해줘"<br/>
-            → 서버 IP 자동 감지 + 복붙 명령어 출력
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ADD AGENT -->
-<section class="section" id="add-agent">
-  <div class="container">
-    <div class="section-header">
-      <span class="section-num">04</span>
-      <h2 class="section-title">AI 팀원 <em>추가하기</em></h2>
-    </div>
-    <p style="color:var(--text2);font-size:13px;margin-bottom:20px;max-width:640px;">
-      새 머신에서 아래 명령어를 실행하면 설치·설정·연결이 자동 처리된다.
-      <code>서버IP</code>는 Tailscale IP(100.x.x.x) 또는 LAN IP로 교체하거나,
-      <strong style="color:var(--cyan)">"워커 추가해줘"</strong>라고 Claude에게 말하면 자동으로 채워준다.
-    </p>
-    <div class="oneliner-block">
-
-      <div class="oneliner-row">
-        <div class="oneliner-label"><span class="role-badge chip orange">builder</span><br/>코드 작성</div>
-        <div class="oneliner-cmd"><span class="dim">PHOENIX=ws://</span><span class="kw">서버IP</span><span class="dim">:4000 ROLE=</span><span class="val">builder</span><span class="dim"> bash &lt;(curl -fsSL https://dureclaw.baryon.ai/agent)</span></div>
-        <button class="oneliner-copy" onclick="copyText(this, 'PHOENIX=ws://서버IP:4000 ROLE=builder bash <(curl -fsSL https://dureclaw.baryon.ai/agent)')">복사</button>
-      </div>
-
-      <div class="oneliner-row">
-        <div class="oneliner-label"><span class="role-badge chip purple">tester</span><br/>테스트 실행</div>
-        <div class="oneliner-cmd"><span class="dim">PHOENIX=ws://</span><span class="kw">서버IP</span><span class="dim">:4000 ROLE=</span><span class="val">tester</span><span class="dim"> bash &lt;(curl -fsSL https://dureclaw.baryon.ai/agent)</span></div>
-        <button class="oneliner-copy" onclick="copyText(this, 'PHOENIX=ws://서버IP:4000 ROLE=tester bash <(curl -fsSL https://dureclaw.baryon.ai/agent)')">복사</button>
-      </div>
-
-      <div class="oneliner-row">
-        <div class="oneliner-label"><span class="role-badge chip cyan">analyst</span><br/>코드 분석</div>
-        <div class="oneliner-cmd"><span class="dim">PHOENIX=ws://</span><span class="kw">서버IP</span><span class="dim">:4000 ROLE=</span><span class="val">analyst</span><span class="dim"> bash &lt;(curl -fsSL https://dureclaw.baryon.ai/agent)</span></div>
-        <button class="oneliner-copy" onclick="copyText(this, 'PHOENIX=ws://서버IP:4000 ROLE=analyst bash <(curl -fsSL https://dureclaw.baryon.ai/agent)')">복사</button>
-      </div>
-
-      <div class="oneliner-row">
-        <div class="oneliner-label"><span class="role-badge chip green">executor</span><br/>명령 실행</div>
-        <div class="oneliner-cmd"><span class="dim">PHOENIX=ws://</span><span class="kw">서버IP</span><span class="dim">:4000 ROLE=</span><span class="val">executor</span><span class="dim"> bash &lt;(curl -fsSL https://dureclaw.baryon.ai/agent)</span></div>
-        <button class="oneliner-copy" onclick="copyText(this, 'PHOENIX=ws://서버IP:4000 ROLE=executor bash <(curl -fsSL https://dureclaw.baryon.ai/agent)')">복사</button>
-      </div>
-
-    </div>
-    <div class="win-dl">
-      <div class="win-dl-text">🪟 <strong>Windows는 명령어 없이</strong> — 설치 프로그램을 받아 실행하고 서버 주소·역할만 입력하면 된다.<br/>
-        여러 PC 일괄 배포: <code>DureClaw-Agent-Setup.exe /VERYSILENT /SERVER=ws://서버IP:4000 /ROLE=builder</code></div>
-      <a class="dl-btn" href="https://github.com/DureClaw/dureclaw/releases/latest/download/DureClaw-Agent-Setup.exe" download>⬇ Windows용 다운로드</a>
-    </div>
-    <p style="margin-top:12px;font-size:11px;color:var(--text3);">
-      Work Key 생략 시 서버에서 자동 감지 · 에이전트 이름 미지정 시 <code>역할@머신이름</code>으로 자동 설정 · Windows는 설치 프로그램(트레이) 또는 PowerShell 스크립트
-    </p>
-  </div>
-</section>
-
-<!-- EXAMPLE: FIX-AGENT -->
-<section class="section" id="example">
-  <div class="container">
-    <div class="section-header">
-      <span class="section-num">05</span>
-      <h2 class="section-title">활용 <em>예시</em> — fix-agent</h2>
-    </div>
-    <p style="color:var(--text2);font-size:13px;margin-bottom:20px;max-width:640px;">
-      3개의 에이전트가 협력해 레포지토리 버그를 자동 분석·수정·PR 생성하는 파이프라인.
-    </p>
-    <div class="parallel-box">
-      <div class="parallel-timeline">
-
-        <div class="pt-row">
-          <div class="pt-time">시작</div>
-          <div class="pt-content">
-            <div class="pt-label">Claude Code가 버그 리포트 수신 → 에이전트 배분</div>
-            <div class="pt-agents">
-              <div class="pt-agent active"><span class="dot cyan"></span><span class="pt-agent-name">analyzer</span><span class="pt-arrow">→</span><span class="pt-agent-task">버그 탐지·분석</span></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="pt-row">
-          <div class="pt-time">분석 완료</div>
-          <div class="pt-content">
-            <div class="pt-label">분석 결과 → fixer에게 전달</div>
-            <div class="pt-agents">
-              <div class="pt-agent"><span class="dot green"></span><span class="pt-agent-name">analyzer</span><span class="pt-arrow">✓</span><span class="pt-agent-task">root cause 특정</span></div>
-              <div class="pt-agent active"><span class="dot orange"></span><span class="pt-agent-name">fixer</span><span class="pt-arrow">→</span><span class="pt-agent-task">코드 수정</span></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="pt-row">
-          <div class="pt-time">수정 완료</div>
-          <div class="pt-content">
-            <div class="pt-label">수정 코드 → tester 검증 + PR 생성</div>
-            <div class="pt-agents">
-              <div class="pt-agent"><span class="dot green"></span><span class="pt-agent-name">fixer</span><span class="pt-arrow">✓</span><span class="pt-agent-task">패치 완료</span></div>
-              <div class="pt-agent active"><span class="dot purple"></span><span class="pt-agent-name">tester</span><span class="pt-arrow">→</span><span class="pt-agent-task">테스트 실행 + PR 생성</span></div>
-            </div>
-            <div class="pt-result"><strong>PR 자동 생성</strong> · 테스트 통과 확인 · 리뷰 요청까지 자동화</div>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- EVENTS TABLE -->
-<section class="section" id="events">
-  <div class="container">
-    <div class="section-header">
-      <span class="section-num">06</span>
-      <h2 class="section-title">채널 <em>이벤트</em></h2>
-    </div>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr><th>EVENT</th><th>DIRECTION</th><th>PAYLOAD (주요 필드)</th><th>설명</th></tr>
-        </thead>
-        <tbody>
-          <tr><td><span class="ev">task.assign</span></td><td><span class="dir">orch → agent</span></td><td><span class="payload">to, task_id, role, instructions</span></td><td><span class="desc">태스크 할당. 대상 agent가 AI 백엔드 실행.</span></td></tr>
-          <tr><td><span class="ev">task.progress</span></td><td><span class="dir">agent → all</span></td><td><span class="payload">task_id, message, output_tail</span></td><td><span class="desc">10초마다 진행 상황 브로드캐스트.</span></td></tr>
-          <tr><td><span class="ev">task.result</span></td><td><span class="dir">agent → all</span></td><td><span class="payload">task_id, exit_code, artifacts[]</span></td><td><span class="desc">태스크 완료 보고. ARTIFACT: 라인 자동 파싱.</span></td></tr>
-          <tr><td><span class="ev">task.cancel</span></td><td><span class="dir">orch → agent</span></td><td><span class="payload">task_id</span></td><td><span class="desc">실행 중 태스크 취소. AbortController 신호.</span></td></tr>
-          <tr><td><span class="ev">task.blocked</span></td><td><span class="dir">any → all</span></td><td><span class="payload">task_id, reason</span></td><td><span class="desc">진행 불가. orchestrator가 재배정 판단.</span></td></tr>
-          <tr><td><span class="ev">state.update</span></td><td><span class="dir">any → server</span></td><td><span class="payload">key: value</span></td><td><span class="desc">Work Key 상태 업데이트 (DETS 영속).</span></td></tr>
-          <tr><td><span class="ev">mailbox.post</span></td><td><span class="dir">any → target</span></td><td><span class="payload">to, body</span></td><td><span class="desc">오프라인이면 큐잉, 온라인이면 즉시 전달.</span></td></tr>
-          <tr><td><span class="ev">agent.hello</span></td><td><span class="dir">server → all</span></td><td><span class="payload">agent, role, machine</span></td><td><span class="desc">에이전트 JOIN 알림.</span></td></tr>
-          <tr><td><span class="ev">agent.bye</span></td><td><span class="dir">server → all</span></td><td><span class="payload">agent, role</span></td><td><span class="desc">에이전트 퇴장 알림.</span></td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</section>
-
-<!-- REST API -->
-<section class="section" id="api">
-  <div class="container">
-    <div class="section-header">
-      <span class="section-num">07</span>
-      <h2 class="section-title">REST <em>API</em></h2>
-    </div>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr><th>METHOD</th><th>ENDPOINT</th><th>설명</th></tr>
-        </thead>
-        <tbody>
-          <tr><td><span class="chip green">GET</span></td><td><span class="ev">/api/health</span></td><td><span class="desc">서버 상태 · work_key 개수</span></td></tr>
-          <tr><td><span class="chip green">GET</span></td><td><span class="ev">/api/presence</span></td><td><span class="desc">온라인 에이전트 목록 (name, role, machine)</span></td></tr>
-          <tr><td><span class="chip green">GET</span></td><td><span class="ev">/api/work-keys</span></td><td><span class="desc">Work Key 목록</span></td></tr>
-          <tr><td><span class="chip green">GET</span></td><td><span class="ev">/api/work-keys/latest</span></td><td><span class="desc">최신 Work Key (없으면 404)</span></td></tr>
-          <tr><td><span class="chip orange">POST</span></td><td><span class="ev">/api/work-keys</span></td><td><span class="desc">새 Work Key 발급</span></td></tr>
-          <tr><td><span class="chip orange">POST</span></td><td><span class="ev">/api/task</span></td><td><span class="desc">태스크 디스패치 <span class="payload">{ role, to, instructions }</span></span></td></tr>
-          <tr><td><span class="chip green">GET</span></td><td><span class="ev">/api/task/:id</span></td><td><span class="desc">태스크 결과 폴링</span></td></tr>
-          <tr><td><span class="chip orange">POST</span></td><td><span class="ev">/api/task/:id/result</span></td><td><span class="desc">태스크 결과 저장 · 채널 브로드캐스트</span></td></tr>
-          <tr><td><span class="chip green">GET</span></td><td><span class="ev">/api/state/:wk</span></td><td><span class="desc">Work Key 상태 조회</span></td></tr>
-          <tr><td><span class="chip purple">PATCH</span></td><td><span class="ev">/api/state/:wk</span></td><td><span class="desc">Work Key 상태 업데이트</span></td></tr>
-          <tr><td><span class="chip green">GET</span></td><td><span class="ev">/api/mailbox/:agent</span></td><td><span class="desc">에이전트 mailbox 읽기</span></td></tr>
-          <tr><td><span class="chip orange">POST</span></td><td><span class="ev">/api/mailbox/:agent</span></td><td><span class="desc">에이전트 mailbox 메시지 전송</span></td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</section>
-
-<!-- SCREENSHOTS -->
-<section class="section" id="screenshots">
-  <div class="container">
-    <div class="section-header">
-      <span class="section-num">08</span>
-      <h2 class="section-title"><em>스크린샷</em></h2>
-    </div>
-
-    <!-- GIF 데모 (featured) -->
-    <img
-      class="ss-featured"
-      src="screenshots/dureclaw-dashboard-demo.gif"
-      alt="DureClaw 대시보드 라이브 데모 — 에이전트 팀 태스크 디스패치"
-      loading="lazy"
-    />
-
-    <!-- 3열 스크린샷 -->
-    <div class="ss-grid">
-
-      <div class="ss-item">
-        <img
-          src="screenshots/01-dashboard.png"
-          alt="OAH control 대시보드 — 6개 에이전트 온라인"
-          onclick="openLB(this)"
-          loading="lazy"
-        />
-        <div class="ss-caption">
-          <strong>OAH 컨트롤 대시보드</strong>
-          6개 에이전트 온라인 · Work Key 관리 · 실시간 이벤트 로그
-        </div>
-      </div>
-
-      <div class="ss-item">
-        <img
-          src="screenshots/02-task-dispatch.png"
-          alt="태스크 디스패치 — builder/tester/orchestrator 에이전트 선택"
-          onclick="openLB(this)"
-          loading="lazy"
-        />
-        <div class="ss-caption">
-          <strong>태스크 디스패치</strong>
-          에이전트 선택 → Instructions 입력 → 전송 한 번으로 팀 전체에 배분
-        </div>
-      </div>
-
-      <div class="ss-item">
-        <img
-          src="screenshots/dureclaw-demo.png"
-          alt="Claude Code에서 DureClaw로 태스크 디스패치 — 터미널"
-          onclick="openLB(this)"
-          loading="lazy"
-        />
-        <div class="ss-caption">
-          <strong>Claude Code 터미널</strong>
-          오케스트레이터가 자연어로 지시 → DureClaw가 원격 에이전트에 실행
-        </div>
-      </div>
-
-    </div>
-  </div>
-</section>
-
-<!-- DEMO SCENARIO -->
-<section class="section" id="demo">
-  <div class="container">
-    <div class="section-header">
-      <span class="section-num">↗</span>
-      <h2 class="section-title">데모 <em>시나리오</em></h2>
-    </div>
-
-    <!-- 라이브 데모 GIF (실제 동작 캡처) -->
-    <div style="font:600 12px/1 'JetBrains Mono',monospace; color:var(--text3); letter-spacing:.5px; margin:0 0 12px">라이브 데모 / LIVE — 실제 시스템 캡처</div>
-    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:16px; margin-bottom:28px">
-      <figure style="margin:0; border:1px solid var(--border); border-radius:10px; overflow:hidden; background:var(--bg2)">
-        <img src="demo/mes-fanout.gif" alt="fan-out → 마스터 종합" loading="lazy" style="width:100%; display:block; border-bottom:1px solid var(--border)"/>
-        <figcaption style="padding:10px 12px; font-size:12px; color:var(--text2)"><strong style="color:var(--white)">① fan-out → 종합</strong><br/>불량 fan-out → 이종 노드 fan-in → 마스터 SUGGEST(원인·신뢰도·권고).</figcaption>
-      </figure>
-      <figure style="margin:0; border:1px solid var(--border); border-radius:10px; overflow:hidden; background:var(--bg2)">
-        <img src="demo/decision-freeze.gif" alt="결정 동결 — LLM as compiler" loading="lazy" style="width:100%; display:block; border-bottom:1px solid var(--border)"/>
-        <figcaption style="padding:10px 12px; font-size:12px; color:var(--text2)"><strong style="color:var(--white)">② 결정 동결</strong><br/>승인 → 룰 동결 → 같은 패턴은 <strong>LLM 0회·2µs</strong> 재사용(15.6s 절감).</figcaption>
-      </figure>
-      <figure style="margin:0; border:1px solid var(--border); border-radius:10px; overflow:hidden; background:var(--bg2)">
-        <img src="demo/deskclaw-rpa.gif" alt="deskclaw RPA record→replay" loading="lazy" style="width:100%; display:block; border-bottom:1px solid var(--border)"/>
-        <figcaption style="padding:10px 12px; font-size:12px; color:var(--text2)"><strong style="color:var(--white)">③ deskclaw RPA</strong><br/>한 번 가르치면(record) → <code>[RUN]</code>은 <strong>LLM 없이</strong> 결정론적 재생.</figcaption>
-      </figure>
-    </div>
-
-    <!-- 5-장면 스토리보드 -->
-    <div class="demo-scenes">
-
-      <!-- Scene 1 -->
-      <div class="demo-scene">
-        <div class="demo-scene-shot">
-          <div style="width:100%;height:100%;background:#0b1220;color:#cdd9e5;font:10.5px/1.7 'JetBrains Mono',monospace;padding:14px 12px;display:flex;flex-direction:column;justify-content:center;gap:2px">
-            <div style="color:#64748b"># 문제</div>
-            <div><span style="color:#64748b">$</span> claude</div>
-            <div style="color:#64748b"># 창 하나 = 머신 하나</div>
-            <div style="color:#64748b"># GPU·Linux·Pi는 대기</div>
-          </div>
-        </div>
-        <div class="demo-scene-body">
-          <div class="demo-scene-meta">
-            <span class="demo-scene-num">SCENE 01</span>
-            <span class="demo-scene-time">0:00 – 0:15</span>
-          </div>
-          <div class="demo-scene-title">문제: Claude Code는 창 하나에서만</div>
-          <div class="demo-scene-script">
-            <span class="narr">"Mac에서 Claude Code를 쓰고 있는데 — 옆에 GPU 서버가 그냥 놀고 있어요."</span><br/><br/>
-            Mac 터미널에서 Claude Code 실행 중. 서버 터미널은 idle.
-            두 창을 번갈아 가며 수동으로 SSH → 복붙하는 불편함.
-          </div>
-        </div>
-      </div>
-
-      <!-- Scene 2 -->
-      <div class="demo-scene">
-        <div class="demo-scene-shot">
-          <div style="width:100%;height:100%;background:#0b1220;color:#cdd9e5;font:10.5px/1.7 'JetBrains Mono',monospace;padding:14px 12px;display:flex;flex-direction:column;justify-content:center;gap:2px">
-            <div><span style="color:#64748b">$</span> <span style="color:#38bdf8">bash &lt;(curl -fsSL</span></div>
-            <div style="color:#38bdf8">&nbsp;&nbsp;&nbsp;dureclaw.baryon.ai/install)</div>
-            <div style="color:#34d399; margin-top:4px">✓ 서버 + MCP + Tailscale</div>
-          </div>
-        </div>
-        <div class="demo-scene-body">
-          <div class="demo-scene-meta">
-            <span class="demo-scene-num">SCENE 02</span>
-            <span class="demo-scene-time">0:15 – 0:45</span>
-          </div>
-          <div class="demo-scene-title">한 줄 설치 — 서버 + MCP 자동 등록</div>
-          <div class="demo-scene-script">
-            Mac 터미널에서: <code>bash &lt;(curl -fsSL dureclaw.baryon.ai/install)</code><br/><br/>
-            <span class="highlight">자동 처리:</span> Phoenix 서버 백그라운드 시작 →
-            <code>OAH_SECRET</code> 생성 → Claude Code MCP 등록 →
-            Tailscale IP 감지 → 워커 연결 명령어 출력까지 한 번에.
-          </div>
-        </div>
-      </div>
-
-      <!-- Scene 3 -->
-      <div class="demo-scene">
-        <div class="demo-scene-shot">
-          <div style="width:100%;height:100%;background:#0b1220;color:#cdd9e5;font:10.5px/1.7 'JetBrains Mono',monospace;padding:14px 12px;display:flex;flex-direction:column;justify-content:center;gap:2px">
-            <div><span style="color:#64748b">$</span> <span style="color:#38bdf8">PHOENIX=ws://100.x:4000</span></div>
-            <div style="color:#38bdf8">&nbsp;&nbsp;&nbsp;bash &lt;(…/agent)</div>
-            <div style="color:#34d399; margin-top:4px">✓ builder@server 연결됨</div>
-          </div>
-        </div>
-        <div class="demo-scene-body">
-          <div class="demo-scene-meta">
-            <span class="demo-scene-num">SCENE 03</span>
-            <span class="demo-scene-time">0:45 – 1:05</span>
-          </div>
-          <div class="demo-scene-title">워커 머신에서 한 줄 연결</div>
-          <div class="demo-scene-script">
-            GPU 서버 터미널에서 install.sh가 출력한 명령어 복붙:<br/>
-            <code>PHOENIX=ws://100.x.x.x:4000 bash &lt;(curl -fsSL …/agent)</code><br/><br/>
-            <span class="highlight">✅ builder@gpuserver 연결 완료</span> 메시지.
-            대시보드 <code>http://localhost:4000</code>에서 에이전트 온라인 확인.
-          </div>
-        </div>
-      </div>
-
-      <!-- Scene 4 -->
-      <div class="demo-scene">
-        <div class="demo-scene-shot">
-          <div style="width:100%;height:100%;background:#0b1220;color:#cdd9e5;font:10.5px/1.7 'JetBrains Mono',monospace;padding:14px 12px;display:flex;flex-direction:column;justify-content:center;gap:2px">
-            <div><span style="color:#64748b">claude ›</span> <span style="color:#a78bfa">/두레팀</span></div>
-            <div style="color:#cdd9e5">"팀 설정해줘"</div>
-            <div style="color:#34d399; margin-top:4px">→ N개 머신에 fan-out</div>
-          </div>
-        </div>
-        <div class="demo-scene-body">
-          <div class="demo-scene-meta">
-            <span class="demo-scene-num">SCENE 04</span>
-            <span class="demo-scene-time">1:05 – 1:25</span>
-          </div>
-          <div class="demo-scene-title">Claude에게 팀 구성 지시</div>
-          <div class="demo-scene-script">
-            Claude Code 터미널: <code>/두레팀</code> 입력<br/><br/>
-            Claude가 자동으로: 온라인 에이전트 스캔 →
-            Work Key 생성 → 팀 매니페스트 구성 → 역할 배분.<br/><br/>
-            <span class="highlight">팀 현황 출력:</span> orchestrator@mac · builder@gpuserver
-          </div>
-        </div>
-      </div>
-
-      <!-- Scene 5 -->
-      <div class="demo-scene">
-        <div class="demo-scene-shot">
-          <img src="demo/mes-fanout.gif" alt="두 머신이 동시에 — fleet fan-out" loading="lazy"/>
-        </div>
-        <div class="demo-scene-body">
-          <div class="demo-scene-meta">
-            <span class="demo-scene-num">SCENE 05</span>
-            <span class="demo-scene-time">1:25 – 2:30</span>
-          </div>
-          <div class="demo-scene-title">두 머신이 동시에 — The Magic Moment</div>
-          <div class="demo-scene-script">
-            <span class="narr">"프론트엔드 빌드는 Mac에서, 백엔드 테스트는 서버에서 동시에 돌려줘."</span><br/><br/>
-            <span class="highlight">두 터미널이 동시에 움직인다.</span>
-            Mac: <code>npm run build</code> 실행 중 ·
-            GPU 서버: <code>pytest tests/</code> 병렬 실행.<br/><br/>
-            Claude가 양쪽 결과를 수집해 통합 리포트 출력.
-            전체 소요 시간: 직렬 대비 <strong style="color:var(--green)">~50% 단축</strong>.
-          </div>
-        </div>
-      </div>
-
-    </div><!-- /demo-scenes -->
-
-    <p style="margin-top:16px;font-size:11px;color:var(--text3);text-align:center;letter-spacing:0.5px;">
-      설치 → 워커 연결 → 한 줄 지시 → 동시 실행 · 약 2.5분. 위 <strong style="color:var(--text2)">라이브 데모</strong>는 실제 시스템 캡처.
-    </p>
-  </div>
-</section>
-
-<!-- lightbox -->
 <div class="lb-bg" id="lb" onclick="closeLB()">
   <img class="lb-img" id="lb-img" src="" alt=""/>
 </div>
 
-<!-- CHANGELOG -->
-<section class="section" id="changelog">
-  <div class="container">
-    <div class="section-header">
-      <span class="section-num">09</span>
-      <h2 class="section-title"><em>Changelog</em></h2>
-    </div>
-    <div class="cl-grid">
-
-      <div class="cl-card">
-        <div class="cl-card-ver">v0.5.0 <span class="cl-badge">latest</span></div>
-        <div class="cl-card-date">2026-06-16</div>
-        <ul class="cl-items">
-          <li><span class="cl-tag feat">feature</span>5단계 학습 루프 — 관측→종합→목적화→지식화→<b>학습·선택</b> (승인이 아니라 사람이 학습)</li>
-          <li><span class="cl-tag feat">feature</span>결정론적 스킬 결정화 — 채택된 산출물을 재추론 없이 재실행 가능한 <code>SKILL.md</code>로 동결</li>
-          <li><span class="cl-tag feat">feature</span>코딩 백엔드 <b>pi</b> 전환 (<code>@earendil-works/pi-coding-agent</code>) — opencode 대체</li>
-          <li><span class="cl-tag feat">feature</span>브레인 노드 위임 — 마스터 단일 인증, 키 없는 서브노드(Pi Zero 포함)가 마스터 pi로 위임</li>
-          <li><span class="cl-tag feat">feature</span>Windows 무설정 자동탐색 — mDNS(oah.local) + Tailscale 피어 스캔</li>
-          <li><span class="cl-tag fix">fix</span>Windows <code>agent.ps1</code> 출력 인코딩(mojibake) 수정 + 도달성 진단</li>
-        </ul>
-      </div>
-
-      <div class="cl-card">
-        <div class="cl-card-ver">v0.4.0</div>
-        <div class="cl-card-date">2025-05-04</div>
-        <ul class="cl-items">
-          <li><span class="cl-tag sec">security</span>Bearer token auth (OAH_SECRET) — REST + WebSocket 전체 보호</li>
-          <li><span class="cl-tag sec">security</span>Work Key 무작위화 → <code>WK-&lt;8hex&gt;</code></li>
-          <li><span class="cl-tag sec">security</span>Phoenix 서버 Tailscale IP 바인드 (0.0.0.0 제거)</li>
-          <li><span class="cl-tag sec">security</span><code>OAH_BIND_IP</code>로 바인드 주소 명시 지정</li>
-          <li><span class="cl-tag feat">feature</span>대시보드 URL 해시 네비게이션 (탭/에이전트 상태 북마크)</li>
-          <li><span class="cl-tag feat">feature</span>🖥 Monitors 탭 — GPU/RAM/ollama 실시간 모니터링</li>
-        </ul>
-      </div>
-
-      <div class="cl-card">
-        <div class="cl-card-ver">v0.3.0</div>
-        <div class="cl-card-date">2025-04</div>
-        <ul class="cl-items">
-          <li><span class="cl-tag feat">feature</span><code>--version</code> 플래그 + presence 버전 메타데이터</li>
-          <li><span class="cl-tag feat">feature</span>CI GitHub Releases 바이너리 자동 빌드/배포</li>
-          <li><span class="cl-tag feat">feature</span>mailbox 폴링 폴백 — WebSocket task.assign 유실 방지</li>
-          <li><span class="cl-tag fix">fix</span>POST /api/task 커스텀 task_id 존중</li>
-          <li><span class="cl-tag fix">fix</span>에이전트 설치 시 PATH + rc 파일 영속 저장</li>
-        </ul>
-      </div>
-
-      <div class="cl-card">
-        <div class="cl-card-ver">v0.2.0</div>
-        <div class="cl-card-date">2025-03</div>
-        <ul class="cl-items">
-          <li><span class="cl-tag feat">feature</span>파일 변경 추적 탭 — ARTIFACT 이벤트 실시간 표시</li>
-          <li><span class="cl-tag feat">feature</span>에이전트 대화 탭 — 이벤트 타임라인</li>
-          <li><span class="cl-tag feat">feature</span>WK State 편집기 — 공유 컨텍스트 직접 수정</li>
-          <li><span class="cl-tag feat">feature</span>Tailscale 사설망 통합 — 원격 머신 에이전트 연결</li>
-          <li><span class="cl-tag feat">feature</span>DETS 영속 상태 — 재시작 후 Work Key 유지</li>
-        </ul>
-      </div>
-
-      <div class="cl-card">
-        <div class="cl-card-ver">v0.1.0</div>
-        <div class="cl-card-date">2025-02</div>
-        <ul class="cl-items">
-          <li><span class="cl-tag feat">feature</span>Phoenix WebSocket 채널 기반 태스크 오케스트레이션</li>
-          <li><span class="cl-tag feat">feature</span><code>[SHELL]</code> 태스크 원격 에이전트 실행</li>
-          <li><span class="cl-tag feat">feature</span>Work Key 생성/관리 + 에이전트 presence 추적</li>
-          <li><span class="cl-tag feat">feature</span>REST API + 대시보드 기본 UI</li>
-        </ul>
-      </div>
-
-    </div>
-  </div>
-</section>
-
-<!-- HARDWARE -->
-<section class="section" id="hardware">
-  <div class="container">
-    <div class="section-header">
-      <span class="section-num">⚙</span>
-      <h2 class="section-title">제조 현장 <em>하드웨어 조합</em></h2>
-    </div>
-    <p style="color:var(--text2); margin:-8px 0 22px; max-width:820px">
-      실제 제조공정에 바로 설치하는 권장 조합입니다. 모두 <strong>keyless</strong>(엣지에 키 0, 마스터가 두뇌) ·
-      <strong>edgeclaw 한 줄 설치</strong>(<code>curl -fsSL .../install.sh | sh</code>). 제품은 <em>예시</em>이며 동등 사양으로 대체 가능합니다.
-      <span style="color:var(--text3)">Recommended hardware kits for the shop floor — keyless, one-line install.</span>
-    </p>
-
-    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:14px">
-
-      <div style="border:1px solid var(--border); border-radius:10px; padding:16px; background:var(--bg2)">
-        <div style="font:700 14px 'Syne',sans-serif; color:var(--white)">📏 거리·근접 센싱</div>
-        <div style="color:var(--text2); font-size:12.5px; margin:7px 0 9px">Raspberry Pi Zero 2 W + HC-SR04 초음파 센서. 컨베이어 위치·재고·접근 감지.</div>
-        <div style="margin-bottom:8px"><span style="font-size:11px;color:var(--green);border:1px solid var(--green);border-radius:20px;padding:2px 8px">edgeclaw · sensor</span></div>
-        <div style="font-size:11.5px"><a href="https://www.raspberrypi.com/products/raspberry-pi-zero-2-w/" target="_blank" style="color:var(--cyan2)">Pi Zero 2 W ↗</a> · <a href="https://www.adafruit.com/product/3942" target="_blank" style="color:var(--cyan2)">HC-SR04 ↗</a></div>
-      </div>
-
-      <div style="border:1px solid var(--border); border-radius:10px; padding:16px; background:var(--bg2)">
-        <div style="font:700 14px 'Syne',sans-serif; color:var(--white)">🌡 금형·설비 온도</div>
-        <div style="color:var(--text2); font-size:12.5px; margin:7px 0 9px">Raspberry Pi 4·5 + MAX31855 열전대 앰프 + K형 열전대. 사출 금형온도·베어링 온도.</div>
-        <div style="margin-bottom:8px"><span style="font-size:11px;color:var(--green);border:1px solid var(--green);border-radius:20px;padding:2px 8px">edgeclaw · sensor</span></div>
-        <div style="font-size:11.5px"><a href="https://www.raspberrypi.com/products/raspberry-pi-5/" target="_blank" style="color:var(--cyan2)">Pi 5 ↗</a> · <a href="https://www.adafruit.com/product/269" target="_blank" style="color:var(--cyan2)">MAX31855+열전대 ↗</a></div>
-      </div>
-
-      <div style="border:1px solid var(--border); border-radius:10px; padding:16px; background:var(--bg2)">
-        <div style="font:700 14px 'Syne',sans-serif; color:var(--white)">🚦 신호탑·안돈 <span style="color:var(--orange)">(승인=물리)</span></div>
-        <div style="color:var(--text2); font-size:12.5px; margin:7px 0 9px">Pi + 5V 릴레이 모듈 + 산업 신호탑(패트라이트) + 부저. 승인 시 🔴 점등·경보.</div>
-        <div style="margin-bottom:8px"><span style="font-size:11px;color:var(--purple);border:1px solid var(--purple);border-radius:20px;padding:2px 8px">edgeclaw · physical-edge</span></div>
-        <div style="font-size:11.5px"><a href="https://www.adafruit.com/product/2935" target="_blank" style="color:var(--cyan2)">릴레이 모듈 ↗</a> · <a href="https://www.patlite.com/product/signal_towers.html" target="_blank" style="color:var(--cyan2)">PATLITE 신호탑 ↗</a></div>
-      </div>
-
-      <div style="border:1px solid var(--border); border-radius:10px; padding:16px; background:var(--bg2)">
-        <div style="font:700 14px 'Syne',sans-serif; color:var(--white)">👁 비전 검사</div>
-        <div style="color:var(--text2); font-size:12.5px; margin:7px 0 9px">NVIDIA Jetson Orin Nano + USB 산업 카메라. 외관 불량·스크래치 검출(마스터 비전 종합).</div>
-        <div style="margin-bottom:8px"><span style="font-size:11px;color:var(--green);border:1px solid var(--green);border-radius:20px;padding:2px 8px">edgeclaw + 마스터 비전</span></div>
-        <div style="font-size:11.5px"><a href="https://www.nvidia.com/en-us/autonomous-machines/embedded-systems/jetson-orin/" target="_blank" style="color:var(--cyan2)">Jetson Orin Nano ↗</a> · <a href="https://www.arducam.com/" target="_blank" style="color:var(--cyan2)">Arducam ↗</a></div>
-      </div>
-
-      <div style="border:1px solid var(--border); border-radius:10px; padding:16px; background:var(--bg2)">
-        <div style="font:700 14px 'Syne',sans-serif; color:var(--white)">🔌 현장 게이트웨이·PLC</div>
-        <div style="color:var(--text2); font-size:12.5px; margin:7px 0 9px">산업용 팬리스 IPC(x86) + USB-RS485(Modbus RTU). 기존 PLC·설비 시리얼 수집.</div>
-        <div style="margin-bottom:8px"><span style="font-size:11px;color:var(--green);border:1px solid var(--green);border-radius:20px;padding:2px 8px">edgeclaw · shell/serial</span></div>
-        <div style="font-size:11.5px"><a href="https://www.waveshare.com/usb-to-rs485.htm" target="_blank" style="color:var(--cyan2)">USB-RS485 ↗</a> · <a href="https://www.advantech.com/en/products/embedded-box-pcs" target="_blank" style="color:var(--cyan2)">Advantech IPC ↗</a></div>
-      </div>
-
-      <div style="border:1px solid var(--border); border-radius:10px; padding:16px; background:var(--bg2)">
-        <div style="font:700 14px 'Syne',sans-serif; color:var(--white)">🖥 현장 PC GUI 자동화</div>
-        <div style="color:var(--text2); font-size:12.5px; margin:7px 0 9px">기존 Windows 현장 PC(MES·ERP 화면). 화면을 보고 클릭·입력, RPA로 반복 자동화.</div>
-        <div style="margin-bottom:8px"><span style="font-size:11px;color:var(--purple);border:1px solid var(--purple);border-radius:20px;padding:2px 8px">deskclaw · RPA</span></div>
-        <div style="font-size:11.5px; color:var(--text3)">기존 PC 자산 활용 — 추가 HW 0</div>
-      </div>
-
-      <div style="border:1px solid var(--border); border-radius:10px; padding:16px; background:var(--bg2)">
-        <div style="font:700 14px 'Syne',sans-serif; color:var(--white)">🔊 음성 안내(PA)</div>
-        <div style="color:var(--text2); font-size:12.5px; margin:7px 0 9px">Raspberry Pi + USB 사운드카드 + 스피커. 합류·불량·승인 음성 안내(헤더 납땜 불필요).</div>
-        <div style="margin-bottom:8px"><span style="font-size:11px;color:var(--green);border:1px solid var(--green);border-radius:20px;padding:2px 8px">edgeclaw · audio</span></div>
-        <div style="font-size:11.5px; color:var(--text3)">범용 USB 오디오 — WAV 바이너리 내장</div>
-      </div>
-
-    </div><!-- /combo grid -->
-
-    <!-- 통신 프로토콜 게이트웨이 -->
-    <div style="font:600 12px/1 'JetBrains Mono',monospace; color:var(--text3); letter-spacing:.5px; margin:30px 0 10px">통신 프로토콜 게이트웨이 / FIELDBUS GATEWAYS — 기존 설비·PLC를 버스에</div>
-    <p style="color:var(--text2); font-size:12.5px; margin:0 0 12px; max-width:820px">설비가 쓰는 산업 프로토콜을 게이트웨이로 표준화해 edgeclaw가 수집한다. edgeclaw는 게이트웨이 옆(또는 산업용 리눅스 GW 위)에서 돈다.</p>
-    <div style="overflow-x:auto; border:1px solid var(--border); border-radius:10px">
-    <table style="width:100%; border-collapse:collapse; font-size:12px; min-width:560px">
-      <thead><tr style="background:var(--bg3); text-align:left">
-        <th style="padding:9px 12px; border-bottom:1px solid var(--border); font-family:'Syne',sans-serif">프로토콜 / 용도</th>
-        <th style="padding:9px 12px; border-bottom:1px solid var(--border); font-family:'Syne',sans-serif">대표 게이트웨이</th>
-        <th style="padding:9px 12px; border-bottom:1px solid var(--border)">링크</th>
-      </tr></thead>
-      <tbody style="color:var(--text2)">
-        <tr><td style="padding:8px 12px; border-bottom:1px solid var(--border)">시리얼(RS-232/422/485) → Ethernet</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)">Moxa NPort 5100</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)"><a href="https://www.moxa.com/en/products/industrial-edge-connectivity/serial-device-servers/general-device-servers/nport-5100-series" target="_blank" style="color:var(--cyan2)">NPort 5100 ↗</a></td></tr>
-        <tr><td style="padding:8px 12px; border-bottom:1px solid var(--border)">Modbus RTU/ASCII ↔ Modbus TCP</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)">Moxa MGate MB3180/3280/3480</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)"><a href="https://www.moxa.com/en/products/industrial-edge-connectivity/protocol-gateways/modbus-tcp-gateways/mgate-mb3180-mb3280-mb3480-series" target="_blank" style="color:var(--cyan2)">MGate MB3000 ↗</a></td></tr>
-        <tr><td style="padding:8px 12px; border-bottom:1px solid var(--border)">Modbus ↔ PROFINET / EtherNet/IP</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)">Moxa MGate 5103</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)"><a href="https://www.moxa.com/en/products/industrial-edge-connectivity/protocol-gateways/profinet-gateways/mgate-5103-series" target="_blank" style="color:var(--cyan2)">MGate 5103 ↗</a></td></tr>
-        <tr><td style="padding:8px 12px; border-bottom:1px solid var(--border)">OPC-UA ↔ Modbus/EtherNet-IP/PROFINET</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)">Advantech EKI-1242IEIMS</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)"><a href="https://www.advantech.com/en-us/products/opc-ua-gateways/sub_38205c82-9338-4a53-8569-23b3fe14328e" target="_blank" style="color:var(--cyan2)">EKI OPC-UA ↗</a></td></tr>
-        <tr><td style="padding:8px 12px; border-bottom:1px solid var(--border)">MQTT / IIoT (Modbus·serial → MQTT)</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)">Moxa ioThinx 4510 · Advantech ADAM-6000</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)"><a href="https://www.moxa.com/en/products/industrial-edge-connectivity/controllers-and-ios/advanced-controllers-and-i-os/iothinx-4510-series" target="_blank" style="color:var(--cyan2)">ioThinx ↗</a> · <a href="https://www.advantech.com/en-us/products/ethernet-i-o-modules-adam-6000/sub_a67f7853-013a-4b50-9b20-01798c56b090" target="_blank" style="color:var(--cyan2)">ADAM-6000 ↗</a></td></tr>
-        <tr><td style="padding:8px 12px; border-bottom:1px solid var(--border)">멀티 필드버스(PROFIBUS·CC-Link·CANopen·EtherCAT)</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)">HMS Anybus Communicator</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)"><a href="https://www.hms-networks.com/anybus" target="_blank" style="color:var(--cyan2)">Anybus ↗</a></td></tr>
-        <tr><td style="padding:8px 12px; border-bottom:1px solid var(--border)">BACnet (빌딩/설비)</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)">HMS Intesis</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)"><a href="https://www.hms-networks.com/p/inbaceip1k20000-ethernet-ip-bacnet-ip-ms-tp-server-gateway" target="_blank" style="color:var(--cyan2)">Intesis BACnet ↗</a></td></tr>
-        <tr><td style="padding:8px 12px">리눅스 엣지 GW (edgeclaw 직접 구동)</td><td style="padding:8px 12px">Advantech UNO-2271G V3</td><td style="padding:8px 12px"><a href="https://www.advantech.com/en-us/products/1-2mlj9a/uno-2271g-v3/mod_25219c02-4050-4154-bfce-fe18246c028b" target="_blank" style="color:var(--cyan2)">UNO-2271G ↗</a></td></tr>
-      </tbody>
-    </table>
-    </div>
-
-    <!-- 대체 보드 -->
-    <div style="font:600 12px/1 'JetBrains Mono',monospace; color:var(--text3); letter-spacing:.5px; margin:30px 0 10px">🧩 Pi는 한 예시 — 저비용 보드도 동일 바이너리 / ALSO RUNS ON</div>
-    <p style="color:var(--text2); font-size:12.5px; margin:0 0 12px; max-width:860px">edgeclaw는 단일 정적 Go 바이너리(<strong>arm64·armv7·armv6·riscv64·amd64</strong>)로 빌드 → 아래 보드는 <strong>edgeclaw 릴리즈 바이너리를 그대로</strong> 받아 설치한다. 한국산 <strong>Hardkernel ODROID</strong> 포함. (어댑터 <a href="https://github.com/DureClaw/picoclaw" target="_blank" style="color:var(--cyan2)">picoclaw</a>는 Sipeed 계열 포크.)</p>
-    <div style="overflow-x:auto; border:1px solid var(--border); border-radius:10px">
-    <table style="width:100%; border-collapse:collapse; font-size:12px; min-width:600px">
-      <thead><tr style="background:var(--bg3); text-align:left">
-        <th style="padding:9px 12px; border-bottom:1px solid var(--border); font-family:'Syne',sans-serif">보드 / Board</th>
-        <th style="padding:9px 12px; border-bottom:1px solid var(--border); font-family:'Syne',sans-serif">칩·아키텍처</th>
-        <th style="padding:9px 12px; border-bottom:1px solid var(--border); font-family:'Syne',sans-serif">edgeclaw 바이너리</th>
-        <th style="padding:9px 12px; border-bottom:1px solid var(--border)">링크</th>
-      </tr></thead>
-      <tbody style="color:var(--text2)">
-        <tr><td style="padding:8px 12px; border-bottom:1px solid var(--border)">Raspberry Pi Zero 2 W / 4 / 5</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)">arm64 (Zero=armv6)</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)"><a href="https://github.com/DureClaw/edgeclaw/releases/latest/download/edgeclaw-linux-arm64" target="_blank" style="color:var(--cyan2)"><code>linux-arm64</code></a> · <a href="https://github.com/DureClaw/edgeclaw/releases/latest/download/edgeclaw-linux-armv6" target="_blank" style="color:var(--cyan2)"><code>armv6</code></a></td><td style="padding:8px 12px; border-bottom:1px solid var(--border)"><a href="https://www.raspberrypi.com/products/" target="_blank" style="color:var(--cyan2)">raspberrypi.com ↗</a></td></tr>
-        <tr><td style="padding:8px 12px; border-bottom:1px solid var(--border)">🇰🇷 Hardkernel ODROID-C4 / N2+ / M1S</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)">arm64 (Amlogic/RK)</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)"><a href="https://github.com/DureClaw/edgeclaw/releases/latest/download/edgeclaw-linux-arm64" target="_blank" style="color:var(--cyan2)"><code>linux-arm64</code></a></td><td style="padding:8px 12px; border-bottom:1px solid var(--border)"><a href="https://www.hardkernel.com/product-category/odroid-board/" target="_blank" style="color:var(--cyan2)">hardkernel.com ↗</a></td></tr>
-        <tr><td style="padding:8px 12px; border-bottom:1px solid var(--border)">🇰🇷 Hardkernel ODROID-H4</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)">x86_64 (Intel)</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)"><a href="https://github.com/DureClaw/edgeclaw/releases/latest/download/edgeclaw-linux-amd64" target="_blank" style="color:var(--cyan2)"><code>linux-amd64</code></a></td><td style="padding:8px 12px; border-bottom:1px solid var(--border)"><a href="https://www.hardkernel.com/product-category/odroid-board/" target="_blank" style="color:var(--cyan2)">hardkernel.com ↗</a></td></tr>
-        <tr><td style="padding:8px 12px; border-bottom:1px solid var(--border)">Sipeed Lichee Pi 4A</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)">RISC-V (TH1520)</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)"><a href="https://github.com/DureClaw/edgeclaw/releases/latest/download/edgeclaw-linux-riscv64" target="_blank" style="color:var(--cyan2)"><code>linux-riscv64</code></a></td><td style="padding:8px 12px; border-bottom:1px solid var(--border)"><a href="https://sipeed.com/" target="_blank" style="color:var(--cyan2)">sipeed.com ↗</a></td></tr>
-        <tr><td style="padding:8px 12px; border-bottom:1px solid var(--border)">Sipeed Maix K230</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)">RISC-V (C908) <span style="color:var(--text3)">· K210은 MCU(리눅스 미지원)</span></td><td style="padding:8px 12px; border-bottom:1px solid var(--border)"><a href="https://github.com/DureClaw/edgeclaw/releases/latest/download/edgeclaw-linux-riscv64" target="_blank" style="color:var(--cyan2)"><code>linux-riscv64</code></a></td><td style="padding:8px 12px; border-bottom:1px solid var(--border)"><a href="https://wiki.sipeed.com/" target="_blank" style="color:var(--cyan2)">wiki.sipeed ↗</a></td></tr>
-        <tr><td style="padding:8px 12px; border-bottom:1px solid var(--border)">Milk-V Duo / Mars</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)">RISC-V (SG200x/JH7110)</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)"><a href="https://github.com/DureClaw/edgeclaw/releases/latest/download/edgeclaw-linux-riscv64" target="_blank" style="color:var(--cyan2)"><code>linux-riscv64</code></a></td><td style="padding:8px 12px; border-bottom:1px solid var(--border)"><a href="https://milkv.io/" target="_blank" style="color:var(--cyan2)">milkv.io ↗</a></td></tr>
-        <tr><td style="padding:8px 12px; border-bottom:1px solid var(--border)">Radxa Rock 시리즈</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)">arm64 (RK3588 등)</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)"><a href="https://github.com/DureClaw/edgeclaw/releases/latest/download/edgeclaw-linux-arm64" target="_blank" style="color:var(--cyan2)"><code>linux-arm64</code></a></td><td style="padding:8px 12px; border-bottom:1px solid var(--border)"><a href="https://radxa.com/" target="_blank" style="color:var(--cyan2)">radxa.com ↗</a></td></tr>
-        <tr><td style="padding:8px 12px; border-bottom:1px solid var(--border)">Orange Pi</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)">arm64 (일부 RISC-V)</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)"><a href="https://github.com/DureClaw/edgeclaw/releases/latest/download/edgeclaw-linux-arm64" target="_blank" style="color:var(--cyan2)"><code>linux-arm64</code></a> · <a href="https://github.com/DureClaw/edgeclaw/releases/latest/download/edgeclaw-linux-riscv64" target="_blank" style="color:var(--cyan2)"><code>riscv64</code></a></td><td style="padding:8px 12px; border-bottom:1px solid var(--border)"><a href="http://www.orangepi.org/" target="_blank" style="color:var(--cyan2)">orangepi.org ↗</a></td></tr>
-        <tr><td style="padding:8px 12px; border-bottom:1px solid var(--border)">BeagleBone Black / AI</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)">armv7 / arm64</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)"><a href="https://github.com/DureClaw/edgeclaw/releases/latest/download/edgeclaw-linux-armv7" target="_blank" style="color:var(--cyan2)"><code>linux-armv7</code></a> · <a href="https://github.com/DureClaw/edgeclaw/releases/latest/download/edgeclaw-linux-arm64" target="_blank" style="color:var(--cyan2)"><code>arm64</code></a></td><td style="padding:8px 12px; border-bottom:1px solid var(--border)"><a href="https://www.beagleboard.org/" target="_blank" style="color:var(--cyan2)">beagleboard.org ↗</a></td></tr>
-        <tr><td style="padding:8px 12px">Luckfox Pico</td><td style="padding:8px 12px">ARM Cortex-A7 (armv7)</td><td style="padding:8px 12px"><a href="https://github.com/DureClaw/edgeclaw/releases/latest/download/edgeclaw-linux-armv7" target="_blank" style="color:var(--cyan2)"><code>linux-armv7</code></a></td><td style="padding:8px 12px"><a href="https://www.luckfox.com/" target="_blank" style="color:var(--cyan2)">luckfox.com ↗</a></td></tr>
-      </tbody>
-    </table>
-    </div>
-
-    <!-- 국산 제품 / 한국 업체 -->
-    <div style="font:600 12px/1 'JetBrains Mono',monospace; color:var(--text3); letter-spacing:.5px; margin:30px 0 10px">🇰🇷 국산 제품 / KOREAN SUPPLIERS</div>
-    <div style="overflow-x:auto; border:1px solid var(--border); border-radius:10px">
-    <table style="width:100%; border-collapse:collapse; font-size:12px; min-width:600px">
-      <thead><tr style="background:var(--bg3); text-align:left">
-        <th style="padding:9px 12px; border-bottom:1px solid var(--border); font-family:'Syne',sans-serif">분류</th>
-        <th style="padding:9px 12px; border-bottom:1px solid var(--border); font-family:'Syne',sans-serif">국내 업체</th>
-        <th style="padding:9px 12px; border-bottom:1px solid var(--border)">대표 제품</th>
-        <th style="padding:9px 12px; border-bottom:1px solid var(--border)">링크</th>
-      </tr></thead>
-      <tbody style="color:var(--text2)">
-        <tr><td style="padding:8px 12px; border-bottom:1px solid var(--border)">신호탑·타워램프 (PATLITE 대안)</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)">큐라이트 · 카콘</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)">LED 타워램프·표시등 (ST/QTC, IO-Link)</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)"><a href="https://www.qlight.com/kr/" target="_blank" style="color:var(--cyan2)">Qlight ↗</a> · <a href="https://www.kacon.co.kr/" target="_blank" style="color:var(--cyan2)">KACON ↗</a></td></tr>
-        <tr><td style="padding:8px 12px; border-bottom:1px solid var(--border)">센서·온도조절기·계측</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)">오토닉스 · 한영넥스</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)">PID 온도조절기·근접/광센서·패널미터</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)"><a href="https://www.autonics.com/kr" target="_blank" style="color:var(--cyan2)">Autonics ↗</a> · <a href="https://hanyoungnux.co.kr/" target="_blank" style="color:var(--cyan2)">한영넥스 ↗</a></td></tr>
-        <tr><td style="padding:8px 12px; border-bottom:1px solid var(--border)">시리얼↔이더넷 (Moxa NPort 대안)</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)">솔내시스템 · 위즈넷</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)">시리얼 디바이스 서버(CSE), WIZ750SR·W5500</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)"><a href="https://www.sollae.co.kr/ko/home/" target="_blank" style="color:var(--cyan2)">Sollae ↗</a> · <a href="https://www.wiznet.io/" target="_blank" style="color:var(--cyan2)">WIZnet ↗</a></td></tr>
-        <tr><td style="padding:8px 12px; border-bottom:1px solid var(--border)">PLC·산업제어</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)">LS일렉트릭 · 컴파일</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)">XGT/XGB PLC, CUBLOC 임베디드 컨트롤러</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)"><a href="https://www.ls-electric.com/ko" target="_blank" style="color:var(--cyan2)">LS ELECTRIC ↗</a> · <a href="https://www.comfile.co.kr/" target="_blank" style="color:var(--cyan2)">Comfile ↗</a></td></tr>
-        <tr><td style="padding:8px 12px; border-bottom:1px solid var(--border)">산업용 IPC·패널PC·임베디드</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)">MX On(구 M2I) · 컴텍 · 비맥스 · 휴인스 · 코텍</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)">산업용 박스/팬리스 PC, HMI 터치패널, 임베디드 보드</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)"><a href="https://www.mxon.co.kr/" target="_blank" style="color:var(--cyan2)">MX On ↗</a> · <a href="https://com-tech.kr/" target="_blank" style="color:var(--cyan2)">컴텍 ↗</a> · <a href="https://www.bemax.co.kr/" target="_blank" style="color:var(--cyan2)">비맥스 ↗</a> · <a href="https://www.huins.com/kr/index.php" target="_blank" style="color:var(--cyan2)">휴인스 ↗</a> · <a href="http://www.kortek.co.kr/" target="_blank" style="color:var(--cyan2)">코텍 ↗</a></td></tr>
-        <tr><td style="padding:8px 12px; border-bottom:1px solid var(--border)">SBC·엣지 컴퓨터</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)">하드커널 (Hardkernel)</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)">ODROID (arm64 / x86)</td><td style="padding:8px 12px; border-bottom:1px solid var(--border)"><a href="https://www.hardkernel.com/product-category/odroid-board/" target="_blank" style="color:var(--cyan2)">Hardkernel ↗</a></td></tr>
-        <tr><td style="padding:8px 12px">비전 카메라</td><td style="padding:8px 12px">위드로봇 (Withrobot)</td><td style="padding:8px 12px">oCam USB3.0 산업 카메라(UVC)</td><td style="padding:8px 12px"><a href="https://withrobot.com/" target="_blank" style="color:var(--cyan2)">Withrobot ↗</a></td></tr>
-      </tbody>
-    </table>
-    </div>
-
-    <!-- 국내 총판 / 구매처 -->
-    <div style="margin-top:16px; font-size:12px; color:var(--text2); line-height:1.9">
-      <div style="color:var(--text3); font-family:'JetBrains Mono',monospace; letter-spacing:.5px; margin-bottom:4px">국내 총판 / 구매처 / KR DISTRIBUTORS</div>
-      <strong>Moxa</strong>: <a href="https://www.yoisys.com/" target="_blank" style="color:var(--cyan2)">여의시스템(대표총판)</a> · <a href="https://moxa.wezon.com/" target="_blank" style="color:var(--cyan2)">위존</a> · <a href="https://www.moxastore.co.kr/" target="_blank" style="color:var(--cyan2)">목사스토어</a> &nbsp;|&nbsp;
-      <strong>Advantech</strong>: <a href="https://www.advantech.com/ko-kr" target="_blank" style="color:var(--cyan2)">어드밴텍 한국</a> · <a href="https://advantech.co.kr/" target="_blank" style="color:var(--cyan2)">어드밴텍코리아</a> &nbsp;|&nbsp;
-      <strong>HMS·Anybus·Red Lion</strong>: <a href="https://www.anybus.com/" target="_blank" style="color:var(--cyan2)">anybus.com</a> (한국 영업 본사 채널)<br/>
-      <span style="color:var(--text3)">부품·게이트웨이 유통:</span> <a href="https://www.devicemart.co.kr/goods/search?searchKeyword=MGate" target="_blank" style="color:var(--cyan2)">디바이스마트</a> · <a href="https://www.eleparts.co.kr/" target="_blank" style="color:var(--cyan2)">엘레파츠</a> · <a href="https://www.mechasolution.com/" target="_blank" style="color:var(--cyan2)">메카솔루션</a> · <a href="https://kr.rs-online.com/web/" target="_blank" style="color:var(--cyan2)">RS Korea</a> · <a href="https://kr.mouser.com/" target="_blank" style="color:var(--cyan2)">Mouser Korea</a>
-    </div>
-    <div style="margin-top:14px; font-size:12px; color:var(--text3)">
-      모든 노드 설치: <code>curl -fsSL https://github.com/DureClaw/edgeclaw/releases/latest/download/install.sh | sh</code>
-    </div>
-  </div>
-</section>
-
-<!-- FOOTER -->
 <footer>
   <div class="container">
     <div class="footer-inner">
@@ -1827,35 +341,19 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 40px;
   </div>
 </footer>
 
+<script src="/assets/site.js"></script>
 <script>
-function openLB(img) {
-  document.getElementById('lb-img').src = img.src;
-  document.getElementById('lb-img').alt = img.alt;
-  document.getElementById('lb').classList.add('open');
-  document.body.style.overflow = 'hidden';
-}
-function closeLB() {
-  document.getElementById('lb').classList.remove('open');
-  document.body.style.overflow = '';
-}
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLB(); });
-
-function copyText(btn, text) {
-  navigator.clipboard.writeText(text).then(() => {
-    const orig = btn.textContent;
-    btn.textContent = '✓ 복사됨';
-    btn.style.color = 'var(--cyan)';
-    setTimeout(() => { btn.textContent = orig; btn.style.color = ''; }, 1800);
-  });
-}
-function copyCmd(btn, text) {
-  navigator.clipboard.writeText(text).then(() => {
-    btn.textContent = '✓ 복사됨';
-    btn.classList.add('copied');
-    setTimeout(() => { btn.textContent = '복사'; btn.classList.remove('copied'); }, 1800);
-  });
-}
+// 예전 한 페이지 시절의 앵커 링크(/#install 등)를 옮겨간 서브 페이지로 보낸다
+(function () {
+  var moved = {
+    "install": "start", "platforms": "start", "add-agent": "start", "example": "start",
+    "how-it-works": "how", "vs-ssh": "how", "layers": "how", "ecosystem": "how", "architecture": "how",
+    "screenshots": "showcase", "demo": "showcase", "hardware": "showcase",
+    "events": "developers", "api": "developers", "changelog": "changelog"
+  };
+  var h = location.hash.slice(1);
+  if (moved[h]) location.replace("/" + moved[h] + "/#" + h);
+})();
 </script>
-
 </body>
 </html>
