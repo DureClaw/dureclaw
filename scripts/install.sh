@@ -96,7 +96,8 @@ echo "$(_bold '[2/4]') 보안 키"
 OAH_SECRET=""
 if [[ -f "$SECRET_FILE" ]]; then
   OAH_SECRET=$(tr -d '[:space:]' < "$SECRET_FILE")
-  echo "  $(_green '✅') OAH_SECRET 로드 $(_dim "($(basename "$SECRET_FILE")")")"
+  _secret_name=$(basename "$SECRET_FILE")
+  echo "  $(_green '✅') OAH_SECRET 로드 $(_dim "(${_secret_name})")"
 else
   echo "  $(_yellow '⚠') 시크릿 파일 없음: $SECRET_FILE"
   echo "     서버 실행 후 자동 생성됩니다. 수동 지정:"
