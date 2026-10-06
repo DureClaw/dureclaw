@@ -166,14 +166,16 @@ jobs:
           }
           & $iscc "/DAppVersion=$ver" dureclaw-agent.iss
           if ($LASTEXITCODE -ne 0) { throw "ISCC failed" }
-          Get-ChildItem Output
+          # artifact 를 평평하게 — Output\ 하위 폴더째 올라가면 release 의 dist/*.exe 패턴에 안 걸린다
+          Copy-Item Output\DureClaw-Agent-Setup.exe .
+          Get-ChildItem *.exe
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: dureclaw-windows
           path: |
-            packages/windows-installer/Output/DureClaw-Agent-Setup.exe
+            packages/windows-installer/DureClaw-Agent-Setup.exe
             packages/windows-installer/oah-agent-windows-x64.exe
           retention-days: 7
 
@@ -241,6 +243,6 @@ jobs:
           files: |
             dist/*.tar.gz
             dist/oah-agent-*
-            dist/DureClaw-Agent-Setup.exe
+            dist/**/DureClaw-Agent-Setup.exe
           generate_release_notes: true
           fail_on_unmatched_files: false
