@@ -3,12 +3,13 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>DureClaw — 내 모든 머신을 하나의 AI 팀으로</title>
+<title>DureClaw — 내 모든 컴퓨터가 하나의 AI 팀으로</title>
 <meta name="description" content="분산 디바이스를 하나의 협력 AI 크루로. 마스터가 두뇌, edgeclaw(OS·물리)·webclaw(브라우저)·deskclaw(데스크톱 GUI)가 손이 된다. keyless 엣지 + 결정 동결(LLM as compiler). Claude Code 네이티브 플러그인, 한 줄 설치."/>
 
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
 
 <!-- ── SEO / canonical / icons ── -->
 <link rel="canonical" href="https://dureclaw.baryon.ai/"/>
@@ -102,10 +103,10 @@
 
 
 <link rel="stylesheet" href="/assets/site.css"/>
+<link rel="stylesheet" href="/assets/design.css"/>
 </head>
 <body>
 
-<!-- NAV -->
 <nav>
   <div class="container">
     <div class="nav-inner">
@@ -116,210 +117,254 @@
         <a href="/showcase/">데모·활용</a>
         <a href="/developers/">개발자</a>
         <a href="/changelog/">Changelog</a>
-        <a href="https://github.com/DureClaw/dureclaw/tree/main/docs" target="_blank">문서</a>
       </div>
       <a href="https://github.com/DureClaw/dureclaw" class="nav-gh" target="_blank">GitHub ↗</a>
     </div>
   </div>
 </nav>
 
-<!-- HERO -->
-<section class="hero">
-  <div class="container">
-    <img src="/screenshots/hero-banner.jpg" alt="DureClaw 멀티머신 AI 팀 오케스트레이션" style="width:100%;border-radius:8px;margin-bottom:40px;display:block;" />
-    <div class="hero-badge">Claude Code 네이티브 플러그인 · v0.4.6 · 오픈소스</div>
-    <p class="hero-sub-ko">두레클로 — <a href="https://en.wikipedia.org/wiki/Dure" target="_blank" style="color:var(--text3);text-decoration:none;border-bottom:1px solid var(--border2);">두레(협동 경작)</a> 정신을 AI 에이전트에 담다</p>
-    <h1>내 모든 머신이<br/><em>AI 팀</em>이 된다</h1>
-    <p class="hero-sub">
-      Mac에서 Claude에게 말하면, 집·회사에 흩어진 <strong style="color:var(--cyan)">Windows PC·Linux 서버·라즈베리파이</strong>가
-      일을 나눠 받아 <strong style="color:var(--green)">동시에</strong> 처리하고 결과를 돌려준다.
-    </p>
+<main>
 
-    <div class="cta-grid" id="download">
-      <div class="cta-card primary">
-        <div class="cta-os">① 본부 · Mac</div>
-        <div class="cta-title">🍎 서버 앱 설치</div>
-        <div class="cta-desc">팀을 지휘할 Mac에 한 번만. 내려받아 Applications로 끌어놓고 실행하면 메뉴 막대에서 서버가 돈다.</div>
-        <a class="dl-btn" href="https://github.com/DureClaw/dureclaw/releases/latest/download/DureClaw-Server-mac-arm64.dmg" download>⬇ Mac용 다운로드 <span class="dl-sub">Apple Silicon</span></a>
+<!-- HERO -->
+<header class="h-hero">
+  <div class="wrap h-hero-grid">
+    <div>
+      <span class="h-badge rise"><b>v0.4.6</b> Claude Code 네이티브 · 오픈소스</span>
+      <h1 class="h-title rise d1">내 모든 컴퓨터가<br/><em>하나의 AI 팀</em>으로</h1>
+      <p class="h-sub rise d2">Mac에서 Claude에게 말하세요. 연결된 컴퓨터들이 작업을 나눠 동시에 처리합니다.</p>
+      <div class="h-actions rise d3">
+        <a class="btn btn-primary" href="#install">무료로 시작하기</a>
+        <a class="btn btn-ghost" href="/showcase/">데모 보기</a>
       </div>
-      <div class="cta-card">
-        <div class="cta-os">② 팀원 · Windows</div>
-        <div class="cta-title">🪟 노드 설치 프로그램</div>
-        <div class="cta-desc">일을 맡길 PC에. 실행 → 서버 주소(비우면 자동 탐색)·역할 입력 → 끝. 로그인 시 자동 연결.</div>
-        <a class="dl-btn" href="https://github.com/DureClaw/dureclaw/releases/latest/download/DureClaw-Agent-Setup.exe" download>⬇ Windows용 다운로드 <span class="dl-sub">x64</span></a>
+      <p class="h-note rise d4">두레클로 — <a href="https://en.wikipedia.org/wiki/Dure" target="_blank">두레(협동 경작)</a> 정신을 AI 에이전트에 담다</p>
+    </div>
+    <div class="h-art rise d2">
+      <img src="/images/concept.webp" width="1400" height="933" alt="가운데 Mac의 리더 로봇이 Windows PC, Linux 서버, 라즈베리파이, GPU 워크스테이션의 로봇들에게 일을 나눠주는 그림"/>
+    </div>
+  </div>
+  <div class="wrap">
+    <div class="h-chips" aria-label="지원 환경">
+      <span>macOS</span><span>Windows</span><span>Linux</span><span>Raspberry Pi</span><span>GPU 서버</span><span>Claude Code</span><span>Tailscale</span>
+    </div>
+  </div>
+</header>
+
+<!-- INSTALL -->
+<section class="band" id="install">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">설치</span>
+      <h2 class="h2">Mac 한 대에 서버를, 나머지는 <span class="serif">teammates</span>로</h2>
+    </div>
+    <div class="install-grid" id="download">
+      <div class="i-card primary">
+        <div class="i-step">① 본부 · MAC</div>
+        <div class="i-title"><span class="ico">🍎</span>서버 앱 설치</div>
+        <p class="i-desc">팀을 지휘할 Mac에 설치하세요. 실행하면 메뉴 막대에서 서버가 시작됩니다.</p>
+        <a class="btn btn-accent" href="https://github.com/DureClaw/dureclaw/releases/latest/download/DureClaw-Server-mac-arm64.dmg" download>Mac용 다운로드 <span class="sub">Apple Silicon</span></a>
       </div>
-      <div class="cta-card">
-        <div class="cta-os">② 팀원 · Linux · 라즈베리파이 · Mac</div>
-        <div class="cta-title">🐧 한 줄 명령</div>
-        <div class="cta-desc">터미널에 붙여 넣기. <code>서버주소</code>는 Mac 앱 메뉴의 “노드 연결 주소 복사”로 얻는다.</div>
-        <div class="cta-cmd">
-          <code>PHOENIX=ws://서버주소:4000 bash &lt;(curl -fsSL https://dureclaw.baryon.ai/agent)</code>
+      <div class="i-card">
+        <div class="i-step">② 팀원 · WINDOWS</div>
+        <div class="i-title"><span class="ico">🪟</span>노드 설치 프로그램</div>
+        <p class="i-desc">서버 주소와 역할을 입력하면 끝. 주소를 비우면 자동 탐색하며, 로그인 시 자동 연결됩니다.</p>
+        <a class="btn btn-primary" href="https://github.com/DureClaw/dureclaw/releases/latest/download/DureClaw-Agent-Setup.exe" download>Windows용 다운로드 <span class="sub">x64</span></a>
+      </div>
+      <div class="i-card">
+        <div class="i-step">② 팀원 · LINUX · 라즈베리파이 · MAC</div>
+        <div class="i-title"><span class="ico">🐧</span>한 줄 명령</div>
+        <p class="i-desc">터미널에 명령어를 붙여 넣으세요. 서버 주소는 Mac 앱의 ‘노드 연결 주소 복사’에서 확인하세요.</p>
+        <div class="cmd">
+          <code><span class="k">PHOENIX</span>=ws://서버주소:4000 bash &lt;(curl -fsSL https://dureclaw.baryon.ai/agent)</code>
           <button class="copy-btn" onclick="copyCmd(this, 'PHOENIX=ws://서버주소:4000 bash <(curl -fsSL https://dureclaw.baryon.ai/agent)')">복사</button>
         </div>
       </div>
     </div>
-    <p class="install-note">
-      터미널이 편하다면 Mac 서버도 한 줄로: <code>bash &lt;(curl -fsSL https://dureclaw.baryon.ai/install)</code> ·
-      <a href="/start/">플랫폼별 자세한 설치 →</a>
-    </p>
+    <p class="install-alt">터미널이 편하다면 Mac 서버도 한 줄로 — <code>bash &lt;(curl -fsSL https://dureclaw.baryon.ai/install)</code> · <a href="/start/">플랫폼별 자세한 설치 →</a></p>
   </div>
 </section>
 
 <!-- WHAT -->
-<section class="section" id="what">
-  <div class="container">
-    <div class="explain">
-      <div class="explain-img"><img src="/images/concept.webp" width="1400" height="933" alt="가운데 Mac의 리더 로봇이 Windows PC, Linux 서버, 라즈베리파이, GPU 워크스테이션의 로봇들에게 일을 나눠주는 그림" loading="lazy"/></div>
-      <div>
-        <h3>DureClaw는 무엇인가요?</h3>
-        <p>여러 대의 컴퓨터를 <strong>하나의 팀</strong>으로 묶어 주는 도구입니다. 역할은 셋뿐입니다.</p>
-        <ul>
-          <li><span class="ic">🧠</span><strong>두뇌</strong> — Mac에서 쓰는 Claude Code. 무엇을 할지 생각하고 일을 나눕니다.</li>
-          <li><span class="ic">🤲</span><strong>손</strong> — 각 컴퓨터에 설치된 작은 에이전트. 받은 일을 실행하고 결과를 보고합니다.</li>
-          <li><span class="ic">🚌</span><strong>버스</strong> — Mac의 서버 앱. 두뇌와 손을 실시간으로 이어 줍니다.</li>
-        </ul>
-        <p style="font-size:13px">Windows에서만 되는 엑셀 작업, GPU 서버의 학습, 라즈베리파이의 센서 — 기계마다 잘하는 일을 한 번의 지시로 동시에 돌립니다.</p>
+<section class="band" id="what">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">DureClaw는 무엇인가요?</span>
+      <h2 class="h2">여러 대의 컴퓨터를 하나의 팀으로 묶습니다.<br/>역할은 셋뿐입니다.</h2>
+    </div>
+    <div class="roles">
+      <div class="role">
+        <span class="role-k">the brain</span>
+        <h3>🧠 두뇌</h3>
+        <p>Mac에서 쓰는 Claude Code. 무엇을 할지 생각하고 일을 나눕니다.</p>
+      </div>
+      <div class="role">
+        <span class="role-k">the hands</span>
+        <h3>🤲 손</h3>
+        <p>각 컴퓨터에 설치된 작은 에이전트. 받은 일을 실행하고 결과를 보고합니다.</p>
+      </div>
+      <div class="role">
+        <span class="role-k">the bus</span>
+        <h3>🚌 버스</h3>
+        <p>Mac의 서버 앱. 두뇌와 손을 실시간으로 이어 줍니다.</p>
       </div>
     </div>
   </div>
 </section>
 
-<!-- HOW TO START -->
-<section class="section" id="steps">
-  <div class="container">
-    <div class="section-header">
-      <span class="section-num">→</span>
-      <h2 class="section-title">3단계면 <em>팀 완성</em></h2>
+<!-- STEPS -->
+<section class="band tint" id="steps">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">시작하기</span>
+      <h2 class="h2">3단계면 팀이 완성됩니다</h2>
     </div>
-    <div class="steps3">
-      <div class="s3-card">
-        <img src="/images/step1-server.webp" width="720" height="720" alt="Mac에서 버튼 하나로 서버 앱을 켜는 그림" loading="lazy"/>
-        <div class="s3-body">
-          <div class="s3-no">STEP 01</div>
-          <div class="s3-title">Mac에 서버 앱 설치</div>
-          <div class="s3-desc"><a href="#download">DureClaw.dmg</a>를 내려받아 실행. 메뉴 막대에 아이콘이 생기면 서버가 켜진 것입니다.</div>
+    <div class="steps">
+      <article class="step">
+        <div class="step-art"><img src="/images/step1-server.webp" width="720" height="720" alt="Mac에서 버튼 하나로 서버 앱을 켜는 그림" loading="lazy"/></div>
+        <div class="step-body">
+          <span class="step-no"></span>
+          <h3>Mac에 서버 앱 설치</h3>
+          <p>앱을 내려받아 실행하세요. 메뉴 막대에 아이콘이 생기면 서버가 켜진 것입니다.</p>
         </div>
-      </div>
-      <div class="s3-card">
-        <img src="/images/step2-connect.webp" width="720" height="720" alt="Windows PC와 라즈베리파이가 잠금 표시가 있는 안전한 선으로 Mac에 연결되는 그림" loading="lazy"/>
-        <div class="s3-body">
-          <div class="s3-no">STEP 02</div>
-          <div class="s3-title">다른 컴퓨터 연결</div>
-          <div class="s3-desc">Windows는 설치 프로그램, Linux·라즈베리파이는 한 줄 명령. <strong>비밀번호·키를 나눠 줄 필요 없이</strong> 같은 사설망(Tailscale)이면 자동 승인됩니다.</div>
+      </article>
+      <article class="step">
+        <div class="step-art"><img src="/images/step2-connect.webp" width="720" height="720" alt="Windows PC와 라즈베리파이가 잠금 표시가 있는 안전한 선으로 Mac에 연결되는 그림" loading="lazy"/></div>
+        <div class="step-body">
+          <span class="step-no"></span>
+          <h3>다른 컴퓨터 연결</h3>
+          <p>Windows는 설치 프로그램, Linux·라즈베리파이는 한 줄 명령. 같은 사설망(Tailscale)이면 키 없이 자동 승인됩니다.</p>
         </div>
-      </div>
-      <div class="s3-card">
-        <img src="/images/step3-talk.webp" width="720" height="720" alt="사람이 노트북에 메시지를 쓰면 작업 카드가 여러 컴퓨터로 날아가고 완료 표시가 돌아오는 그림" loading="lazy"/>
-        <div class="s3-body">
-          <div class="s3-no">STEP 03</div>
-          <div class="s3-title">Claude에게 말하기</div>
-          <div class="s3-desc">Claude Code에서 <code>/두레팀</code> 또는 “윈도우에서 빌드하고 라즈베리파이로 테스트해줘”. 배분·실행·결과 취합은 알아서.</div>
+      </article>
+      <article class="step">
+        <div class="step-art"><img src="/images/step3-talk.webp" width="720" height="720" alt="사람이 노트북에 메시지를 쓰면 작업 카드가 여러 컴퓨터로 날아가고 완료 표시가 돌아오는 그림" loading="lazy"/></div>
+        <div class="step-body">
+          <span class="step-no"></span>
+          <h3>Claude에게 말하기</h3>
+          <p>“윈도우에서 빌드하고 라즈베리파이로 테스트해줘.” 배분·실행·결과 취합은 알아서 합니다.</p>
         </div>
-      </div>
+      </article>
     </div>
   </div>
 </section>
 
-<!-- WHY -->
-<section class="section" id="why">
-  <div class="container">
-    <div class="explain reverse">
-      <div class="explain-img"><img src="/images/before-after.webp" width="1200" height="800" alt="왼쪽은 엉킨 케이블과 경고 표시, 오른쪽은 하나의 깔끔한 버스로 연결된 로봇들을 비교한 그림" loading="lazy"/></div>
-      <div>
-        <h3>원격 접속(SSH)과 뭐가 다른가요?</h3>
-        <p>SSH는 기계마다 접속 방법·인증·명령어가 다릅니다. 특히 Windows가 섞이는 순간 설정이 급격히 어려워집니다.</p>
-        <ul>
-          <li><span class="ic">✅</span><strong>들어오는 문을 열지 않는다</strong> — 각 컴퓨터가 서버로 먼저 연결하므로 방화벽·포트 설정이 필요 없습니다.</li>
-          <li><span class="ic">✅</span><strong>OS 차이를 감춘다</strong> — Windows·Linux·Mac에 같은 방식으로 일을 시키고 같은 형식으로 결과를 받습니다.</li>
-          <li><span class="ic">✅</span><strong>여러 대를 한 번에</strong> — 한 줄 지시로 여러 기계가 동시에 움직입니다.</li>
-        </ul>
-        <a class="more-link" href="/how/#vs-ssh">실측 비교 보기 →</a>
-      </div>
+<!-- WHY (SSH) -->
+<section class="band" id="why">
+  <div class="wrap split">
+    <div class="split-art"><img src="/images/before-after.webp" width="1200" height="800" alt="왼쪽은 엉킨 케이블과 경고 표시, 오른쪽은 하나의 깔끔한 버스로 연결된 로봇들을 비교한 그림" loading="lazy"/></div>
+    <div>
+      <span class="eyebrow">SSH와 무엇이 다른가요?</span>
+      <h2 class="h2">접속해서 시키는 대신,<br/>나눠서 맡깁니다</h2>
+      <p class="lede">SSH가 컴퓨터에 접속해 명령을 실행하는 방식이라면, 이 에이전트는 여러 컴퓨터에 작업을 나눠 맡기는 방식입니다.</p>
+      <ul class="checks">
+        <li><span><strong>작업용 PC의 포트 개방 없이</strong>작업할 컴퓨터에 외부 접속용 포트를 열 필요가 없습니다.</span></li>
+        <li><span><strong>OS가 달라도 같은 방식</strong>Windows·Linux·Mac에 같은 방식으로 지시하고 결과를 받습니다.</span></li>
+        <li><span><strong>여러 대가 동시에 작업</strong>한 번의 지시로 여러 컴퓨터가 작업을 나눠 처리합니다.</span></li>
+      </ul>
+      <a class="text-link" href="/how/#vs-ssh">실측 비교 보기 →</a>
     </div>
   </div>
 </section>
 
 <!-- SAFE -->
-<section class="section" id="safe">
-  <div class="container">
-    <div class="explain">
-      <div class="explain-img"><img src="/images/keyless.webp" width="1200" height="800" alt="마스터 키는 Mac 금고에 두고 다른 로봇들에게는 개별 배지만 나눠주는 그림" loading="lazy"/></div>
-      <div>
-        <h3>키 없이도 안전하게</h3>
-        <p>마스터 비밀키는 Mac 한 곳에만 있습니다. 다른 컴퓨터에는 복사하지 않습니다.</p>
-        <ul>
-          <li><span class="ic">🎫</span><strong>개인 출입증</strong> — 새 컴퓨터가 가입을 요청하면 서버가 그 컴퓨터 전용 토큰을 발급합니다. 필요하면 하나씩 회수할 수 있습니다.</li>
-          <li><span class="ic">🔒</span><strong>사설망 자동 승인</strong> — 같은 Tailscale 망이면 클릭 없이 승인, 밖에서 오면 운영자가 확인합니다.</li>
-          <li><span class="ic">🧭</span><strong>지시는 한 곳에서만</strong> — 팀원 컴퓨터는 일을 받고 보고만 할 수 있고, 다른 컴퓨터에 지시할 수 없습니다.</li>
-        </ul>
-        <a class="more-link" href="/how/#how-it-works">키리스 접근 자세히 →</a>
-      </div>
+<section class="band" id="safe">
+  <div class="wrap split flip">
+    <div class="split-art"><img src="/images/keyless.webp" width="1200" height="800" alt="마스터 키는 Mac 금고에 두고 다른 로봇들에게는 개별 배지만 나눠주는 그림" loading="lazy"/></div>
+    <div>
+      <span class="eyebrow">보안</span>
+      <h2 class="h2">비밀키는 Mac 한 곳에만</h2>
+      <p class="lede">다른 컴퓨터에는 마스터 비밀키를 복사하지 않습니다. 대신 컴퓨터마다 개인 출입증을 발급합니다.</p>
+      <ul class="checks">
+        <li><span><strong>개인 출입증</strong>새 컴퓨터가 가입을 요청하면 그 컴퓨터 전용 토큰을 발급하고, 필요하면 하나씩 회수할 수 있습니다.</span></li>
+        <li><span><strong>사설망 자동 승인</strong>같은 Tailscale 망이면 클릭 없이 승인되고, 밖에서 오면 운영자가 확인합니다.</span></li>
+        <li><span><strong>지시는 한 곳에서만</strong>팀원 컴퓨터는 일을 받고 보고만 할 수 있습니다. 다른 컴퓨터에 지시할 수 없습니다.</span></li>
+      </ul>
+      <a class="text-link" href="/how/#how-it-works">키리스 접근 자세히 →</a>
     </div>
   </div>
 </section>
 
 <!-- FOR WHO -->
-<section class="section" id="for-who">
-  <div class="container">
-    <!-- 이런 분을 위해 -->
-    <p style="font-size:11px;letter-spacing:2px;color:var(--text3);margin-bottom:14px;text-transform:uppercase;">이런 분을 위해</p>
-    <div class="fw-grid">
-      <div class="fw-card">
-        <div class="fw-icon">🖥️</div>
-        <div class="fw-who">맥 + 서버/워크스테이션 보유 개발자</div>
-        <div class="fw-situation">메인 Mac + GPU 서버 or Linux 박스</div>
-        <div class="fw-pain"><strong>기존:</strong> Claude Code는 맥에서만. 서버는 별도 SSH로 수동 작업.</div>
-        <div class="fw-gain"><strong>DureClaw:</strong> Mac Claude가 지시하면 서버가 동시에 빌드·테스트·학습 실행.</div>
+<section class="band tint" id="for-who">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">이런 분을 위해</span>
+      <h2 class="h2">놀고 있는 컴퓨터가 있다면</h2>
+    </div>
+    <div class="personas">
+      <div class="persona">
+        <div class="persona-ico">🖥️</div>
+        <h3>Mac + 서버를 가진 개발자</h3>
+        <p class="ctx">메인 Mac과 GPU 서버 또는 Linux 박스</p>
+        <div class="before"><b>지금은</b>Claude Code는 Mac에서만. 서버는 따로 SSH로 접속해 손으로 작업합니다.</div>
+        <div class="after"><b>DureClaw와 함께</b>Mac의 Claude가 지시하면 서버가 빌드·테스트·학습을 동시에 실행합니다.</div>
       </div>
-      <div class="fw-card">
-        <div class="fw-icon">🤖</div>
-        <div class="fw-who">집·회사 멀티 셋업 개발자</div>
-        <div class="fw-situation">회사 Mac + 집 워크스테이션 (Tailscale로 연결)</div>
-        <div class="fw-pain"><strong>기존:</strong> 한 곳에서만 작업 가능. 다른 머신은 놀고 있음.</div>
-        <div class="fw-gain"><strong>DureClaw:</strong> 어디서든 Claude에게 말하면 두 머신이 동시에 태스크 수행.</div>
+      <div class="persona">
+        <div class="persona-ico">🏠</div>
+        <h3>집과 회사를 오가는 개발자</h3>
+        <p class="ctx">회사 Mac과 집 워크스테이션 (Tailscale로 연결)</p>
+        <div class="before"><b>지금은</b>한 곳에서만 작업할 수 있고, 다른 컴퓨터는 놀고 있습니다.</div>
+        <div class="after"><b>DureClaw와 함께</b>어디서든 Claude에게 말하면 두 컴퓨터가 동시에 작업합니다.</div>
       </div>
-      <div class="fw-card">
-        <div class="fw-icon">👥</div>
-        <div class="fw-who">소규모 팀·스터디그룹</div>
-        <div class="fw-situation">팀원 각자의 머신에 AI 에이전트 설치</div>
-        <div class="fw-pain"><strong>기존:</strong> AI 도구를 각자 따로. 결과 공유가 느리고 번거롭다.</div>
-        <div class="fw-gain"><strong>DureClaw:</strong> 팀장 Claude가 태스크 배분 → 모든 머신이 협력해서 결과 통합.</div>
+      <div class="persona">
+        <div class="persona-ico">👥</div>
+        <h3>소규모 팀·스터디 그룹</h3>
+        <p class="ctx">팀원 각자의 컴퓨터에 에이전트 설치</p>
+        <div class="before"><b>지금은</b>AI 도구를 각자 따로 씁니다. 결과를 모으는 데 시간이 걸립니다.</div>
+        <div class="after"><b>DureClaw와 함께</b>팀장의 Claude가 작업을 나누면, 모든 컴퓨터가 협력해 결과를 합칩니다.</div>
       </div>
     </div>
-
   </div>
 </section>
 
 <!-- DEMO -->
-<section class="section" id="see">
-  <div class="container">
-    <div class="section-header">
-      <span class="section-num">→</span>
-      <h2 class="section-title">실제로 <em>돌아가는 모습</em></h2>
+<section class="band" id="see">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">데모</span>
+      <h2 class="h2">실제로 돌아가는 모습</h2>
+      <p class="lede">대시보드에서 여러 에이전트가 동시에 일을 받아 처리하는 장면입니다.</p>
     </div>
-    <p class="lead">대시보드에서 여러 에이전트가 동시에 일을 받아 처리하는 장면입니다.</p>
-    <img class="ss-featured" src="/screenshots/dureclaw-dashboard-demo.gif" alt="DureClaw 대시보드 라이브 데모 — 에이전트 팀 태스크 디스패치" loading="lazy"/>
-    <p style="margin-top:12px"><a class="more-link" href="/showcase/">스크린샷·시나리오 데모·하드웨어 활용 더 보기 →</a></p>
+    <div class="demo-frame">
+      <div class="bar"><i></i><i></i><i></i></div>
+      <img src="/screenshots/dureclaw-dashboard-demo.gif" alt="DureClaw 대시보드 라이브 데모 — 에이전트 팀 태스크 디스패치" loading="lazy"/>
+    </div>
   </div>
 </section>
 
 <!-- MORE -->
-<section class="section" id="more">
-  <div class="container">
-    <div class="section-header">
-      <span class="section-num">→</span>
-      <h2 class="section-title">더 <em>알아보기</em></h2>
+<section class="band" id="more">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">더 알아보기</span>
     </div>
-    <div class="more-grid">
-      <a class="more-card" href="/start/"><div class="mc-ic">🧭</div><div class="mc-title">설치 가이드</div><div class="mc-desc">플랫폼별 설치, 역할(builder·tester…)별 노드 추가, 예시 프로젝트.</div></a>
-      <a class="more-card" href="/how/"><div class="mc-ic">🏗️</div><div class="mc-title">구조와 원리</div><div class="mc-desc">키리스 접근, 레이어 구조, 에코시스템(edgeclaw·webclaw·deskclaw), SSH 비교.</div></a>
-      <a class="more-card" href="/showcase/"><div class="mc-ic">🎬</div><div class="mc-title">데모·활용</div><div class="mc-desc">대시보드, 시나리오 데모, 현장 하드웨어 활용 사례.</div></a>
-      <a class="more-card" href="/developers/"><div class="mc-ic">🛠️</div><div class="mc-title">개발자 레퍼런스</div><div class="mc-desc">Phoenix 채널 이벤트와 REST API.</div></a>
-      <a class="more-card" href="/changelog/"><div class="mc-ic">📝</div><div class="mc-title">Changelog</div><div class="mc-desc">버전별 변경 내역.</div></a>
+    <div class="more">
+      <a href="/start/"><span class="t">설치 가이드</span><span class="d">플랫폼별 설치, 역할별 노드 추가, 예시 프로젝트</span></a>
+      <a href="/how/"><span class="t">구조와 원리</span><span class="d">키리스 접근, 레이어 구조, 에코시스템, SSH 비교</span></a>
+      <a href="/showcase/"><span class="t">데모·활용</span><span class="d">대시보드, 시나리오 데모, 현장 하드웨어 활용</span></a>
+      <a href="/developers/"><span class="t">개발자 레퍼런스</span><span class="d">Phoenix 채널 이벤트와 REST API</span></a>
+      <a href="/changelog/"><span class="t">Changelog</span><span class="d">버전별 변경 내역</span></a>
     </div>
   </div>
 </section>
 
+<!-- CLOSING -->
+<section class="band" id="get-started">
+  <div class="wrap">
+    <div class="closing">
+      <div>
+        <h2>지금 Mac 한 대로 시작하세요</h2>
+        <p>서버 앱을 설치하고, 놀고 있는 컴퓨터를 하나씩 팀에 합류시키면 됩니다.</p>
+      </div>
+      <div class="acts">
+        <a class="btn btn-primary" href="https://github.com/DureClaw/dureclaw/releases/latest/download/DureClaw-Server-mac-arm64.dmg" download>Mac용 다운로드</a>
+        <a class="btn btn-ghost" href="https://github.com/DureClaw/dureclaw" target="_blank">GitHub ↗</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- lightbox -->
 <div class="lb-bg" id="lb" onclick="closeLB()">
   <img class="lb-img" id="lb-img" src="" alt=""/>
 </div>
@@ -327,14 +372,11 @@
 <footer>
   <div class="container">
     <div class="footer-inner">
-      <div class="footer-left">
-        <strong>DureClaw (두레클로)</strong> · MIT License · Seungwoo Hong (홍승우)
-      </div>
+      <div class="footer-left"><strong>DureClaw (두레클로)</strong> · MIT License · Seungwoo Hong (홍승우)</div>
       <div class="footer-links">
         <a href="https://github.com/DureClaw/dureclaw" target="_blank">GitHub</a>
         <a href="https://github.com/DureClaw/dureclaw/blob/main/docs/METHODOLOGY.md" target="_blank">방법론</a>
         <a href="https://github.com/DureClaw/dureclaw/blob/main/README.md" target="_blank">README</a>
-        <a href="https://github.com/DureClaw/dureclaw/tree/main/examples/fix-agent" target="_blank">fix-agent 예시</a>
         <a href="https://github.com/DureClaw/dureclaw/issues" target="_blank">이슈</a>
       </div>
     </div>
@@ -346,7 +388,7 @@
 // 예전 한 페이지 시절의 앵커 링크(/#install 등)를 옮겨간 서브 페이지로 보낸다
 (function () {
   var moved = {
-    "install": "start", "platforms": "start", "add-agent": "start", "example": "start",
+    "platforms": "start", "add-agent": "start", "example": "start",
     "how-it-works": "how", "vs-ssh": "how", "layers": "how", "ecosystem": "how", "architecture": "how",
     "screenshots": "showcase", "demo": "showcase", "hardware": "showcase",
     "events": "developers", "api": "developers", "changelog": "changelog"

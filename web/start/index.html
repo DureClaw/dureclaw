@@ -8,7 +8,8 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
 
 <!-- ── SEO / canonical / icons ── -->
 <link rel="canonical" href="https://dureclaw.baryon.ai/start/"/>
@@ -44,6 +45,7 @@
 
 
 <link rel="stylesheet" href="/assets/site.css"/>
+<link rel="stylesheet" href="/assets/design.css"/>
 </head>
 <body>
 <nav>
@@ -260,7 +262,7 @@
           <div><span class="t-ok">✅ 트레이 상주 · 로그인 시 자동 연결</span></div>
           <div><span class="t-ok">→ builder@DESKTOP-WIN 연결 완료</span></div>
         </div>
-        <div style="margin-top:8px;font-size:10.5px;color:var(--text3)">터미널 선호 시: <code>irm https://dureclaw.baryon.ai/agent.ps1 | iex</code></div>
+        <div style="margin-top:8px;font-size: 14.5px;color:var(--text3)">터미널 선호 시: <code>irm https://dureclaw.baryon.ai/agent.ps1 | iex</code></div>
         <div class="platform-status" style="margin-top:8px"><span class="dot"></span>워커 지원 · 설치 프로그램 / PowerShell</div>
       </div>
 
@@ -292,7 +294,7 @@
       <span class="section-num">→</span>
       <h2 class="section-title">AI 팀원 <em>추가하기</em></h2>
     </div>
-    <p style="color:var(--text2);font-size:13px;margin-bottom:20px;max-width:640px;">
+    <p style="color:var(--text2);font-size:15.5px;margin-bottom:20px;max-width:640px;">
       새 머신에서 아래 명령어를 실행하면 설치·설정·연결이 자동 처리된다.
       <code>서버IP</code>는 Tailscale IP(100.x.x.x) 또는 LAN IP로 교체하거나,
       <strong style="color:var(--cyan)">"워커 추가해줘"</strong>라고 Claude에게 말하면 자동으로 채워준다.
@@ -329,7 +331,7 @@
         여러 PC 일괄 배포: <code>DureClaw-Agent-Setup.exe /VERYSILENT /SERVER=ws://서버IP:4000 /ROLE=builder</code></div>
       <a class="dl-btn" href="https://github.com/DureClaw/dureclaw/releases/latest/download/DureClaw-Agent-Setup.exe" download>⬇ Windows용 다운로드</a>
     </div>
-    <p style="margin-top:12px;font-size:11px;color:var(--text3);">
+    <p style="margin-top:12px;font-size: 15px;color:var(--text3);">
       Work Key 생략 시 서버에서 자동 감지 · 에이전트 이름 미지정 시 <code>역할@머신이름</code>으로 자동 설정 · Windows는 설치 프로그램(트레이) 또는 PowerShell 스크립트
     </p>
   </div>
@@ -341,7 +343,7 @@
       <span class="section-num">→</span>
       <h2 class="section-title">활용 <em>예시</em> — fix-agent</h2>
     </div>
-    <p style="color:var(--text2);font-size:13px;margin-bottom:20px;max-width:640px;">
+    <p style="color:var(--text2);font-size:15.5px;margin-bottom:20px;max-width:640px;">
       3개의 에이전트가 협력해 레포지토리 버그를 자동 분석·수정·PR 생성하는 파이프라인.
     </p>
     <div class="parallel-box">

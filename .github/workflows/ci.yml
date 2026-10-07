@@ -128,7 +128,7 @@ jobs:
 
   # ── 홈페이지 (web/) ────────────────────────────────────────────────────────
   web:
-    name: Web — links · downloads · mobile overflow
+    name: Web — links · downloads · overflow
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
@@ -145,7 +145,7 @@ jobs:
           pip install playwright==1.48.0
           python -m playwright install --with-deps chromium
 
-      - name: Mobile (390px) horizontal overflow
+      - name: Horizontal overflow (390–1920px)
         run: |
           (cd web && python3 -m http.server 8799 >/dev/null 2>&1 &)
           sleep 1

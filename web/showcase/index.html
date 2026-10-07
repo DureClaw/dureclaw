@@ -8,7 +8,8 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
 
 <!-- ── SEO / canonical / icons ── -->
 <link rel="canonical" href="https://dureclaw.baryon.ai/showcase/"/>
@@ -44,6 +45,7 @@
 
 
 <link rel="stylesheet" href="/assets/site.css"/>
+<link rel="stylesheet" href="/assets/design.css"/>
 </head>
 <body>
 <nav>
@@ -140,19 +142,19 @@
     </div>
 
     <!-- 라이브 데모 GIF (실제 동작 캡처) -->
-    <div style="font:600 12px/1 'JetBrains Mono',monospace; color:var(--text3); letter-spacing:.5px; margin:0 0 12px">라이브 데모 / LIVE — 실제 시스템 캡처</div>
+    <div style="font:600 13.5px/1 var(--font-mono); color:var(--text3); letter-spacing:.5px; margin:0 0 12px">라이브 데모 / LIVE — 실제 시스템 캡처</div>
     <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:16px; margin-bottom:28px">
       <figure style="margin:0; border:1px solid var(--border); border-radius:10px; overflow:hidden; background:var(--bg2)">
         <img src="/demo/mes-fanout.gif" alt="fan-out → 마스터 종합" loading="lazy" style="width:100%; display:block; border-bottom:1px solid var(--border)"/>
-        <figcaption style="padding:10px 12px; font-size:12px; color:var(--text2)"><strong style="color:var(--white)">① fan-out → 종합</strong><br/>불량 fan-out → 이종 노드 fan-in → 마스터 SUGGEST(원인·신뢰도·권고).</figcaption>
+        <figcaption style="padding:10px 12px; font-size:15px; color:var(--text2)"><strong style="color:var(--white)">① fan-out → 종합</strong><br/>불량 fan-out → 이종 노드 fan-in → 마스터 SUGGEST(원인·신뢰도·권고).</figcaption>
       </figure>
       <figure style="margin:0; border:1px solid var(--border); border-radius:10px; overflow:hidden; background:var(--bg2)">
         <img src="/demo/decision-freeze.gif" alt="결정 동결 — LLM as compiler" loading="lazy" style="width:100%; display:block; border-bottom:1px solid var(--border)"/>
-        <figcaption style="padding:10px 12px; font-size:12px; color:var(--text2)"><strong style="color:var(--white)">② 결정 동결</strong><br/>승인 → 룰 동결 → 같은 패턴은 <strong>LLM 0회·2µs</strong> 재사용(15.6s 절감).</figcaption>
+        <figcaption style="padding:10px 12px; font-size:15px; color:var(--text2)"><strong style="color:var(--white)">② 결정 동결</strong><br/>승인 → 룰 동결 → 같은 패턴은 <strong>LLM 0회·2µs</strong> 재사용(15.6s 절감).</figcaption>
       </figure>
       <figure style="margin:0; border:1px solid var(--border); border-radius:10px; overflow:hidden; background:var(--bg2)">
         <img src="/demo/deskclaw-rpa.gif" alt="deskclaw RPA record→replay" loading="lazy" style="width:100%; display:block; border-bottom:1px solid var(--border)"/>
-        <figcaption style="padding:10px 12px; font-size:12px; color:var(--text2)"><strong style="color:var(--white)">③ deskclaw RPA</strong><br/>한 번 가르치면(record) → <code>[RUN]</code>은 <strong>LLM 없이</strong> 결정론적 재생.</figcaption>
+        <figcaption style="padding:10px 12px; font-size:15px; color:var(--text2)"><strong style="color:var(--white)">③ deskclaw RPA</strong><br/>한 번 가르치면(record) → <code>[RUN]</code>은 <strong>LLM 없이</strong> 결정론적 재생.</figcaption>
       </figure>
     </div>
 
@@ -162,7 +164,7 @@
       <!-- Scene 1 -->
       <div class="demo-scene">
         <div class="demo-scene-shot">
-          <div style="width:100%;height:100%;background:#0b1220;color:#cdd9e5;font:10.5px/1.7 'JetBrains Mono',monospace;padding:14px 12px;display:flex;flex-direction:column;justify-content:center;gap:2px">
+          <div style="width:100%;height:100%;background:#0b1220;color:#cdd9e5;font:13.5px/1.75 var(--font-mono);padding:14px 12px;display:flex;flex-direction:column;justify-content:center;gap:2px">
             <div style="color:#64748b"># 문제</div>
             <div><span style="color:#64748b">$</span> claude</div>
             <div style="color:#64748b"># 창 하나 = 머신 하나</div>
@@ -186,7 +188,7 @@
       <!-- Scene 2 -->
       <div class="demo-scene">
         <div class="demo-scene-shot">
-          <div style="width:100%;height:100%;background:#0b1220;color:#cdd9e5;font:10.5px/1.7 'JetBrains Mono',monospace;padding:14px 12px;display:flex;flex-direction:column;justify-content:center;gap:2px">
+          <div style="width:100%;height:100%;background:#0b1220;color:#cdd9e5;font:13.5px/1.75 var(--font-mono);padding:14px 12px;display:flex;flex-direction:column;justify-content:center;gap:2px">
             <div><span style="color:#64748b">$</span> <span style="color:#38bdf8">bash &lt;(curl -fsSL</span></div>
             <div style="color:#38bdf8">&nbsp;&nbsp;&nbsp;dureclaw.baryon.ai/install)</div>
             <div style="color:#34d399; margin-top:4px">✓ 서버 + MCP + Tailscale</div>
@@ -210,7 +212,7 @@
       <!-- Scene 3 -->
       <div class="demo-scene">
         <div class="demo-scene-shot">
-          <div style="width:100%;height:100%;background:#0b1220;color:#cdd9e5;font:10.5px/1.7 'JetBrains Mono',monospace;padding:14px 12px;display:flex;flex-direction:column;justify-content:center;gap:2px">
+          <div style="width:100%;height:100%;background:#0b1220;color:#cdd9e5;font:13.5px/1.75 var(--font-mono);padding:14px 12px;display:flex;flex-direction:column;justify-content:center;gap:2px">
             <div><span style="color:#64748b">$</span> <span style="color:#38bdf8">PHOENIX=ws://100.x:4000</span></div>
             <div style="color:#38bdf8">&nbsp;&nbsp;&nbsp;bash &lt;(…/agent)</div>
             <div style="color:#34d399; margin-top:4px">✓ builder@server 연결됨</div>
@@ -234,7 +236,7 @@
       <!-- Scene 4 -->
       <div class="demo-scene">
         <div class="demo-scene-shot">
-          <div style="width:100%;height:100%;background:#0b1220;color:#cdd9e5;font:10.5px/1.7 'JetBrains Mono',monospace;padding:14px 12px;display:flex;flex-direction:column;justify-content:center;gap:2px">
+          <div style="width:100%;height:100%;background:#0b1220;color:#cdd9e5;font:13.5px/1.75 var(--font-mono);padding:14px 12px;display:flex;flex-direction:column;justify-content:center;gap:2px">
             <div><span style="color:#64748b">claude ›</span> <span style="color:#a78bfa">/두레팀</span></div>
             <div style="color:#cdd9e5">"팀 설정해줘"</div>
             <div style="color:#34d399; margin-top:4px">→ N개 머신에 fan-out</div>
@@ -279,7 +281,7 @@
 
     </div><!-- /demo-scenes -->
 
-    <p style="margin-top:16px;font-size:11px;color:var(--text3);text-align:center;letter-spacing:0.5px;">
+    <p style="margin-top:16px;font-size: 15px;color:var(--text3);text-align:center;letter-spacing:0.5px;">
       설치 → 워커 연결 → 한 줄 지시 → 동시 실행 · 약 2.5분. 위 <strong style="color:var(--text2)">라이브 데모</strong>는 실제 시스템 캡처.
     </p>
   </div>
@@ -300,64 +302,64 @@
     <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:14px">
 
       <div style="border:1px solid var(--border); border-radius:10px; padding:16px; background:var(--bg2)">
-        <div style="font:700 14px 'Syne',sans-serif; color:var(--white)">📏 거리·근접 센싱</div>
-        <div style="color:var(--text2); font-size:12.5px; margin:7px 0 9px">Raspberry Pi Zero 2 W + HC-SR04 초음파 센서. 컨베이어 위치·재고·접근 감지.</div>
-        <div style="margin-bottom:8px"><span style="font-size:11px;color:var(--green);border:1px solid var(--green);border-radius:20px;padding:2px 8px">edgeclaw · sensor</span></div>
-        <div style="font-size:11.5px"><a href="https://www.raspberrypi.com/products/raspberry-pi-zero-2-w/" target="_blank" style="color:var(--cyan2)">Pi Zero 2 W ↗</a> · <a href="https://www.adafruit.com/product/3942" target="_blank" style="color:var(--cyan2)">HC-SR04 ↗</a></div>
+        <div style="font:700 16px var(--font-sans); color:var(--white)">📏 거리·근접 센싱</div>
+        <div style="color:var(--text2); font-size:15px; margin:7px 0 9px">Raspberry Pi Zero 2 W + HC-SR04 초음파 센서. 컨베이어 위치·재고·접근 감지.</div>
+        <div style="margin-bottom:8px"><span style="font-size: 15px;color:var(--green);border:1px solid var(--green);border-radius:20px;padding:2px 8px">edgeclaw · sensor</span></div>
+        <div style="font-size: 15px"><a href="https://www.raspberrypi.com/products/raspberry-pi-zero-2-w/" target="_blank" style="color:var(--cyan2)">Pi Zero 2 W ↗</a> · <a href="https://www.adafruit.com/product/3942" target="_blank" style="color:var(--cyan2)">HC-SR04 ↗</a></div>
       </div>
 
       <div style="border:1px solid var(--border); border-radius:10px; padding:16px; background:var(--bg2)">
-        <div style="font:700 14px 'Syne',sans-serif; color:var(--white)">🌡 금형·설비 온도</div>
-        <div style="color:var(--text2); font-size:12.5px; margin:7px 0 9px">Raspberry Pi 4·5 + MAX31855 열전대 앰프 + K형 열전대. 사출 금형온도·베어링 온도.</div>
-        <div style="margin-bottom:8px"><span style="font-size:11px;color:var(--green);border:1px solid var(--green);border-radius:20px;padding:2px 8px">edgeclaw · sensor</span></div>
-        <div style="font-size:11.5px"><a href="https://www.raspberrypi.com/products/raspberry-pi-5/" target="_blank" style="color:var(--cyan2)">Pi 5 ↗</a> · <a href="https://www.adafruit.com/product/269" target="_blank" style="color:var(--cyan2)">MAX31855+열전대 ↗</a></div>
+        <div style="font:700 16px var(--font-sans); color:var(--white)">🌡 금형·설비 온도</div>
+        <div style="color:var(--text2); font-size:15px; margin:7px 0 9px">Raspberry Pi 4·5 + MAX31855 열전대 앰프 + K형 열전대. 사출 금형온도·베어링 온도.</div>
+        <div style="margin-bottom:8px"><span style="font-size: 15px;color:var(--green);border:1px solid var(--green);border-radius:20px;padding:2px 8px">edgeclaw · sensor</span></div>
+        <div style="font-size: 15px"><a href="https://www.raspberrypi.com/products/raspberry-pi-5/" target="_blank" style="color:var(--cyan2)">Pi 5 ↗</a> · <a href="https://www.adafruit.com/product/269" target="_blank" style="color:var(--cyan2)">MAX31855+열전대 ↗</a></div>
       </div>
 
       <div style="border:1px solid var(--border); border-radius:10px; padding:16px; background:var(--bg2)">
-        <div style="font:700 14px 'Syne',sans-serif; color:var(--white)">🚦 신호탑·안돈 <span style="color:var(--orange)">(승인=물리)</span></div>
-        <div style="color:var(--text2); font-size:12.5px; margin:7px 0 9px">Pi + 5V 릴레이 모듈 + 산업 신호탑(패트라이트) + 부저. 승인 시 🔴 점등·경보.</div>
-        <div style="margin-bottom:8px"><span style="font-size:11px;color:var(--purple);border:1px solid var(--purple);border-radius:20px;padding:2px 8px">edgeclaw · physical-edge</span></div>
-        <div style="font-size:11.5px"><a href="https://www.adafruit.com/product/2935" target="_blank" style="color:var(--cyan2)">릴레이 모듈 ↗</a> · <a href="https://www.patlite.com/product/signal_towers.html" target="_blank" style="color:var(--cyan2)">PATLITE 신호탑 ↗</a></div>
+        <div style="font:700 16px var(--font-sans); color:var(--white)">🚦 신호탑·안돈 <span style="color:var(--orange)">(승인=물리)</span></div>
+        <div style="color:var(--text2); font-size:15px; margin:7px 0 9px">Pi + 5V 릴레이 모듈 + 산업 신호탑(패트라이트) + 부저. 승인 시 🔴 점등·경보.</div>
+        <div style="margin-bottom:8px"><span style="font-size: 15px;color:var(--purple);border:1px solid var(--purple);border-radius:20px;padding:2px 8px">edgeclaw · physical-edge</span></div>
+        <div style="font-size: 15px"><a href="https://www.adafruit.com/product/2935" target="_blank" style="color:var(--cyan2)">릴레이 모듈 ↗</a> · <a href="https://www.patlite.com/product/signal_towers.html" target="_blank" style="color:var(--cyan2)">PATLITE 신호탑 ↗</a></div>
       </div>
 
       <div style="border:1px solid var(--border); border-radius:10px; padding:16px; background:var(--bg2)">
-        <div style="font:700 14px 'Syne',sans-serif; color:var(--white)">👁 비전 검사</div>
-        <div style="color:var(--text2); font-size:12.5px; margin:7px 0 9px">NVIDIA Jetson Orin Nano + USB 산업 카메라. 외관 불량·스크래치 검출(마스터 비전 종합).</div>
-        <div style="margin-bottom:8px"><span style="font-size:11px;color:var(--green);border:1px solid var(--green);border-radius:20px;padding:2px 8px">edgeclaw + 마스터 비전</span></div>
-        <div style="font-size:11.5px"><a href="https://www.nvidia.com/en-us/autonomous-machines/embedded-systems/jetson-orin/" target="_blank" style="color:var(--cyan2)">Jetson Orin Nano ↗</a> · <a href="https://www.arducam.com/" target="_blank" style="color:var(--cyan2)">Arducam ↗</a></div>
+        <div style="font:700 16px var(--font-sans); color:var(--white)">👁 비전 검사</div>
+        <div style="color:var(--text2); font-size:15px; margin:7px 0 9px">NVIDIA Jetson Orin Nano + USB 산업 카메라. 외관 불량·스크래치 검출(마스터 비전 종합).</div>
+        <div style="margin-bottom:8px"><span style="font-size: 15px;color:var(--green);border:1px solid var(--green);border-radius:20px;padding:2px 8px">edgeclaw + 마스터 비전</span></div>
+        <div style="font-size: 15px"><a href="https://www.nvidia.com/en-us/autonomous-machines/embedded-systems/jetson-orin/" target="_blank" style="color:var(--cyan2)">Jetson Orin Nano ↗</a> · <a href="https://www.arducam.com/" target="_blank" style="color:var(--cyan2)">Arducam ↗</a></div>
       </div>
 
       <div style="border:1px solid var(--border); border-radius:10px; padding:16px; background:var(--bg2)">
-        <div style="font:700 14px 'Syne',sans-serif; color:var(--white)">🔌 현장 게이트웨이·PLC</div>
-        <div style="color:var(--text2); font-size:12.5px; margin:7px 0 9px">산업용 팬리스 IPC(x86) + USB-RS485(Modbus RTU). 기존 PLC·설비 시리얼 수집.</div>
-        <div style="margin-bottom:8px"><span style="font-size:11px;color:var(--green);border:1px solid var(--green);border-radius:20px;padding:2px 8px">edgeclaw · shell/serial</span></div>
-        <div style="font-size:11.5px"><a href="https://www.waveshare.com/usb-to-rs485.htm" target="_blank" style="color:var(--cyan2)">USB-RS485 ↗</a> · <a href="https://www.advantech.com/en/products/embedded-box-pcs" target="_blank" style="color:var(--cyan2)">Advantech IPC ↗</a></div>
+        <div style="font:700 16px var(--font-sans); color:var(--white)">🔌 현장 게이트웨이·PLC</div>
+        <div style="color:var(--text2); font-size:15px; margin:7px 0 9px">산업용 팬리스 IPC(x86) + USB-RS485(Modbus RTU). 기존 PLC·설비 시리얼 수집.</div>
+        <div style="margin-bottom:8px"><span style="font-size: 15px;color:var(--green);border:1px solid var(--green);border-radius:20px;padding:2px 8px">edgeclaw · shell/serial</span></div>
+        <div style="font-size: 15px"><a href="https://www.waveshare.com/usb-to-rs485.htm" target="_blank" style="color:var(--cyan2)">USB-RS485 ↗</a> · <a href="https://www.advantech.com/en/products/embedded-box-pcs" target="_blank" style="color:var(--cyan2)">Advantech IPC ↗</a></div>
       </div>
 
       <div style="border:1px solid var(--border); border-radius:10px; padding:16px; background:var(--bg2)">
-        <div style="font:700 14px 'Syne',sans-serif; color:var(--white)">🖥 현장 PC GUI 자동화</div>
-        <div style="color:var(--text2); font-size:12.5px; margin:7px 0 9px">기존 Windows 현장 PC(MES·ERP 화면). 화면을 보고 클릭·입력, RPA로 반복 자동화.</div>
-        <div style="margin-bottom:8px"><span style="font-size:11px;color:var(--purple);border:1px solid var(--purple);border-radius:20px;padding:2px 8px">deskclaw · RPA</span></div>
-        <div style="font-size:11.5px; color:var(--text3)">기존 PC 자산 활용 — 추가 HW 0</div>
+        <div style="font:700 16px var(--font-sans); color:var(--white)">🖥 현장 PC GUI 자동화</div>
+        <div style="color:var(--text2); font-size:15px; margin:7px 0 9px">기존 Windows 현장 PC(MES·ERP 화면). 화면을 보고 클릭·입력, RPA로 반복 자동화.</div>
+        <div style="margin-bottom:8px"><span style="font-size: 15px;color:var(--purple);border:1px solid var(--purple);border-radius:20px;padding:2px 8px">deskclaw · RPA</span></div>
+        <div style="font-size: 15px; color:var(--text3)">기존 PC 자산 활용 — 추가 HW 0</div>
       </div>
 
       <div style="border:1px solid var(--border); border-radius:10px; padding:16px; background:var(--bg2)">
-        <div style="font:700 14px 'Syne',sans-serif; color:var(--white)">🔊 음성 안내(PA)</div>
-        <div style="color:var(--text2); font-size:12.5px; margin:7px 0 9px">Raspberry Pi + USB 사운드카드 + 스피커. 합류·불량·승인 음성 안내(헤더 납땜 불필요).</div>
-        <div style="margin-bottom:8px"><span style="font-size:11px;color:var(--green);border:1px solid var(--green);border-radius:20px;padding:2px 8px">edgeclaw · audio</span></div>
-        <div style="font-size:11.5px; color:var(--text3)">범용 USB 오디오 — WAV 바이너리 내장</div>
+        <div style="font:700 16px var(--font-sans); color:var(--white)">🔊 음성 안내(PA)</div>
+        <div style="color:var(--text2); font-size:15px; margin:7px 0 9px">Raspberry Pi + USB 사운드카드 + 스피커. 합류·불량·승인 음성 안내(헤더 납땜 불필요).</div>
+        <div style="margin-bottom:8px"><span style="font-size: 15px;color:var(--green);border:1px solid var(--green);border-radius:20px;padding:2px 8px">edgeclaw · audio</span></div>
+        <div style="font-size: 15px; color:var(--text3)">범용 USB 오디오 — WAV 바이너리 내장</div>
       </div>
 
     </div><!-- /combo grid -->
 
     <!-- 통신 프로토콜 게이트웨이 -->
-    <div style="font:600 12px/1 'JetBrains Mono',monospace; color:var(--text3); letter-spacing:.5px; margin:30px 0 10px">통신 프로토콜 게이트웨이 / FIELDBUS GATEWAYS — 기존 설비·PLC를 버스에</div>
-    <p style="color:var(--text2); font-size:12.5px; margin:0 0 12px; max-width:820px">설비가 쓰는 산업 프로토콜을 게이트웨이로 표준화해 edgeclaw가 수집한다. edgeclaw는 게이트웨이 옆(또는 산업용 리눅스 GW 위)에서 돈다.</p>
+    <div style="font:600 13.5px/1 var(--font-mono); color:var(--text3); letter-spacing:.5px; margin:30px 0 10px">통신 프로토콜 게이트웨이 / FIELDBUS GATEWAYS — 기존 설비·PLC를 버스에</div>
+    <p style="color:var(--text2); font-size:15px; margin:0 0 12px; max-width:820px">설비가 쓰는 산업 프로토콜을 게이트웨이로 표준화해 edgeclaw가 수집한다. edgeclaw는 게이트웨이 옆(또는 산업용 리눅스 GW 위)에서 돈다.</p>
     <div style="overflow-x:auto; border:1px solid var(--border); border-radius:10px">
-    <table style="width:100%; border-collapse:collapse; font-size:12px; min-width:560px">
+    <table style="width:100%; border-collapse:collapse; font-size:15px; min-width:560px">
       <thead><tr style="background:var(--bg3); text-align:left">
-        <th style="padding:9px 12px; border-bottom:1px solid var(--border); font-family:'Syne',sans-serif">프로토콜 / 용도</th>
-        <th style="padding:9px 12px; border-bottom:1px solid var(--border); font-family:'Syne',sans-serif">대표 게이트웨이</th>
+        <th style="padding:9px 12px; border-bottom:1px solid var(--border); font-family:var(--font-sans)">프로토콜 / 용도</th>
+        <th style="padding:9px 12px; border-bottom:1px solid var(--border); font-family:var(--font-sans)">대표 게이트웨이</th>
         <th style="padding:9px 12px; border-bottom:1px solid var(--border)">링크</th>
       </tr></thead>
       <tbody style="color:var(--text2)">
@@ -374,14 +376,14 @@
     </div>
 
     <!-- 대체 보드 -->
-    <div style="font:600 12px/1 'JetBrains Mono',monospace; color:var(--text3); letter-spacing:.5px; margin:30px 0 10px">🧩 Pi는 한 예시 — 저비용 보드도 동일 바이너리 / ALSO RUNS ON</div>
-    <p style="color:var(--text2); font-size:12.5px; margin:0 0 12px; max-width:860px">edgeclaw는 단일 정적 Go 바이너리(<strong>arm64·armv7·armv6·riscv64·amd64</strong>)로 빌드 → 아래 보드는 <strong>edgeclaw 릴리즈 바이너리를 그대로</strong> 받아 설치한다. 한국산 <strong>Hardkernel ODROID</strong> 포함. (어댑터 <a href="https://github.com/DureClaw/picoclaw" target="_blank" style="color:var(--cyan2)">picoclaw</a>는 Sipeed 계열 포크.)</p>
+    <div style="font:600 13.5px/1 var(--font-mono); color:var(--text3); letter-spacing:.5px; margin:30px 0 10px">🧩 Pi는 한 예시 — 저비용 보드도 동일 바이너리 / ALSO RUNS ON</div>
+    <p style="color:var(--text2); font-size:15px; margin:0 0 12px; max-width:860px">edgeclaw는 단일 정적 Go 바이너리(<strong>arm64·armv7·armv6·riscv64·amd64</strong>)로 빌드 → 아래 보드는 <strong>edgeclaw 릴리즈 바이너리를 그대로</strong> 받아 설치한다. 한국산 <strong>Hardkernel ODROID</strong> 포함. (어댑터 <a href="https://github.com/DureClaw/picoclaw" target="_blank" style="color:var(--cyan2)">picoclaw</a>는 Sipeed 계열 포크.)</p>
     <div style="overflow-x:auto; border:1px solid var(--border); border-radius:10px">
-    <table style="width:100%; border-collapse:collapse; font-size:12px; min-width:600px">
+    <table style="width:100%; border-collapse:collapse; font-size:15px; min-width:600px">
       <thead><tr style="background:var(--bg3); text-align:left">
-        <th style="padding:9px 12px; border-bottom:1px solid var(--border); font-family:'Syne',sans-serif">보드 / Board</th>
-        <th style="padding:9px 12px; border-bottom:1px solid var(--border); font-family:'Syne',sans-serif">칩·아키텍처</th>
-        <th style="padding:9px 12px; border-bottom:1px solid var(--border); font-family:'Syne',sans-serif">edgeclaw 바이너리</th>
+        <th style="padding:9px 12px; border-bottom:1px solid var(--border); font-family:var(--font-sans)">보드 / Board</th>
+        <th style="padding:9px 12px; border-bottom:1px solid var(--border); font-family:var(--font-sans)">칩·아키텍처</th>
+        <th style="padding:9px 12px; border-bottom:1px solid var(--border); font-family:var(--font-sans)">edgeclaw 바이너리</th>
         <th style="padding:9px 12px; border-bottom:1px solid var(--border)">링크</th>
       </tr></thead>
       <tbody style="color:var(--text2)">
@@ -400,12 +402,12 @@
     </div>
 
     <!-- 국산 제품 / 한국 업체 -->
-    <div style="font:600 12px/1 'JetBrains Mono',monospace; color:var(--text3); letter-spacing:.5px; margin:30px 0 10px">🇰🇷 국산 제품 / KOREAN SUPPLIERS</div>
+    <div style="font:600 13.5px/1 var(--font-mono); color:var(--text3); letter-spacing:.5px; margin:30px 0 10px">🇰🇷 국산 제품 / KOREAN SUPPLIERS</div>
     <div style="overflow-x:auto; border:1px solid var(--border); border-radius:10px">
-    <table style="width:100%; border-collapse:collapse; font-size:12px; min-width:600px">
+    <table style="width:100%; border-collapse:collapse; font-size:15px; min-width:600px">
       <thead><tr style="background:var(--bg3); text-align:left">
-        <th style="padding:9px 12px; border-bottom:1px solid var(--border); font-family:'Syne',sans-serif">분류</th>
-        <th style="padding:9px 12px; border-bottom:1px solid var(--border); font-family:'Syne',sans-serif">국내 업체</th>
+        <th style="padding:9px 12px; border-bottom:1px solid var(--border); font-family:var(--font-sans)">분류</th>
+        <th style="padding:9px 12px; border-bottom:1px solid var(--border); font-family:var(--font-sans)">국내 업체</th>
         <th style="padding:9px 12px; border-bottom:1px solid var(--border)">대표 제품</th>
         <th style="padding:9px 12px; border-bottom:1px solid var(--border)">링크</th>
       </tr></thead>
@@ -422,14 +424,14 @@
     </div>
 
     <!-- 국내 총판 / 구매처 -->
-    <div style="margin-top:16px; font-size:12px; color:var(--text2); line-height:1.9">
+    <div style="margin-top:16px; font-size:15px; color:var(--text2); line-height:1.9">
       <div style="color:var(--text3); font-family:'JetBrains Mono',monospace; letter-spacing:.5px; margin-bottom:4px">국내 총판 / 구매처 / KR DISTRIBUTORS</div>
       <strong>Moxa</strong>: <a href="https://www.yoisys.com/" target="_blank" style="color:var(--cyan2)">여의시스템(대표총판)</a> · <a href="https://moxa.wezon.com/" target="_blank" style="color:var(--cyan2)">위존</a> · <a href="https://www.moxastore.co.kr/" target="_blank" style="color:var(--cyan2)">목사스토어</a> &nbsp;|&nbsp;
       <strong>Advantech</strong>: <a href="https://www.advantech.com/ko-kr" target="_blank" style="color:var(--cyan2)">어드밴텍 한국</a> · <a href="https://advantech.co.kr/" target="_blank" style="color:var(--cyan2)">어드밴텍코리아</a> &nbsp;|&nbsp;
       <strong>HMS·Anybus·Red Lion</strong>: <a href="https://www.anybus.com/" target="_blank" style="color:var(--cyan2)">anybus.com</a> (한국 영업 본사 채널)<br/>
       <span style="color:var(--text3)">부품·게이트웨이 유통:</span> <a href="https://www.devicemart.co.kr/goods/search?searchKeyword=MGate" target="_blank" style="color:var(--cyan2)">디바이스마트</a> · <a href="https://www.eleparts.co.kr/" target="_blank" style="color:var(--cyan2)">엘레파츠</a> · <a href="https://www.mechasolution.com/" target="_blank" style="color:var(--cyan2)">메카솔루션</a> · <a href="https://kr.rs-online.com/web/" target="_blank" style="color:var(--cyan2)">RS Korea</a> · <a href="https://kr.mouser.com/" target="_blank" style="color:var(--cyan2)">Mouser Korea</a>
     </div>
-    <div style="margin-top:14px; font-size:12px; color:var(--text3)">
+    <div style="margin-top:14px; font-size:15px; color:var(--text3)">
       모든 노드 설치: <code>curl -fsSL https://github.com/DureClaw/edgeclaw/releases/latest/download/install.sh | sh</code>
     </div>
   </div>
