@@ -206,3 +206,80 @@ jobs:
           foreach ($f in "$env:RUNNER_TEMP\server.log", "$env:LOCALAPPDATA\DureClaw\logs\tray.log", "$env:LOCALAPPDATA\DureClaw\logs\agent.log", "$env:LOCALAPPDATA\DureClaw\logs\agent.log.1") {
             if (Test-Path $f) { "::group::$f"; Get-Content $f -Tail 80; "::endgroup::" }
           }
+
+  # ── 자체 사설망(Headscale): 서버가 제어 서버를 띄우고, 다른 기기(컨테이너)가
+  #    노드 연결 코드로 합류해 사설망 IP 로 버스 작업을 실행 ──────────────────
+  mesh:
+    name: Self-hosted mesh — Headscale · join code · task over mesh
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    env:
+      MESH_DIR: /home/runner/dc-mesh
+    steps:
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@v1
+        with: { elixir-version: "1.17", otp-version: "27" }
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: latest }
+
+      - name: Server — Headscale up (LAN mode, no external relay)
+        run: |
+          # 컨테이너(노드)와 호스트(서버) 모두 닿는 주소 = docker0 브리지
+          BRIDGE=$(ip -4 addr show docker0 | awk '/inet /{print $2}' | cut -d/ -f1)
+          echo "BRIDGE=$BRIDGE" >> $GITHUB_ENV
+          scripts/mesh.sh install
+          scripts/mesh.sh init --url http://$BRIDGE:8080
+          scripts/mesh.sh start
+          scripts/mesh.sh status
+
+      - name: Server joins its own mesh
+        run: |
+          curl -fsSL https://tailscale.com/install.sh | sh
+          scripts/mesh.sh join "$(scripts/mesh.sh join-code --ttl 10m)" --hostname dureclaw-server
+          SERVER_IP=$(tailscale ip -4 | head -1)
+          echo "SERVER_IP=$SERVER_IP" >> $GITHUB_ENV
+          echo "server mesh IP: $SERVER_IP"
+
+      - name: Start DureClaw server on the mesh
+        working-directory: packages/phoenix-server
+        run: |
+          mix local.hex --force && mix local.rebar --force
+          mix deps.get && mix compile
+          OAH_SECRET=ci-secret OAH_BIND_IP=0.0.0.0 PORT=4000 OAH_DATA_DIR=$RUNNER_TEMP/oahdata \
+            nohup mix run --no-halt > $RUNNER_TEMP/server.log 2>&1 &
+          cd ../.. && bun install
+          bun test/e2e/smoke.ts --server http://$SERVER_IP:4000 --token ci-secret --ensure-wk-only --timeout 180
+
+      - name: Node (container) joins with a join code and runs the agent
+        run: |
+          CODE=$(scripts/mesh.sh join-code --ttl 1h --bus ws://$SERVER_IP:4000)
+          scripts/mesh.sh decode "$CODE"
+          docker run -d --name node --cap-add NET_ADMIN --cap-add SYS_MODULE --device /dev/net/tun \
+            -v "$PWD":/repo -w /repo -e CODE="$CODE" oven/bun:1-debian sleep infinity
+          docker exec node bash -c 'apt-get update -qq && apt-get install -y -qq curl ca-certificates python3 iproute2 iptables >/dev/null'
+          docker exec node bash -c 'curl -fsSL https://tailscale.com/install.sh | sh >/dev/null 2>&1; (tailscaled --state=/var/lib/tailscale/tailscaled.state > /tmp/tailscaled.log 2>&1 &) ; sleep 3'
+          docker exec node bash -c 'scripts/mesh.sh join "$CODE" --hostname mesh-node | tee /tmp/join.out'
+          BUS=$(docker exec node sed -n 's/^PHOENIX=//p' /tmp/join.out)
+          echo "bus from code: $BUS"
+          docker exec -d node bash -c "STATE_SERVER=$BUS AGENT_ROLE=builder AGENT_NAME=builder@mesh-node HOME=/tmp/nodehome bun packages/agent-daemon/src/index.ts > /tmp/agent.log 2>&1"
+
+      - name: Task over the mesh
+        run: |
+          bun test/e2e/smoke.ts --server http://$SERVER_IP:4000 --token ci-secret --agent builder@mesh-node \
+            --cmd "[SHELL] echo hello-mesh && ip -4 addr show tailscale0 | grep inet" --expect hello-mesh --timeout 180
+          # 노드가 사설망 주소(100.64/10)에서 키리스 가입했는지 — 자동 승인 범위
+          curl -s -H "Authorization: Bearer ci-secret" http://$SERVER_IP:4000/api/enrollments | python3 -c '
+          import json,sys
+          d=json.load(sys.stdin); rows=d.get("enrollments", d) if isinstance(d,dict) else d
+          m=[r for r in rows if r.get("name")=="builder@mesh-node"]
+          print(m)
+          assert m and m[-1].get("source_ip","").startswith("100."), "node did not enroll from the mesh"
+          assert m[-1].get("status")=="approved"
+          print("enrolled from mesh IP and auto-approved ✓")'
+          scripts/mesh.sh nodes
+
+      - name: Logs
+        if: always()
+        run: |
+          for f in $MESH_DIR/headscale.log $RUNNER_TEMP/server.log; do [ -f "$f" ] && { echo "::group::$f"; tail -n 60 "$f"; echo "::endgroup::"; }; done
+          for f in /tmp/tailscaled.log /tmp/agent.log /tmp/join.out; do echo "::group::node $f"; docker exec node tail -n 60 $f 2>/dev/null; echo "::endgroup::"; done
