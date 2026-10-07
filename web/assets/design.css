@@ -509,3 +509,9 @@ main + .lb-bg + footer, main ~ footer { margin-top: 0; }
   .uc-flow > div { grid-template-columns: 1fr; gap: 2px; }
   .uc-nums div { min-width: 0; flex: 1 1 calc(50% - 10px); }
 }
+/* 사례 묶음 소제목 (회사·조직처럼 사례가 많은 페이지) */
+.case-group { display: flex; align-items: center; gap: 10px; font-size: clamp(19px, 0.6vw + 15px, 22px); font-weight: 750; letter-spacing: -0.03em; margin: clamp(20px, 2.4vw, 36px) 0 2px; }
+.case-group:first-child { margin-top: 0; }
+.case-group span { font-size: 14px; font-weight: 700; color: var(--ink-3); background: var(--paper); border: 1px solid var(--line); border-radius: 999px; padding: 1px 10px; }
+/* 세로로 긴 시연 화면(예: RPA 계산기)이 카드를 늘리지 않게 높이 상한 */
+.uc-media img { max-height: 440px; width: auto; max-width: 100%; margin-inline: auto; object-fit: contain; }

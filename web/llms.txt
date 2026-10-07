@@ -12,7 +12,7 @@ DureClaw는 Claude Code 네이티브 플러그인 + Phoenix(Elixir) WebSocket �
 - **버스 프로토콜**: Phoenix Channel `vsn=2.0.0`, 5-tuple JSON 프레임 `[join_ref, ref, topic, event, payload]`.
 
 ## 활용 사례 / Use cases (https://dureclaw.baryon.ai/use-cases/)
-- **회사·조직** (/use-cases/org/): 포트 개방 없이 사내 Windows 작업 — 실측: 추가 설정 0으로 원격 작업 5/5 성공(14.3초, exe 7.35MB), 같은 PC에서 SSH는 인증 4회 실패+UAC로 0건. 현장 PC 화면 자동화(deskclaw RPA), 원격 장애 복구 3건, 서버 재시작 후 전 노드 자동 재접속.
+- **회사·조직** (/use-cases/org/): 쓰던 웹 ERP를 바꾸지 않고 webclaw(로그인된 브라우저)·deskclaw(데스크톱 화면)로 AI·자동화 연결(예시), 프로그램이 설치된 라이선스 PC로 작업 라우팅(노드가 Office 등 설치 프로그램을 능력으로 신고), 사내망 자체 호스팅·폐쇄망(Headscale·내부 모델, 미검증 예시). 포트 개방 없이 사내 Windows 작업 — 실측: 추가 설정 0으로 원격 작업 5/5 성공(14.3초, exe 7.35MB), 같은 PC에서 SSH는 인증 4회 실패+UAC로 0건. 현장 PC 화면 자동화(deskclaw RPA), 원격 장애 복구 3건, 서버 재시작 후 전 노드 자동 재접속.
 - **개발자** (/use-cases/dev/): Windows(11.5초)·Linux(4.2초) 동시 빌드, SSH 없이 RTX 4090 서버에 모델 설치(gemma4:31b ~19 tok/s), 기기 5대 동시 응답 0.61초.
 - **IoT·현장** (/use-cases/iot/): 라즈베리파이 신호등 — AI 판단 4.4~5.3초 → 기기 고정 규칙 36.7µs(3회 측정 26,193~143,136배). 불량 fan-out → 마스터 제안, 결정 동결로 AI 호출 0회·2µs 재사용.
 - **연구·교육** (/use-cases/research/): 엣지 속도 측정 로그, 동료 노드 검토(합의 0.6)+사람 채택 플레이북, GPU 모델별 속도 비교, 대학 LMS 과제 12건 수집(webclaw).
