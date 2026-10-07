@@ -7,7 +7,8 @@ import sys
 from playwright.sync_api import sync_playwright
 
 base = sys.argv[1].rstrip("/") if len(sys.argv) > 1 else "http://localhost:8799"
-paths = ["/", "/start/", "/how/", "/showcase/", "/developers/", "/changelog/"]
+paths = ["/", "/start/", "/use-cases/", "/use-cases/org/", "/use-cases/dev/", "/use-cases/iot/",
+         "/use-cases/research/", "/how/", "/showcase/", "/developers/", "/changelog/"]
 WIDTHS = [390, 768, 1024, 1440, 1920]
 
 bad = []

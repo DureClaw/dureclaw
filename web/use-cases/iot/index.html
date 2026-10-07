@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>IoT·현장 활용 사례 — DureClaw</title>
+<meta name="description" content="DureClaw 활용 사례 — IoT·현장: AI가 한 번 정한 판단 기준을 기기 안에 고정해 두면, 이후에는 네트워크와 AI 호출 없이 마이크로초 단위로 반응합니다."/>
+
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
+
+<!-- ── SEO / canonical / icons ── -->
+<link rel="canonical" href="https://dureclaw.baryon.ai/use-cases/iot/"/>
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
+<meta name="author" content="DureClaw · Baryon Labs"/>
+<meta name="keywords" content="DureClaw, 두레클로, 분산 AI 에이전트, multi-agent orchestration, Claude Code 플러그인, edgeclaw, webclaw, deskclaw, keyless edge, LLM as compiler, 결정 동결, RPA, GPIO, Raspberry Pi, 멀티머신 AI, distributed AI agents"/>
+<meta name="theme-color" content="#0284c7"/>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+<link rel="icon" href="/favicon-256.png" sizes="256x256" type="image/png"/>
+<link rel="apple-touch-icon" href="/favicon-256.png"/>
+<link rel="sitemap" type="application/xml" href="/sitemap.xml"/>
+
+<!-- ── Open Graph ── -->
+<meta property="og:type" content="website"/>
+<meta property="og:site_name" content="DureClaw"/>
+<meta property="og:locale" content="ko_KR"/>
+<meta property="og:url" content="https://dureclaw.baryon.ai/use-cases/iot/"/>
+<meta property="og:title" content="IoT·현장 활용 사례 — DureClaw"/>
+<meta property="og:description" content="DureClaw 활용 사례 — IoT·현장: AI가 한 번 정한 판단 기준을 기기 안에 고정해 두면, 이후에는 네트워크와 AI 호출 없이 마이크로초 단위로 반응합니다."/>
+<meta property="og:image" content="https://dureclaw.baryon.ai/screenshots/hero-banner.jpg"/>
+<meta property="og:image:width" content="1400"/>
+<meta property="og:image:height" content="594"/>
+<meta property="og:image:alt" content="DureClaw Cooperative — Unified AI Robotics Ecosystem"/>
+
+<!-- ── Twitter ── -->
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:title" content="IoT·현장 활용 사례 — DureClaw"/>
+<meta name="twitter:description" content="DureClaw 활용 사례 — IoT·현장: AI가 한 번 정한 판단 기준을 기기 안에 고정해 두면, 이후에는 네트워크와 AI 호출 없이 마이크로초 단위로 반응합니다."/>
+<meta name="twitter:image" content="https://dureclaw.baryon.ai/screenshots/hero-banner.jpg"/>
+
+<!-- ── AI / LLM crawlers (GEO/AEO) ── -->
+<link rel="alternate" type="text/markdown" title="llms.txt" href="/llms.txt"/>
+
+
+<link rel="stylesheet" href="/assets/site.css"/>
+<link rel="stylesheet" href="/assets/design.css"/>
+</head>
+<body>
+<nav>
+  <div class="container">
+    <div class="nav-inner">
+      <a href="/" class="nav-logo">Dure<span>Claw</span></a>
+      <div class="nav-links">
+        <a href="/start/">설치 가이드</a>
+        <a href="/use-cases/" class="active">활용 사례</a>
+        <a href="/how/">구조와 원리</a>
+        <a href="/showcase/">데모</a>
+        <a href="/developers/">개발자</a>
+        <a href="/changelog/">Changelog</a>
+      </div>
+      <a href="https://github.com/DureClaw/dureclaw" class="nav-gh" target="_blank">GitHub ↗</a>
+    </div>
+  </div>
+</nav>
+
+<main>
+<header class="uc-hero">
+  <div class="wrap uc-hero-grid">
+    <div>
+      <a class="crumb" href="/use-cases/">← 활용 사례</a>
+      <h1>현장의 작은 기기가<br/>스스로 빠르게 판단합니다</h1>
+      <p class="lede">AI가 한 번 정한 판단 기준을 기기 안에 고정해 두면, 이후에는 네트워크와 AI 호출 없이 마이크로초 단위로 반응합니다.</p>
+    </div>
+    <div class="uc-hero-art"><img src="/images/uc-iot.webp" width="1400" height="933" alt="라즈베리파이와 센서, 신호등, 컨베이어를 크랩 로봇들이 지켜보는 공장 현장 그림"/></div>
+  </div>
+</header>
+
+<section class="band" id="pains">
+  <div class="wrap">
+    <div class="section-head"><span class="eyebrow">IoT·현장</span><h2 class="h2">이런 고민이 있다면</h2></div>
+    <ul class="pains"><li><strong>매번 AI에 물어보면 느리다</strong><span>판단 한 번에 몇 초씩 걸리면 실시간 현장 제어에 쓸 수 없습니다.</span></li><li><strong>기기마다 제각각이다</strong><span>센서 보드, 현장 PC, 서버가 서로 다른 방식으로 연결돼 있습니다.</span></li><li><strong>불량 원인 분석이 늦다</strong><span>여러 설비의 데이터를 모아 판단하기까지 시간이 걸립니다.</span></li></ul>
+  </div>
+</section>
+
+<section class="band tint" id="cases">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">사례</span>
+      <h2 class="h2">실제로 이렇게 썼습니다</h2>
+      <p class="lede">배지로 근거 수준을 구분했습니다 — <span class="badge measured">실측</span> <span class="badge real">실제 사례</span> <span class="badge scenario">예시 시나리오</span></p>
+    </div>
+    <div class="cases">
+      <article class="uc-card no-media">
+        <div class="uc-main">
+          <div class="uc-top"><span class="badge measured">실측</span><div class="node-chips"><span>Raspberry Pi Zero W</span><span>초음파 센서</span><span>3색 LED</span><span>Mac</span></div></div>
+          <h3>거리 센서 신호등 — 한 번 배우고, 이후엔 기기가 즉시 판단</h3>
+          <div class="uc-flow"><div><span class="k">상황</span><span>라즈베리파이 제로가 거리를 재서 신호등(빨강·노랑·초록)을 켭니다.</span></div><div><span class="k">DureClaw로는</span><span>마스터 AI가 기준(빨강 12cm·노랑 35cm 미만)을 <strong>한 번</strong> 정해 주면, 파이가 이를 로컬 규칙으로 고정합니다. 이후 판단은 AI 호출 없이 기기 안에서 끝납니다.</span></div></div>
+          <div class="uc-nums"><div><b>4.4~5.3초</b><span>AI에 매번 물을 때</span></div><div><b>36.7µs</b><span>고정 후 기기 판단</span></div><div><b>최대 14만 배</b><span>3회 측정 26,193~143,136배</span></div></div>
+          <p class="uc-note">정확도는 같습니다 — AI가 정한 규칙을 그대로 고정한 것이라, 바뀌는 건 판단 지연뿐입니다.</p>
+          <p class="source">출처 — <a href="https://github.com/DureClaw/dureclaw/blob/main/docs/REPORT_edge-brain-traffic-light.md" target="_blank">엣지 브레인 신호등 실증 리포트 §5–6</a></p>
+        </div>
+        
+      </article>
+      <article class="uc-card">
+        <div class="uc-main">
+          <div class="uc-top"><span class="badge real">실제 사례</span><div class="node-chips"><span>현장 노드 여러 대</span><span>Mac</span></div></div>
+          <h3>불량 발생 → 여러 설비에 동시 확인 → 원인·신뢰도·권고</h3>
+          <div class="uc-flow"><div><span class="k">상황</span><span>생산 라인에서 불량이 보고됐습니다.</span></div><div><span class="k">DureClaw로는</span><span>마스터가 성격이 다른 현장 노드들에 동시에 확인을 맡기고(fan-out), 결과를 모아 <strong>원인·신뢰도·권고</strong>를 제안합니다.</span></div></div>
+          
+          
+          
+        </div>
+        <figure class="uc-media"><img src="/demo/mes-fanout.gif" alt="불량 보고가 여러 노드로 퍼졌다가 마스터 제안으로 모이는 실제 화면" loading="lazy"/><figcaption>실제 시스템 캡처 — 불량 fan-out → 노드 fan-in → 마스터 제안</figcaption></figure>
+      </article>
+      <article class="uc-card">
+        <div class="uc-main">
+          <div class="uc-top"><span class="badge real">실제 사례</span><div class="node-chips"><span>Mac</span><span>현장 노드</span></div></div>
+          <h3>한 번 승인한 판단은 다시 묻지 않는다</h3>
+          <div class="uc-flow"><div><span class="k">상황</span><span>같은 유형의 이상이 반복해서 들어옵니다.</span></div><div><span class="k">DureClaw로는</span><span>사람이 승인한 판단을 규칙으로 고정(결정 동결)해 두면, 같은 패턴은 <strong>AI 호출 0회</strong>로 즉시 처리합니다.</span></div></div>
+          <div class="uc-nums"><div><b>2µs</b><span>재사용 판단</span></div><div><b>0회</b><span>AI 호출</span></div><div><b>15.6초</b><span>절감</span></div></div>
+          
+          
+        </div>
+        <figure class="uc-media"><img src="/demo/decision-freeze.gif" alt="승인된 규칙이 동결되어 AI 호출 없이 재사용되는 실제 화면" loading="lazy"/><figcaption>실제 시스템 캡처 — 승인 → 규칙 동결 → 2µs 재사용</figcaption></figure>
+      </article>
+      <article class="uc-card no-media scenario">
+        <div class="uc-main">
+          <div class="uc-top"><span class="badge scenario">예시 시나리오</span><div class="node-chips"><span>센서 노드</span><span>Linux</span><span>Windows</span></div></div>
+          <h3>센서 신호 → 이상 탐지 → 현장 Windows 음성 경보</h3>
+          <div class="uc-flow"><div><span class="k">구상</span><span>센서 값이 버스로 흐르면 Linux가 기록·학습(이상 탐지 모델)하고, 이상이 보이면 현장 Windows PC가 음성·경고음·트레이 알림으로 알립니다.</span></div><div><span class="k">현재</span><span>수집·학습·경보 스크립트는 저장소에 있습니다. 현장 적용 결과는 아직 정리되지 않았습니다.</span></div></div>
+          
+          
+          <p class="source">출처 — <a href="https://github.com/DureClaw/dureclaw/blob/main/scripts/signal_collector.py" target="_blank">signal_collector.py</a> · <a href="https://github.com/DureClaw/dureclaw/blob/main/scripts/anomaly_train.py" target="_blank">anomaly_train.py</a> · <a href="https://github.com/DureClaw/dureclaw/blob/main/scripts/win_alert.ps1" target="_blank">win_alert.ps1</a></p>
+        </div>
+        
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="band" id="kit">
+  <div class="wrap">
+    <div class="section-head"><span class="eyebrow">필요한 구성</span><h2 class="h2">이렇게 갖추면 됩니다</h2></div>
+    <div class="kit"><div><b>엣지 보드</b><span>라즈베리파이 등 — edgeclaw로 GPIO·센서·신호탑 구동.</span></div><div><b>현장 PC</b><span>Windows 설치 프로그램 또는 deskclaw.</span></div><div><b>분석 서버</b><span>Linux·GPU에서 수집·학습.</span></div><div><b>하드웨어 키트</b><span>센서·게이트웨이·국내 공급처는 <a href="/showcase/#hardware">하드웨어 가이드</a>에서.</span></div></div>
+    <p class="install-alt"><a href="/start/">플랫폼별 설치 가이드 →</a></p>
+  </div>
+</section>
+
+<section class="band" id="others">
+  <div class="wrap">
+    <div class="section-head"><span class="eyebrow">다른 대상 보기</span></div>
+    <div class="audience-grid others">
+      <a class="aud" href="/use-cases/org/">
+        <div class="aud-art"><img src="/images/uc-org.webp" alt="사무실과 공장 현장의 컴퓨터들을 크랩 로봇들이 함께 운영하는 그림" loading="lazy"/></div>
+        <div class="aud-body">
+          <span class="aud-k">회사·조직</span>
+          <h3>포트 개방 없이 사내 Windows·현장 PC·서버 운영</h3>
+          <p class="metric-mini"><b>5/5</b>추가 설정 없이 Windows 원격 작업 성공</p>
+          <span class="go">사례 보기</span>
+        </div>
+      </a>
+      <a class="aud" href="/use-cases/dev/">
+        <div class="aud-art"><img src="/images/uc-dev.webp" alt="MacBook에서 Windows, Linux 서버, GPU 워크스테이션으로 빌드 카드가 날아가는 그림" loading="lazy"/></div>
+        <div class="aud-body">
+          <span class="aud-k">개발자</span>
+          <h3>Mac 한 대로 Windows·Linux·GPU 서버 지휘</h3>
+          <p class="metric-mini"><b>0.61초</b>기기 5대 동시 응답</p>
+          <span class="go">사례 보기</span>
+        </div>
+      </a>
+      <a class="aud" href="/use-cases/research/">
+        <div class="aud-art"><img src="/images/uc-research.webp" alt="연구실에서 GPU 서버의 모델 비교, 과제 수집, 플레이북 검토와 승인을 하는 그림" loading="lazy"/></div>
+        <div class="aud-body">
+          <span class="aud-k">연구·교육</span>
+          <h3>측정·비교 실험과 수업 자료 준비</h3>
+          <p class="metric-mini"><b>143,136배</b>엣지 판단 최대 속도 향상</p>
+          <span class="go">사례 보기</span>
+        </div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<section class="band">
+  <div class="wrap">
+    <div class="closing">
+      <div>
+        <h2>지금 Mac 한 대로 시작하세요</h2>
+        <p>서버 앱을 설치하고, 놀고 있는 컴퓨터를 하나씩 팀에 합류시키면 됩니다.</p>
+      </div>
+      <div class="acts">
+        <a class="btn btn-primary" href="https://github.com/DureClaw/dureclaw/releases/latest/download/DureClaw-Server-mac-arm64.dmg" download>Mac용 다운로드</a>
+        <a class="btn btn-ghost" href="/start/">설치 가이드</a>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-left">
+        <strong>DureClaw (두레클로)</strong> · MIT License · Seungwoo Hong (홍승우)
+      </div>
+      <div class="footer-links">
+        <a href="https://github.com/DureClaw/dureclaw" target="_blank">GitHub</a>
+        <a href="https://github.com/DureClaw/dureclaw/blob/main/docs/METHODOLOGY.md" target="_blank">방법론</a>
+        <a href="https://github.com/DureClaw/dureclaw/blob/main/README.md" target="_blank">README</a>
+        <a href="https://github.com/DureClaw/dureclaw/tree/main/examples/fix-agent" target="_blank">fix-agent 예시</a>
+        <a href="https://github.com/DureClaw/dureclaw/issues" target="_blank">이슈</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="/assets/site.js"></script>
+</body>
+</html>

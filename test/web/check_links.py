@@ -11,7 +11,7 @@ import urllib.request
 web = next((a for a in sys.argv[1:] if not a.startswith("--")), "web")
 network = "--no-network" not in sys.argv
 
-pages = sorted(glob.glob(f"{web}/index.html") + glob.glob(f"{web}/*/index.html"))
+pages = sorted(glob.glob(f"{web}/**/index.html", recursive=True))
 ids = {p: set(re.findall(r'id="([^"]+)"', open(p, encoding="utf-8").read())) for p in pages}
 
 
@@ -30,7 +30,7 @@ for p in pages:
     for href in re.findall(r'href="([^"]+)"', s):
         if href.startswith("#") and len(href) > 1 and href[1:] not in ids[p]:
             broken.append((p, href, "missing anchor"))
-        m = re.match(r"^(/[a-z0-9-]*/?)#(.+)$", href)
+        m = re.match(r"^(/(?:[a-z0-9-]+/)*)#(.+)$", href)
         if m:
             target = page_for(m.group(1) if m.group(1).endswith("/") else m.group(1) + "/")
             if target in ids and m.group(2) not in ids[target]:

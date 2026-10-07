@@ -393,3 +393,119 @@ main + .lb-bg + footer, main ~ footer { margin-top: 0; }
 .platform-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr)) !important; }
 .platform-card .term, .platform-card .term * { overflow-wrap: anywhere; word-break: break-all; }
 .platform-card { min-width: 0; }
+
+/* ═══ 활용 사례 (/use-cases/) ══════════════════════════════════════════ */
+/* 대상 카드 4개 — 넓으면 4열, 중간 2×2, 좁으면 1열 (빈칸 없이) */
+.audience-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(14px, 1.6vw, 22px); }
+@media (max-width: 1100px) { .audience-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .audience-grid { grid-template-columns: 1fr; } }
+.aud {
+  display: grid; grid-template-rows: auto 1fr; text-decoration: none; color: inherit;
+  background: #fff; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden;
+  transition: border-color .2s, transform .2s, box-shadow .2s;
+}
+.aud:hover { border-color: var(--ink); transform: translateY(-3px); box-shadow: 0 22px 44px -28px rgba(23,22,15,.35); }
+.aud-art { aspect-ratio: 3 / 2; overflow: hidden; border-bottom: 1px solid var(--line); background: #fff; }
+.aud-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.aud-body { padding: clamp(20px, 2vw, 26px); display: grid; gap: 10px; align-content: start; }
+.aud-k { font-size: 14px; font-weight: 700; color: var(--accent-ink); letter-spacing: .02em; }
+.aud h3 { font-size: var(--fs-h3); font-weight: 750; letter-spacing: -0.03em; line-height: 1.3; }
+.aud p { font-size: 15.5px; color: var(--ink-2); line-height: 1.7; }
+.aud .metric-mini { margin-top: 4px; padding-top: 14px; border-top: 1px dashed var(--line-2); font-size: 15px; color: var(--ink-2); }
+.aud .metric-mini b { display: block; font-size: 24px; letter-spacing: -0.03em; color: var(--ink); line-height: 1.2; }
+.aud .go { font-weight: 650; font-size: 15px; color: var(--ink); }
+.aud .go::after { content: " →"; color: var(--accent); }
+
+/* 근거 배지 */
+.badge { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; border-radius: 999px; padding: 4px 12px; letter-spacing: -0.01em; white-space: nowrap; }
+.badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.badge.measured { background: var(--teal-soft); color: #0b6f63; }
+.badge.real { background: var(--accent-soft); color: var(--accent-ink); }
+.badge.scenario { background: var(--paper-3); color: var(--ink-2); }
+.legend { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.legend > div { background: #fff; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 18px 20px; display: grid; gap: 8px; align-content: start; }
+.legend p { font-size: 15.5px; color: var(--ink-2); line-height: 1.7; }
+@media (max-width: 860px) { .legend { grid-template-columns: 1fr; } }
+
+/* 실측 숫자 띠 */
+.metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: var(--radius); background: #fff; overflow: hidden; }
+.metric { padding: clamp(22px, 2.4vw, 32px); display: grid; gap: 6px; align-content: start; }
+.metric + .metric { border-left: 1px solid var(--line); }
+.metric b { font-size: clamp(30px, 2.4vw + 14px, 44px); line-height: 1.1; letter-spacing: -0.04em; font-weight: 800; color: var(--ink); }
+.metric b small { font-size: .5em; letter-spacing: -0.01em; margin-left: 2px; color: var(--ink-2); }
+.metric span { font-size: 15.5px; color: var(--ink-2); line-height: 1.6; }
+@media (max-width: 960px) {
+  .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .metric + .metric { border-left: 0; }
+  .metric:nth-child(even) { border-left: 1px solid var(--line); }
+  .metric:nth-child(n+3) { border-top: 1px solid var(--line); }
+}
+@media (max-width: 520px) {
+  .metrics { grid-template-columns: 1fr; }
+  .metric:nth-child(even) { border-left: 0; }
+  .metric + .metric { border-top: 1px solid var(--line); }
+}
+
+/* 대상 페이지 히어로 */
+.uc-hero { padding: clamp(40px, 5vw, 80px) 0 clamp(32px, 4vw, 56px); }
+.uc-hero-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: clamp(28px, 5vw, 72px); align-items: center; }
+.uc-hero h1 { font-size: clamp(36px, 3.4vw + 16px, 64px); line-height: 1.18; letter-spacing: -0.045em; font-weight: 800; margin: 14px 0 18px; }
+.uc-hero .crumb { font-size: 15px; color: var(--ink-3); text-decoration: none; }
+.uc-hero .crumb:hover { color: var(--accent-ink); }
+.uc-hero-art { mix-blend-mode: multiply; }
+.uc-hero-art img { width: 100%; height: auto; display: block; }
+@media (max-width: 900px) { .uc-hero-grid { grid-template-columns: 1fr; } .uc-hero-art { order: -1; max-width: 560px; } }
+
+/* 사례 카드 */
+.cases { display: grid; gap: clamp(16px, 1.8vw, 24px); }
+.uc-card {
+  display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 0;
+  background: #fff; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden;
+}
+.uc-card.no-media { grid-template-columns: 1fr; }
+.uc-main { padding: clamp(24px, 2.6vw, 38px); display: grid; gap: 16px; align-content: start; }
+.uc-top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.uc-card h3 { font-size: clamp(21px, 0.8vw + 16px, 26px); font-weight: 780; letter-spacing: -0.035em; line-height: 1.3; }
+.uc-flow { display: grid; gap: 12px; }
+.uc-flow > div { display: grid; grid-template-columns: 92px 1fr; gap: 14px; font-size: 16px; line-height: 1.7; color: var(--ink-2); }
+.uc-flow dt, .uc-flow .k { font-size: 14px; font-weight: 700; color: var(--ink-3); padding-top: 2px; }
+.uc-flow strong { color: var(--ink); }
+.node-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.node-chips span { font-size: 14px; font-weight: 550; background: var(--paper-2); border: 1px solid var(--line); border-radius: 999px; padding: 3px 11px; color: var(--ink-2); }
+.uc-nums { display: flex; flex-wrap: wrap; gap: 10px; }
+.uc-nums div { background: var(--teal-soft); border-radius: var(--radius-sm); padding: 10px 14px; min-width: 120px; }
+.uc-nums b { display: block; font-size: 22px; letter-spacing: -0.03em; color: #0b5b52; line-height: 1.25; }
+.uc-nums span { font-size: 14px; color: #2c6b63; }
+.uc-card.scenario .uc-nums div { background: var(--paper-2); }
+.uc-note { font-size: 15px; color: var(--ink-3); line-height: 1.7; border-left: 3px solid var(--line-2); padding-left: 12px; }
+.source { font-size: 14.5px; color: var(--ink-3); }
+.source a { color: var(--ink-2); font-weight: 600; text-underline-offset: 3px; }
+.uc-media { background: var(--night); display: grid; align-content: center; padding: clamp(12px, 1.4vw, 18px); }
+.uc-media img { width: 100%; height: auto; display: block; border-radius: 10px; }
+.uc-media figcaption { color: #bfb8aa; font-size: 14px; margin-top: 10px; line-height: 1.6; }
+.uc-media.light { background: var(--paper-2); }
+.uc-media.light figcaption { color: var(--ink-3); }
+@media (max-width: 960px) { .uc-card { grid-template-columns: 1fr; } }
+
+/* 필요한 구성 */
+.kit { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 14px; }
+.kit > div { background: #fff; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 18px 20px; display: grid; gap: 6px; align-content: start; }
+.kit b { font-size: 17px; letter-spacing: -0.02em; }
+.kit span { font-size: 15.5px; color: var(--ink-2); line-height: 1.65; }
+/* 고민 3가지 — 3열 카드 (목록이 한쪽으로 쏠려 빈 공간이 생기지 않게) */
+.pains { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(14px, 1.6vw, 22px); }
+.pains li { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: clamp(22px, 2.2vw, 30px); display: grid; gap: 8px; align-content: start; }
+.pains li::before { content: ""; width: 28px; height: 3px; border-radius: 2px; background: var(--accent); margin-bottom: 6px; }
+.pains strong { font-size: var(--fs-h3); font-weight: 750; letter-spacing: -0.03em; line-height: 1.35; }
+.pains span { font-size: 16px; color: var(--ink-2); line-height: 1.75; }
+@media (max-width: 860px) { .pains { grid-template-columns: 1fr; } }
+/* 다른 대상 3장 — 3열, 좁으면 1열 (2열에서 한 칸이 비지 않게) */
+.audience-grid.others { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 760px) { .audience-grid.others { grid-template-columns: 1fr; } }
+/* 범례 배지는 칸 너비로 늘어나지 않게 */
+.legend .badge, .uc-top .badge { justify-self: start; }
+/* 좁은 화면: 사례 흐름의 라벨(상황·DureClaw로는)을 본문 위로 — 본문 폭을 확보 */
+@media (max-width: 560px) {
+  .uc-flow > div { grid-template-columns: 1fr; gap: 2px; }
+  .uc-nums div { min-width: 0; flex: 1 1 calc(50% - 10px); }
+}

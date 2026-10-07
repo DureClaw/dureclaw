@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>회사·조직 활용 사례 — DureClaw</title>
+<meta name="description" content="DureClaw 활용 사례 — 회사·조직: 외부 접속 포트를 열지 않고 사내 Windows·현장 PC·서버에 일을 맡깁니다. 비밀키는 관리자 Mac 한 곳에만 둡니다."/>
+
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
+
+<!-- ── SEO / canonical / icons ── -->
+<link rel="canonical" href="https://dureclaw.baryon.ai/use-cases/org/"/>
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
+<meta name="author" content="DureClaw · Baryon Labs"/>
+<meta name="keywords" content="DureClaw, 두레클로, 분산 AI 에이전트, multi-agent orchestration, Claude Code 플러그인, edgeclaw, webclaw, deskclaw, keyless edge, LLM as compiler, 결정 동결, RPA, GPIO, Raspberry Pi, 멀티머신 AI, distributed AI agents"/>
+<meta name="theme-color" content="#0284c7"/>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+<link rel="icon" href="/favicon-256.png" sizes="256x256" type="image/png"/>
+<link rel="apple-touch-icon" href="/favicon-256.png"/>
+<link rel="sitemap" type="application/xml" href="/sitemap.xml"/>
+
+<!-- ── Open Graph ── -->
+<meta property="og:type" content="website"/>
+<meta property="og:site_name" content="DureClaw"/>
+<meta property="og:locale" content="ko_KR"/>
+<meta property="og:url" content="https://dureclaw.baryon.ai/use-cases/org/"/>
+<meta property="og:title" content="회사·조직 활용 사례 — DureClaw"/>
+<meta property="og:description" content="DureClaw 활용 사례 — 회사·조직: 외부 접속 포트를 열지 않고 사내 Windows·현장 PC·서버에 일을 맡깁니다. 비밀키는 관리자 Mac 한 곳에만 둡니다."/>
+<meta property="og:image" content="https://dureclaw.baryon.ai/screenshots/hero-banner.jpg"/>
+<meta property="og:image:width" content="1400"/>
+<meta property="og:image:height" content="594"/>
+<meta property="og:image:alt" content="DureClaw Cooperative — Unified AI Robotics Ecosystem"/>
+
+<!-- ── Twitter ── -->
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:title" content="회사·조직 활용 사례 — DureClaw"/>
+<meta name="twitter:description" content="DureClaw 활용 사례 — 회사·조직: 외부 접속 포트를 열지 않고 사내 Windows·현장 PC·서버에 일을 맡깁니다. 비밀키는 관리자 Mac 한 곳에만 둡니다."/>
+<meta name="twitter:image" content="https://dureclaw.baryon.ai/screenshots/hero-banner.jpg"/>
+
+<!-- ── AI / LLM crawlers (GEO/AEO) ── -->
+<link rel="alternate" type="text/markdown" title="llms.txt" href="/llms.txt"/>
+
+
+<link rel="stylesheet" href="/assets/site.css"/>
+<link rel="stylesheet" href="/assets/design.css"/>
+</head>
+<body>
+<nav>
+  <div class="container">
+    <div class="nav-inner">
+      <a href="/" class="nav-logo">Dure<span>Claw</span></a>
+      <div class="nav-links">
+        <a href="/start/">설치 가이드</a>
+        <a href="/use-cases/" class="active">활용 사례</a>
+        <a href="/how/">구조와 원리</a>
+        <a href="/showcase/">데모</a>
+        <a href="/developers/">개발자</a>
+        <a href="/changelog/">Changelog</a>
+      </div>
+      <a href="https://github.com/DureClaw/dureclaw" class="nav-gh" target="_blank">GitHub ↗</a>
+    </div>
+  </div>
+</nav>
+
+<main>
+<header class="uc-hero">
+  <div class="wrap uc-hero-grid">
+    <div>
+      <a class="crumb" href="/use-cases/">← 활용 사례</a>
+      <h1>보안 정책 안에서,<br/>사내 컴퓨터를 하나의 팀으로</h1>
+      <p class="lede">외부 접속 포트를 열지 않고 사내 Windows·현장 PC·서버에 일을 맡깁니다. 비밀키는 관리자 Mac 한 곳에만 둡니다.</p>
+    </div>
+    <div class="uc-hero-art"><img src="/images/uc-org.webp" width="1400" height="933" alt="사무실과 공장 현장의 컴퓨터들을 크랩 로봇들이 함께 운영하는 그림"/></div>
+  </div>
+</header>
+
+<section class="band" id="pains">
+  <div class="wrap">
+    <div class="section-head"><span class="eyebrow">회사·조직</span><h2 class="h2">이런 고민이 있다면</h2></div>
+    <ul class="pains"><li><strong>원격 접속을 열기가 부담스럽다</strong><span>SSH·원격 데스크톱을 열려면 방화벽·계정·권한 협의가 필요합니다.</span></li><li><strong>Windows가 섞이면 자동화가 멈춘다</strong><span>관리자 권한·UAC·인코딩 문제로 무인 작업이 중간에 막힙니다.</span></li><li><strong>현장 PC는 손댈 수 없다</strong><span>MES·ERP 화면만 있는 오래된 PC는 API가 없어 사람이 직접 입력합니다.</span></li></ul>
+  </div>
+</section>
+
+<section class="band tint" id="cases">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">사례</span>
+      <h2 class="h2">실제로 이렇게 썼습니다</h2>
+      <p class="lede">배지로 근거 수준을 구분했습니다 — <span class="badge measured">실측</span> <span class="badge real">실제 사례</span> <span class="badge scenario">예시 시나리오</span></p>
+    </div>
+    <div class="cases">
+      <article class="uc-card no-media">
+        <div class="uc-main">
+          <div class="uc-top"><span class="badge measured">실측</span><div class="node-chips"><span>Mac</span><span>Windows 11</span></div></div>
+          <h3>포트를 열지 않고 사내 Windows에서 빌드까지</h3>
+          <div class="uc-flow"><div><span class="k">상황</span><span>관리자 계정의 Windows 11 PC에 Python 프로그램을 exe로 빌드해 회수해야 했습니다.</span></div><div><span class="k">SSH로는</span><span>인증 시도 4번이 연달아 실패했고, 마지막엔 <strong>UAC 승인 창</strong>에 막혀 작업을 하나도 실행하지 못했습니다.</span></div><div><span class="k">DureClaw로는</span><span>추가 설정 없이 작업 5개(정보 수집→파일 생성→빌드→회수→화면 캡처)를 <strong>모두 성공</strong>했습니다.</span></div></div>
+          <div class="uc-nums"><div><b>0</b><span>추가 설정</span></div><div><b>5/5</b><span>작업 성공</span></div><div><b>14.3초</b><span>전체 소요</span></div><div><b>7.35MB</b><span>빌드된 exe</span></div></div>
+          <p class="uc-note">리포트의 정직한 한계: SSH가 불리했던 주된 이유는 'Windows·관리자 계정·무인 실행' 조합입니다. 키를 미리 심어 둔 Linux↔Mac 환경이라면 작업당 비용은 비슷합니다.</p>
+          <p class="source">출처 — <a href="https://github.com/DureClaw/dureclaw/blob/main/docs/REPORT_dureclaw-vs-ssh.md" target="_blank">DureClaw vs SSH 실험 리포트 §2–4, §6</a></p>
+        </div>
+        
+      </article>
+      <article class="uc-card">
+        <div class="uc-main">
+          <div class="uc-top"><span class="badge real">실제 사례</span><div class="node-chips"><span>Mac</span><span>Windows 현장 PC</span></div></div>
+          <h3>API 없는 현장 PC 화면을 한 번 가르치고 반복</h3>
+          <div class="uc-flow"><div><span class="k">상황</span><span>MES·ERP처럼 화면만 있는 프로그램은 사람이 매번 클릭·입력합니다.</span></div><div><span class="k">DureClaw로는</span><span>deskclaw 노드에 한 번 시연해 기록(record)하면, 이후 실행은 <strong>AI 호출 없이</strong> 같은 동작을 그대로 재생합니다.</span></div></div>
+          
+          
+          <p class="source">출처 — <a href="https://github.com/DureClaw/dureclaw/blob/main/README.md" target="_blank">README — 현장 PC GUI 자동화</a></p>
+        </div>
+        <figure class="uc-media"><img src="/demo/deskclaw-rpa.gif" alt="deskclaw가 기록한 데스크톱 동작을 재생하는 실제 화면" loading="lazy"/><figcaption>실제 시스템 캡처 — 한 번 가르치면 [RUN]은 AI 없이 재생</figcaption></figure>
+      </article>
+      <article class="uc-card no-media">
+        <div class="uc-main">
+          <div class="uc-top"><span class="badge real">실제 사례</span><div class="node-chips"><span>MacBook</span><span>Mac mini (원격)</span></div></div>
+          <h3>손닿지 않는 곳의 컴퓨터를 원격으로 진단·복구</h3>
+          <div class="uc-flow"><div><span class="k">상황</span><span>다른 장소에 있는 Mac mini에서 AI 작업이 모두 멈추고, 메신저 봇도 응답하지 않았습니다.</span></div><div><span class="k">DureClaw로는</span><span>MacBook에서 명령을 보내 설정 파일 오류, 잘못된 메시지 형식, 27시간 된 설정 캐시까지 <strong>세 가지 문제를 원격으로</strong> 찾아 고쳤습니다.</span></div></div>
+          <div class="uc-nums"><div><b>3건</b><span>원격 복구</span></div><div><b>0회</b><span>현장 방문</span></div></div>
+          
+          <p class="source">출처 — <a href="https://github.com/DureClaw/dureclaw/blob/main/docs/REMOTE_AGENT_OPS.md" target="_blank">원격 에이전트 운영 사례</a></p>
+        </div>
+        
+      </article>
+      <article class="uc-card no-media">
+        <div class="uc-main">
+          <div class="uc-top"><span class="badge measured">실측</span><div class="node-chips"><span>서버</span><span>전체 노드</span></div></div>
+          <h3>서버를 재시작해도 모든 컴퓨터가 스스로 복귀</h3>
+          <div class="uc-flow"><div><span class="k">상황</span><span>기능을 배포하며 운영 서버를 여러 번 재시작했습니다.</span></div><div><span class="k">결과</span><span>매번 연결된 모든 노드(Linux 빌더·Windows·브라우저 노드 등)가 <strong>사람 손 없이 자동으로 재접속</strong>했습니다. 대시보드에서 온라인 상태를 바로 확인합니다.</span></div></div>
+          <div class="uc-nums"><div><b>0회</b><span>수동 재연결</span></div></div>
+          
+          <p class="source">출처 — <a href="https://github.com/DureClaw/dureclaw/blob/main/docs/REPORT_dureclaw-vs-ssh.md" target="_blank">DureClaw vs SSH 실험 리포트 §4-1</a></p>
+        </div>
+        
+      </article>
+      <article class="uc-card no-media scenario">
+        <div class="uc-main">
+          <div class="uc-top"><span class="badge scenario">예시 시나리오</span><div class="node-chips"><span>Windows 마이크</span><span>GPU 서버</span><span>Mac</span></div></div>
+          <h3>회의 녹음에서 보고서까지 자동으로</h3>
+          <div class="uc-flow"><div><span class="k">구상</span><span>Windows PC가 녹음하고, GPU 서버가 받아쓰기·요약을 하고, Mac이 보고서 문서로 정리합니다.</span></div><div><span class="k">포인트</span><span>기기마다 잘하는 일을 한 번의 지시로 이어 붙이는 흐름입니다. 아직 측정 수치는 없습니다.</span></div></div>
+          
+          
+          <p class="source">출처 — <a href="https://github.com/DureClaw/dureclaw/blob/main/README.md" target="_blank">README — 제약의 조합이 만드는 시나리오</a></p>
+        </div>
+        
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="band" id="kit">
+  <div class="wrap">
+    <div class="section-head"><span class="eyebrow">필요한 구성</span><h2 class="h2">이렇게 갖추면 됩니다</h2></div>
+    <div class="kit"><div><b>관리자 Mac</b><span>서버 앱 + Claude Code. 지시는 여기서만.</span></div><div><b>사내 Windows PC</b><span>설치 프로그램으로 노드 등록, 로그인 시 자동 연결.</span></div><div><b>현장 PC</b><span>deskclaw 노드로 화면 자동화.</span></div><div><b>사설망</b><span>Tailscale이면 승인까지 자동.</span></div></div>
+    <p class="install-alt"><a href="/start/">플랫폼별 설치 가이드 →</a></p>
+  </div>
+</section>
+
+<section class="band" id="others">
+  <div class="wrap">
+    <div class="section-head"><span class="eyebrow">다른 대상 보기</span></div>
+    <div class="audience-grid others">
+      <a class="aud" href="/use-cases/dev/">
+        <div class="aud-art"><img src="/images/uc-dev.webp" alt="MacBook에서 Windows, Linux 서버, GPU 워크스테이션으로 빌드 카드가 날아가는 그림" loading="lazy"/></div>
+        <div class="aud-body">
+          <span class="aud-k">개발자</span>
+          <h3>Mac 한 대로 Windows·Linux·GPU 서버 지휘</h3>
+          <p class="metric-mini"><b>0.61초</b>기기 5대 동시 응답</p>
+          <span class="go">사례 보기</span>
+        </div>
+      </a>
+      <a class="aud" href="/use-cases/iot/">
+        <div class="aud-art"><img src="/images/uc-iot.webp" alt="라즈베리파이와 센서, 신호등, 컨베이어를 크랩 로봇들이 지켜보는 공장 현장 그림" loading="lazy"/></div>
+        <div class="aud-body">
+          <span class="aud-k">IoT·현장</span>
+          <h3>센서·신호등·생산 라인에서 즉시 판단</h3>
+          <p class="metric-mini"><b>36.7µs</b>고정 후 엣지 판단</p>
+          <span class="go">사례 보기</span>
+        </div>
+      </a>
+      <a class="aud" href="/use-cases/research/">
+        <div class="aud-art"><img src="/images/uc-research.webp" alt="연구실에서 GPU 서버의 모델 비교, 과제 수집, 플레이북 검토와 승인을 하는 그림" loading="lazy"/></div>
+        <div class="aud-body">
+          <span class="aud-k">연구·교육</span>
+          <h3>측정·비교 실험과 수업 자료 준비</h3>
+          <p class="metric-mini"><b>143,136배</b>엣지 판단 최대 속도 향상</p>
+          <span class="go">사례 보기</span>
+        </div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<section class="band">
+  <div class="wrap">
+    <div class="closing">
+      <div>
+        <h2>지금 Mac 한 대로 시작하세요</h2>
+        <p>서버 앱을 설치하고, 놀고 있는 컴퓨터를 하나씩 팀에 합류시키면 됩니다.</p>
+      </div>
+      <div class="acts">
+        <a class="btn btn-primary" href="https://github.com/DureClaw/dureclaw/releases/latest/download/DureClaw-Server-mac-arm64.dmg" download>Mac용 다운로드</a>
+        <a class="btn btn-ghost" href="/start/">설치 가이드</a>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-left">
+        <strong>DureClaw (두레클로)</strong> · MIT License · Seungwoo Hong (홍승우)
+      </div>
+      <div class="footer-links">
+        <a href="https://github.com/DureClaw/dureclaw" target="_blank">GitHub</a>
+        <a href="https://github.com/DureClaw/dureclaw/blob/main/docs/METHODOLOGY.md" target="_blank">방법론</a>
+        <a href="https://github.com/DureClaw/dureclaw/blob/main/README.md" target="_blank">README</a>
+        <a href="https://github.com/DureClaw/dureclaw/tree/main/examples/fix-agent" target="_blank">fix-agent 예시</a>
+        <a href="https://github.com/DureClaw/dureclaw/issues" target="_blank">이슈</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="/assets/site.js"></script>
+</body>
+</html>

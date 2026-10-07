@@ -113,8 +113,9 @@
       <a href="/" class="nav-logo">Dure<span>Claw</span></a>
       <div class="nav-links">
         <a href="/start/">설치 가이드</a>
+        <a href="/use-cases/">활용 사례</a>
         <a href="/how/">구조와 원리</a>
-        <a href="/showcase/">데모·활용</a>
+        <a href="/showcase/">데모</a>
         <a href="/developers/">개발자</a>
         <a href="/changelog/">Changelog</a>
       </div>
@@ -286,32 +287,49 @@
 <section class="band tint" id="for-who">
   <div class="wrap">
     <div class="section-head">
-      <span class="eyebrow">이런 분을 위해</span>
-      <h2 class="h2">놀고 있는 컴퓨터가 있다면</h2>
+      <span class="eyebrow">활용 사례</span>
+      <h2 class="h2">누가, 어떻게 쓰고 있나요</h2>
+      <p class="lede">회사·조직부터 현장 IoT, 연구실까지 — 실제로 재 본 숫자와 함께 정리했습니다.</p>
     </div>
-    <div class="personas">
-      <div class="persona">
-        <div class="persona-ico">🖥️</div>
-        <h3>Mac + 서버를 가진 개발자</h3>
-        <p class="ctx">메인 Mac과 GPU 서버 또는 Linux 박스</p>
-        <div class="before"><b>지금은</b>Claude Code는 Mac에서만. 서버는 따로 SSH로 접속해 손으로 작업합니다.</div>
-        <div class="after"><b>DureClaw와 함께</b>Mac의 Claude가 지시하면 서버가 빌드·테스트·학습을 동시에 실행합니다.</div>
-      </div>
-      <div class="persona">
-        <div class="persona-ico">🏠</div>
-        <h3>집과 회사를 오가는 개발자</h3>
-        <p class="ctx">회사 Mac과 집 워크스테이션 (Tailscale로 연결)</p>
-        <div class="before"><b>지금은</b>한 곳에서만 작업할 수 있고, 다른 컴퓨터는 놀고 있습니다.</div>
-        <div class="after"><b>DureClaw와 함께</b>어디서든 Claude에게 말하면 두 컴퓨터가 동시에 작업합니다.</div>
-      </div>
-      <div class="persona">
-        <div class="persona-ico">👥</div>
-        <h3>소규모 팀·스터디 그룹</h3>
-        <p class="ctx">팀원 각자의 컴퓨터에 에이전트 설치</p>
-        <div class="before"><b>지금은</b>AI 도구를 각자 따로 씁니다. 결과를 모으는 데 시간이 걸립니다.</div>
-        <div class="after"><b>DureClaw와 함께</b>팀장의 Claude가 작업을 나누면, 모든 컴퓨터가 협력해 결과를 합칩니다.</div>
-      </div>
+    <div class="audience-grid">
+      <a class="aud" href="/use-cases/org/">
+        <div class="aud-art"><img src="/images/uc-org.webp" alt="사무실과 공장 현장의 컴퓨터들을 크랩 로봇들이 함께 운영하는 그림" loading="lazy"/></div>
+        <div class="aud-body">
+          <span class="aud-k">회사·조직</span>
+          <h3>포트 개방 없이 사내 Windows·현장 PC·서버 운영</h3>
+          <p class="metric-mini"><b>5/5</b>추가 설정 없이 Windows 원격 작업 성공</p>
+          <span class="go">사례 보기</span>
+        </div>
+      </a>
+      <a class="aud" href="/use-cases/dev/">
+        <div class="aud-art"><img src="/images/uc-dev.webp" alt="MacBook에서 Windows, Linux 서버, GPU 워크스테이션으로 빌드 카드가 날아가는 그림" loading="lazy"/></div>
+        <div class="aud-body">
+          <span class="aud-k">개발자</span>
+          <h3>Mac 한 대로 Windows·Linux·GPU 서버 지휘</h3>
+          <p class="metric-mini"><b>0.61초</b>기기 5대 동시 응답</p>
+          <span class="go">사례 보기</span>
+        </div>
+      </a>
+      <a class="aud" href="/use-cases/iot/">
+        <div class="aud-art"><img src="/images/uc-iot.webp" alt="라즈베리파이와 센서, 신호등, 컨베이어를 크랩 로봇들이 지켜보는 공장 현장 그림" loading="lazy"/></div>
+        <div class="aud-body">
+          <span class="aud-k">IoT·현장</span>
+          <h3>센서·신호등·생산 라인에서 즉시 판단</h3>
+          <p class="metric-mini"><b>36.7µs</b>고정 후 엣지 판단</p>
+          <span class="go">사례 보기</span>
+        </div>
+      </a>
+      <a class="aud" href="/use-cases/research/">
+        <div class="aud-art"><img src="/images/uc-research.webp" alt="연구실에서 GPU 서버의 모델 비교, 과제 수집, 플레이북 검토와 승인을 하는 그림" loading="lazy"/></div>
+        <div class="aud-body">
+          <span class="aud-k">연구·교육</span>
+          <h3>측정·비교 실험과 수업 자료 준비</h3>
+          <p class="metric-mini"><b>143,136배</b>엣지 판단 최대 속도 향상</p>
+          <span class="go">사례 보기</span>
+        </div>
+      </a>
     </div>
+    <p class="install-alt"><a href="/use-cases/">활용 사례 전체 보기 →</a></p>
   </div>
 </section>
 
@@ -339,7 +357,8 @@
     <div class="more">
       <a href="/start/"><span class="t">설치 가이드</span><span class="d">플랫폼별 설치, 역할별 노드 추가, 예시 프로젝트</span></a>
       <a href="/how/"><span class="t">구조와 원리</span><span class="d">키리스 접근, 레이어 구조, 에코시스템, SSH 비교</span></a>
-      <a href="/showcase/"><span class="t">데모·활용</span><span class="d">대시보드, 시나리오 데모, 현장 하드웨어 활용</span></a>
+      <a href="/use-cases/"><span class="t">활용 사례</span><span class="d">회사·조직, 개발자, IoT·현장, 연구·교육별 실제 사례</span></a>
+      <a href="/showcase/"><span class="t">데모·하드웨어</span><span class="d">대시보드, 시나리오 데모, 현장 하드웨어 가이드</span></a>
       <a href="/developers/"><span class="t">개발자 레퍼런스</span><span class="d">Phoenix 채널 이벤트와 REST API</span></a>
       <a href="/changelog/"><span class="t">Changelog</span><span class="d">버전별 변경 내역</span></a>
     </div>

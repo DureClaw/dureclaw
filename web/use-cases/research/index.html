@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>연구·교육 활용 사례 — DureClaw</title>
+<meta name="description" content="DureClaw 활용 사례 — 연구·교육: 측정은 기록으로 남고, 여러 노드가 검토한 결과는 사람이 채택해 재사용 가능한 지식이 됩니다."/>
+
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
+
+<!-- ── SEO / canonical / icons ── -->
+<link rel="canonical" href="https://dureclaw.baryon.ai/use-cases/research/"/>
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"/>
+<meta name="author" content="DureClaw · Baryon Labs"/>
+<meta name="keywords" content="DureClaw, 두레클로, 분산 AI 에이전트, multi-agent orchestration, Claude Code 플러그인, edgeclaw, webclaw, deskclaw, keyless edge, LLM as compiler, 결정 동결, RPA, GPIO, Raspberry Pi, 멀티머신 AI, distributed AI agents"/>
+<meta name="theme-color" content="#0284c7"/>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+<link rel="icon" href="/favicon-256.png" sizes="256x256" type="image/png"/>
+<link rel="apple-touch-icon" href="/favicon-256.png"/>
+<link rel="sitemap" type="application/xml" href="/sitemap.xml"/>
+
+<!-- ── Open Graph ── -->
+<meta property="og:type" content="website"/>
+<meta property="og:site_name" content="DureClaw"/>
+<meta property="og:locale" content="ko_KR"/>
+<meta property="og:url" content="https://dureclaw.baryon.ai/use-cases/research/"/>
+<meta property="og:title" content="연구·교육 활용 사례 — DureClaw"/>
+<meta property="og:description" content="DureClaw 활용 사례 — 연구·교육: 측정은 기록으로 남고, 여러 노드가 검토한 결과는 사람이 채택해 재사용 가능한 지식이 됩니다."/>
+<meta property="og:image" content="https://dureclaw.baryon.ai/screenshots/hero-banner.jpg"/>
+<meta property="og:image:width" content="1400"/>
+<meta property="og:image:height" content="594"/>
+<meta property="og:image:alt" content="DureClaw Cooperative — Unified AI Robotics Ecosystem"/>
+
+<!-- ── Twitter ── -->
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:title" content="연구·교육 활용 사례 — DureClaw"/>
+<meta name="twitter:description" content="DureClaw 활용 사례 — 연구·교육: 측정은 기록으로 남고, 여러 노드가 검토한 결과는 사람이 채택해 재사용 가능한 지식이 됩니다."/>
+<meta name="twitter:image" content="https://dureclaw.baryon.ai/screenshots/hero-banner.jpg"/>
+
+<!-- ── AI / LLM crawlers (GEO/AEO) ── -->
+<link rel="alternate" type="text/markdown" title="llms.txt" href="/llms.txt"/>
+
+
+<link rel="stylesheet" href="/assets/site.css"/>
+<link rel="stylesheet" href="/assets/design.css"/>
+</head>
+<body>
+<nav>
+  <div class="container">
+    <div class="nav-inner">
+      <a href="/" class="nav-logo">Dure<span>Claw</span></a>
+      <div class="nav-links">
+        <a href="/start/">설치 가이드</a>
+        <a href="/use-cases/" class="active">활용 사례</a>
+        <a href="/how/">구조와 원리</a>
+        <a href="/showcase/">데모</a>
+        <a href="/developers/">개발자</a>
+        <a href="/changelog/">Changelog</a>
+      </div>
+      <a href="https://github.com/DureClaw/dureclaw" class="nav-gh" target="_blank">GitHub ↗</a>
+    </div>
+  </div>
+</nav>
+
+<main>
+<header class="uc-hero">
+  <div class="wrap uc-hero-grid">
+    <div>
+      <a class="crumb" href="/use-cases/">← 활용 사례</a>
+      <h1>실험과 수업 준비를<br/>여러 컴퓨터가 나눠 맡습니다</h1>
+      <p class="lede">측정은 기록으로 남고, 여러 노드가 검토한 결과는 사람이 채택해 재사용 가능한 지식이 됩니다.</p>
+    </div>
+    <div class="uc-hero-art"><img src="/images/uc-research.webp" width="1400" height="933" alt="연구실에서 GPU 서버의 모델 비교, 과제 수집, 플레이북 검토와 승인을 하는 그림"/></div>
+  </div>
+</header>
+
+<section class="band" id="pains">
+  <div class="wrap">
+    <div class="section-head"><span class="eyebrow">연구·교육</span><h2 class="h2">이런 고민이 있다면</h2></div>
+    <ul class="pains"><li><strong>실험 장비가 흩어져 있다</strong><span>GPU 서버, 측정 장비, 개인 노트북을 오가며 결과를 손으로 모읍니다.</span></li><li><strong>비교 실험을 반복하기 번거롭다</strong><span>모델·설정을 바꿀 때마다 같은 절차를 다시 실행합니다.</span></li><li><strong>수업 자료 정리가 노동이다</strong><span>학습관리시스템(LMS)에서 과제를 받아 정리하는 데 시간이 듭니다.</span></li></ul>
+  </div>
+</section>
+
+<section class="band tint" id="cases">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">사례</span>
+      <h2 class="h2">실제로 이렇게 썼습니다</h2>
+      <p class="lede">배지로 근거 수준을 구분했습니다 — <span class="badge measured">실측</span> <span class="badge real">실제 사례</span> <span class="badge scenario">예시 시나리오</span></p>
+    </div>
+    <div class="cases">
+      <article class="uc-card no-media">
+        <div class="uc-main">
+          <div class="uc-top"><span class="badge measured">실측</span><div class="node-chips"><span>Raspberry Pi Zero W</span><span>Mac</span></div></div>
+          <h3>AI 판단을 기기 규칙으로 고정했을 때의 속도 측정</h3>
+          <div class="uc-flow"><div><span class="k">실험</span><span>같은 판단을 매번 AI에 묻는 방식과, 한 번 정한 규칙을 기기에 고정한 방식을 3회 비교했습니다.</span></div><div><span class="k">결과</span><span>기준 보정 비용(약 6초)은 첫 회에만 들고, 이후에는 0입니다. 정확도는 동일합니다.</span></div></div>
+          <div class="uc-nums"><div><b>26,193배</b><span>1차(보정 포함)</span></div><div><b>111,877배</b><span>2차</span></div><div><b>143,136배</b><span>3차</span></div></div>
+          
+          <p class="source">출처 — <a href="https://github.com/DureClaw/dureclaw/blob/main/docs/REPORT_edge-brain-traffic-light.md" target="_blank">엣지 브레인 신호등 실증 리포트 — 처리 속도 개선 로그</a></p>
+        </div>
+        
+      </article>
+      <article class="uc-card no-media">
+        <div class="uc-main">
+          <div class="uc-top"><span class="badge real">실제 사례</span><div class="node-chips"><span>노드 여럿</span><span>사람(채택)</span></div></div>
+          <h3>여러 노드가 검토하고 사람이 채택한 공정 지식</h3>
+          <div class="uc-flow"><div><span class="k">과정</span><span>현장 스크래치 불량에 대해 한 노드가 원인·조치 초안을 쓰고, 동료 노드 2개가 검토(합의 0.6)한 뒤, 사람이 채택했습니다.</span></div><div><span class="k">결과</span><span>채택된 내용은 <strong>재추론 없이 다시 쓸 수 있는 플레이북</strong>(SKILL.md)으로 저장되었고, 출처(작업 키·평가 ID·채택자·시각)가 함께 기록됩니다.</span></div></div>
+          <div class="uc-nums"><div><b>2표</b><span>동료 검토</span></div><div><b>0.6</b><span>합의도</span></div><div><b>1건</b><span>사람 채택</span></div></div>
+          
+          <p class="source">출처 — <a href="https://github.com/DureClaw/dureclaw/blob/main/skills/learned/factory-1781523827/SKILL.md" target="_blank">학습된 공장 플레이북 SKILL.md</a></p>
+        </div>
+        
+      </article>
+      <article class="uc-card no-media">
+        <div class="uc-main">
+          <div class="uc-top"><span class="badge measured">실측</span><div class="node-chips"><span>Linux · RTX 4090</span></div></div>
+          <h3>로컬 대형 모델 속도를 한자리에서 비교</h3>
+          <div class="uc-flow"><div><span class="k">상황</span><span>GPU 서버에 여러 모델을 원격으로 설치하고 같은 환경에서 추론 속도를 비교했습니다.</span></div><div><span class="k">결과</span><span>용도별로 고를 수 있게 모델별 속도를 기록했습니다.</span></div></div>
+          <div class="uc-nums"><div><b>~49</b><span>gemma3:27b tok/s</span></div><div><b>~22</b><span>qwen3-coder tok/s</span></div><div><b>~20</b><span>deepseek-r1 tok/s</span></div><div><b>~19</b><span>gemma4:31b tok/s</span></div></div>
+          
+          <p class="source">출처 — <a href="https://github.com/DureClaw/dureclaw/blob/main/README.md" target="_blank">README — GPU 서버 원격 운용 실사례</a></p>
+        </div>
+        
+      </article>
+      <article class="uc-card no-media">
+        <div class="uc-main">
+          <div class="uc-top"><span class="badge real">실제 사례</span><div class="node-chips"><span>브라우저 노드(webclaw)</span></div></div>
+          <h3>대학 LMS에서 과제 12건을 받아 학생별로 정리</h3>
+          <div class="uc-flow"><div><span class="k">상황</span><span>학습관리시스템에서 채점용 제출물 12건을 내려받아 정리해야 했습니다.</span></div><div><span class="k">DureClaw로는</span><span>로그인된 브라우저 노드가 실제 링크를 읽어 내려받고, 파일 크기와 폴더 구조까지 확인했습니다.</span></div></div>
+          
+          <p class="uc-note">기록된 한계: 이 정도의 '브라우저 한 개' 작업만이라면 다른 브라우저 도구가 더 매끄러웠습니다. 이점은 그 뒤에 GPU 채점·성적표 작성 같은 다른 컴퓨터 작업을 이어 붙일 때 생깁니다.</p>
+          <p class="source">출처 — <a href="https://github.com/DureClaw/dureclaw/blob/main/docs/browser-agents-comparison.md" target="_blank">브라우저 에이전트 비교 문서</a></p>
+        </div>
+        
+      </article>
+      <article class="uc-card no-media scenario">
+        <div class="uc-main">
+          <div class="uc-top"><span class="badge scenario">예시 시나리오</span><div class="node-chips"><span>브라우저</span><span>GPU 서버</span><span>Windows</span></div></div>
+          <h3>과제 수집 → GPU 표절 검사 → 성적표 작성</h3>
+          <div class="uc-flow"><div><span class="k">구상</span><span>브라우저 노드가 제출물을 받고, GPU 서버가 표절·이상 탐지를 돌리고, Windows가 엑셀 성적표를 만듭니다.</span></div><div><span class="k">포인트</span><span>서로 다른 세 컴퓨터를 한 번의 지시로 잇는 흐름입니다. 아직 측정 수치는 없습니다.</span></div></div>
+          
+          
+          <p class="source">출처 — <a href="https://github.com/DureClaw/dureclaw/blob/main/docs/browser-agents-comparison.md" target="_blank">브라우저 에이전트 비교 문서 — 언제 무엇을 쓰나</a></p>
+        </div>
+        
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="band" id="kit">
+  <div class="wrap">
+    <div class="section-head"><span class="eyebrow">필요한 구성</span><h2 class="h2">이렇게 갖추면 됩니다</h2></div>
+    <div class="kit"><div><b>Mac (지휘)</b><span>Claude Code + 서버 앱.</span></div><div><b>GPU 서버</b><span>모델 실험·비교, 24시간 연산.</span></div><div><b>측정 장비</b><span>라즈베리파이 등 엣지 보드.</span></div><div><b>브라우저 노드</b><span>로그인된 웹 서비스 작업(webclaw).</span></div></div>
+    <p class="install-alt"><a href="/start/">플랫폼별 설치 가이드 →</a></p>
+  </div>
+</section>
+
+<section class="band" id="others">
+  <div class="wrap">
+    <div class="section-head"><span class="eyebrow">다른 대상 보기</span></div>
+    <div class="audience-grid others">
+      <a class="aud" href="/use-cases/org/">
+        <div class="aud-art"><img src="/images/uc-org.webp" alt="사무실과 공장 현장의 컴퓨터들을 크랩 로봇들이 함께 운영하는 그림" loading="lazy"/></div>
+        <div class="aud-body">
+          <span class="aud-k">회사·조직</span>
+          <h3>포트 개방 없이 사내 Windows·현장 PC·서버 운영</h3>
+          <p class="metric-mini"><b>5/5</b>추가 설정 없이 Windows 원격 작업 성공</p>
+          <span class="go">사례 보기</span>
+        </div>
+      </a>
+      <a class="aud" href="/use-cases/dev/">
+        <div class="aud-art"><img src="/images/uc-dev.webp" alt="MacBook에서 Windows, Linux 서버, GPU 워크스테이션으로 빌드 카드가 날아가는 그림" loading="lazy"/></div>
+        <div class="aud-body">
+          <span class="aud-k">개발자</span>
+          <h3>Mac 한 대로 Windows·Linux·GPU 서버 지휘</h3>
+          <p class="metric-mini"><b>0.61초</b>기기 5대 동시 응답</p>
+          <span class="go">사례 보기</span>
+        </div>
+      </a>
+      <a class="aud" href="/use-cases/iot/">
+        <div class="aud-art"><img src="/images/uc-iot.webp" alt="라즈베리파이와 센서, 신호등, 컨베이어를 크랩 로봇들이 지켜보는 공장 현장 그림" loading="lazy"/></div>
+        <div class="aud-body">
+          <span class="aud-k">IoT·현장</span>
+          <h3>센서·신호등·생산 라인에서 즉시 판단</h3>
+          <p class="metric-mini"><b>36.7µs</b>고정 후 엣지 판단</p>
+          <span class="go">사례 보기</span>
+        </div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<section class="band">
+  <div class="wrap">
+    <div class="closing">
+      <div>
+        <h2>지금 Mac 한 대로 시작하세요</h2>
+        <p>서버 앱을 설치하고, 놀고 있는 컴퓨터를 하나씩 팀에 합류시키면 됩니다.</p>
+      </div>
+      <div class="acts">
+        <a class="btn btn-primary" href="https://github.com/DureClaw/dureclaw/releases/latest/download/DureClaw-Server-mac-arm64.dmg" download>Mac용 다운로드</a>
+        <a class="btn btn-ghost" href="/start/">설치 가이드</a>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-left">
+        <strong>DureClaw (두레클로)</strong> · MIT License · Seungwoo Hong (홍승우)
+      </div>
+      <div class="footer-links">
+        <a href="https://github.com/DureClaw/dureclaw" target="_blank">GitHub</a>
+        <a href="https://github.com/DureClaw/dureclaw/blob/main/docs/METHODOLOGY.md" target="_blank">방법론</a>
+        <a href="https://github.com/DureClaw/dureclaw/blob/main/README.md" target="_blank">README</a>
+        <a href="https://github.com/DureClaw/dureclaw/tree/main/examples/fix-agent" target="_blank">fix-agent 예시</a>
+        <a href="https://github.com/DureClaw/dureclaw/issues" target="_blank">이슈</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="/assets/site.js"></script>
+</body>
+</html>
