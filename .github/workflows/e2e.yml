@@ -278,8 +278,22 @@ jobs:
           print("enrolled from mesh IP and auto-approved ✓")'
           scripts/mesh.sh nodes
 
+      - name: Second node via the real install command (JOIN=… setup-agent.sh)
+        run: |
+          CODE2=$(scripts/mesh.sh join-code --ttl 1h --bus ws://$SERVER_IP:4000)
+          docker run -d --name node2 --hostname mesh-node2 --cap-add NET_ADMIN --cap-add SYS_MODULE --device /dev/net/tun \
+            -v "$PWD":/repo -w /repo oven/bun:1-debian sleep infinity
+          docker exec node2 bash -c 'apt-get update -qq && apt-get install -y -qq curl ca-certificates python3 iproute2 iptables >/dev/null'
+          docker exec node2 bash -c 'curl -fsSL https://tailscale.com/install.sh | sh >/dev/null 2>&1; (tailscaled --state=/var/lib/tailscale/tailscaled.state > /tmp/tailscaled.log 2>&1 &) ; sleep 3'
+          # 사용자가 실제로 치는 명령 그대로 — 합류 후 에이전트 설치·실행까지 (마지막에 exec 로 상주)
+          docker exec -d node2 bash -c "JOIN='$CODE2' ROLE=builder HOME=/root bash scripts/setup-agent.sh > /tmp/setup.log 2>&1"
+          bun test/e2e/smoke.ts --server http://$SERVER_IP:4000 --token ci-secret --agent builder@mesh-node2 \
+            --cmd "[SHELL] echo hello-setup-agent" --expect hello-setup-agent --timeout 300
+          scripts/mesh.sh nodes
+
       - name: Logs
         if: always()
         run: |
+          docker exec node2 tail -n 80 /tmp/setup.log 2>/dev/null || true
           for f in $MESH_DIR/headscale.log $RUNNER_TEMP/server.log; do [ -f "$f" ] && { echo "::group::$f"; tail -n 60 "$f"; echo "::endgroup::"; }; done
           for f in /tmp/tailscaled.log /tmp/agent.log /tmp/join.out; do echo "::group::node $f"; docker exec node tail -n 60 $f 2>/dev/null; echo "::endgroup::"; done

@@ -52,6 +52,8 @@ jobs:
           cp scripts/setup-agent.sh  web/agent
           # dureclaw.baryon.ai/mcp     → setup-mcp.sh
           cp scripts/setup-mcp.sh    web/mcp
+          # dureclaw.baryon.ai/mesh      → mesh.sh (자체 사설망 Headscale 도구)
+          cp scripts/mesh.sh          web/mesh
           # dureclaw.baryon.ai/agent.ps1 → setup-agent.ps1 (Windows PowerShell)
           cp scripts/setup-agent.ps1 web/agent.ps1
           # dureclaw.baryon.ai/agent.bat → setup-agent.bat (Windows CMD)

@@ -11,6 +11,14 @@
 #   OAH_INSTALL_DIR  설치 경로      (기본: $HOME/.oah-server)
 #   USE_DOCKER       docker 강제 사용 (기본: auto)
 #
+# 자체 사설망 (공식 Tailscale 계정 대신 오픈소스 Headscale 을 이 서버에서 운영):
+#   MESH=1                       자체 망 구성 + 서버도 합류 + 노드 연결 코드 출력
+#   MESH_URL=http://IP:8080      사내망·폐쇄망 모드 제어 서버 주소 (기본: 이 서버의 LAN IP:8080)
+#   MESH_PUBLIC_DERP=1           인터넷 허용 시 Tailscale 공개 중계 추가 (NAT 너머 연결)
+#   MESH_DOMAIN=mesh.example.com MESH_EMAIL=ops@example.com
+#                                지점 간 모드 (HTTPS 자동 인증서 + 내장 중계, 443·3478/UDP 개방 필요)
+#   MESH_FORCE=1                 이 서버가 이미 다른 Tailscale 망에 있어도 자체 망으로 옮김
+#
 # 실행 우선순위: 사전빌드 바이너리 → Docker → Elixir 소스빌드
 
 set -euo pipefail
@@ -126,7 +134,65 @@ _ensure_tailscale() {
   fi
 }
 
-_ensure_tailscale
+# ─── 자체 사설망 (Headscale) ─────────────────────────────────────────────────
+
+MESH="${MESH:-0}"
+MESH_DIR="${MESH_DIR:-$HOME/.dureclaw/mesh}"
+MESH_BUS_IP=""
+
+_mesh_sh() {
+  # 저장소에서 실행하면 옆의 mesh.sh, 아니면 내려받아 MESH_DIR 에 보관 (이후 mesh.sh join-code 로 재사용)
+  local here; here="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || true)"
+  if [[ -n "$here" && -f "$here/mesh.sh" ]]; then bash "$here/mesh.sh" "$@"; return; fi
+  if [[ ! -f "$MESH_DIR/mesh.sh" ]]; then
+    mkdir -p "$MESH_DIR"
+    curl -fsSL https://dureclaw.baryon.ai/mesh -o "$MESH_DIR/mesh.sh"
+    chmod +x "$MESH_DIR/mesh.sh"
+  fi
+  bash "$MESH_DIR/mesh.sh" "$@"
+}
+
+_lan_ip() {
+  ipconfig getifaddr en0 2>/dev/null || hostname -I 2>/dev/null | awk '{print $1}' || true
+}
+
+_setup_mesh() {
+  echo ""
+  echo "━━━ 자체 사설망(Headscale) 구성 ━━━"
+  export MESH_DIR
+  _mesh_sh install
+  if [[ ! -f "$MESH_DIR/config.yaml" ]]; then
+    if [[ -n "${MESH_DOMAIN:-}" ]]; then
+      _mesh_sh init --domain "$MESH_DOMAIN" --email "${MESH_EMAIL:?MESH_DOMAIN 에는 MESH_EMAIL 이 필요합니다}"
+    else
+      local url="${MESH_URL:-}"
+      if [[ -z "$url" ]]; then
+        local ip; ip="$(_lan_ip)"
+        [[ -n "$ip" ]] || { echo "ERROR: LAN IP 를 찾지 못했습니다. MESH_URL=http://<서버IP>:8080 으로 지정하세요."; exit 1; }
+        url="http://$ip:8080"
+      fi
+      local extra=()
+      [[ "${MESH_PUBLIC_DERP:-0}" == "1" ]] && extra+=(--public-derp)
+      _mesh_sh init --url "$url" "${extra[@]}"
+    fi
+  fi
+  _mesh_sh start
+
+  # 서버 자신도 자체 망에 합류 — 노드는 사설망 주소(100.64/10)로 버스에 붙고 키 없이 자동 승인된다
+  local join=()
+  [[ "${MESH_FORCE:-0}" == "1" ]] && join+=(--force)
+  _mesh_sh join "$(_mesh_sh join-code --ttl 10m)" --hostname "dureclaw-server" "${join[@]}"
+  MESH_BUS_IP="$(tailscale ip -4 2>/dev/null | head -1)"
+  # 버스가 사설망 주소로 들어오는 접속을 받도록 모든 인터페이스에 바인드
+  export OAH_BIND_IP="${OAH_BIND_IP:-0.0.0.0}"
+  echo "✅ 자체 망 준비 — 서버 사설망 IP: $MESH_BUS_IP"
+}
+
+if [[ "$MESH" == "1" ]]; then
+  _setup_mesh
+else
+  _ensure_tailscale
+fi
 
 # ─── 주소 안내 헬퍼 ───────────────────────────────────────────────────────────
 
@@ -139,6 +205,24 @@ _print_connect_info() {
   local AGENT_URL="$GITHUB_RAW/scripts/setup-agent.sh"
 
   echo ""
+  if [[ "$MESH" == "1" ]]; then
+    local code
+    code="$(_mesh_sh join-code --ttl 24h --reusable --bus "ws://$MESH_BUS_IP:$PORT")"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo " ★ 자체 사설망 — 노드 연결 코드 (24시간 유효 · 여러 대 사용 가능)"
+    echo ""
+    echo "   $code"
+    echo ""
+    echo "   Linux·Mac·라즈베리파이:"
+    echo "     JOIN=$code \\"
+    echo "       bash <(curl -fsSL https://dureclaw.baryon.ai/agent)"
+    echo ""
+    echo "   새 코드 발급: bash $MESH_DIR/mesh.sh join-code --bus ws://$MESH_BUS_IP:$PORT [--ttl 1h]"
+    echo "   합류한 노드: bash $MESH_DIR/mesh.sh nodes"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    return
+  fi
   if [[ -n "$TAILSCALE_IP" ]]; then
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo " ★ Tailscale 사설망 감지 — 원격 에이전트 연결 주소:"

@@ -169,6 +169,27 @@ _ensure_tailscale_agent() {
 
 PHOENIX="${1:-${PHOENIX:-}}"
 
+# ─── 자체 사설망 합류 (서버가 발급한 노드 연결 코드) ──────────────────────────
+#   JOIN=dcj1:... bash <(curl -fsSL https://dureclaw.baryon.ai/agent)
+#   MESH_FORCE=1 : 이미 다른 Tailscale 망에 있어도 자체 망으로 옮김
+if [[ -n "${JOIN:-}" ]]; then
+  echo "→ 자체 사설망에 합류합니다 (노드 연결 코드)"
+  _here="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || true)"
+  if [[ -n "$_here" && -f "$_here/mesh.sh" ]]; then
+    MESH_SH="$_here/mesh.sh"
+  else
+    MESH_SH="$(mktemp)"
+    curl -fsSL "$OAH_BASE/mesh" -o "$MESH_SH"
+  fi
+  _mesh_args=()
+  [[ "${MESH_FORCE:-0}" == "1" ]] && _mesh_args+=(--force)
+  JOIN_OUT="$(bash "$MESH_SH" join "$JOIN" "${_mesh_args[@]}")" || { echo "FAILED: 자체 망 합류 실패"; exit 1; }
+  if [[ -z "$PHOENIX" ]]; then
+    PHOENIX="$(sed -n 's/^PHOENIX=//p' <<<"$JOIN_OUT")"
+    [[ -n "$PHOENIX" ]] && echo "→ 버스 주소(코드에서): $PHOENIX"
+  fi
+fi
+
 if [[ -z "$PHOENIX" ]]; then
   if curl -sf --max-time 3 "http://oah.local:4000/api/health" > /dev/null 2>&1; then
     PHOENIX="ws://oah.local:4000"
