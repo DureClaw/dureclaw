@@ -347,7 +347,7 @@ except Exception: print("")' || true)"
   local ip; ip="$("$ts" ip -4 2>/dev/null | head -1)"
   [[ "$ip" == 100.* ]] || die "합류 후 사설망 IP 를 받지 못했습니다"
   info "합류 완료 — 이 노드의 사설망 IP: $ip"
-  [[ -n "$bus" ]] && echo "PHOENIX=$bus"
+  if [[ -n "$bus" ]]; then echo "PHOENIX=$bus"; fi
 }
 
 case "${1:-}" in
