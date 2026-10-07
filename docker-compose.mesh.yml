@@ -1,0 +1,56 @@
+# DureClaw 서버 + 자체 사설망(Headscale) — 공식 Tailscale 계정 없이
+#
+#   사용:  scripts/mesh-docker.sh up      (설정 생성 → headscale → 서버 사설망 합류 → 서버 → 노드 연결 코드)
+#          scripts/mesh-docker.sh code    (새 노드 연결 코드)
+#          scripts/mesh-docker.sh nodes | down
+#
+#   headscale  — 오픈소스 Tailscale 제어 서버 (설정은 ./mesh-data/config.yaml, mesh.sh init 이 생성)
+#   mesh-node  — 서버의 사설망 다리: 공식 Tailscale 클라이언트가 headscale 에 합류
+#   dureclaw   — 버스 서버. mesh-node 의 네트워크를 공유해 사설망 주소(100.64/10)로 접속을 받는다
+services:
+  headscale:
+    image: headscale/headscale:0.29.4
+    command: ["serve", "-c", "/var/lib/dureclaw-mesh/config.yaml"]
+    volumes:
+      - ./mesh-data:/var/lib/dureclaw-mesh
+    ports:
+      - "${MESH_PORT:-8080}:${MESH_PORT:-8080}"
+      - "3478:3478/udp"
+    restart: unless-stopped
+
+  mesh-node:
+    image: tailscale/tailscale:stable
+    hostname: dureclaw-server
+    environment:
+      TS_AUTHKEY: ${TS_AUTHKEY:-}
+      TS_EXTRA_ARGS: --login-server=${MESH_LOGIN_URL:-http://headscale:8080} --accept-dns=false
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_USERSPACE: "false"
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    cap_add: [NET_ADMIN, SYS_MODULE]
+    volumes:
+      - ts-state:/var/lib/tailscale
+    depends_on: [headscale]
+    restart: unless-stopped
+
+  dureclaw:
+    image: ghcr.io/dureclaw/dureclaw:latest
+    build:
+      context: ./packages/phoenix-server
+      dockerfile: Dockerfile
+    # 레지스트리의 예전 이미지는 사설망 주소 바인드(OAH_BIND_IP)를 모를 수 있다 → 항상 소스에서 빌드
+    pull_policy: build
+    network_mode: service:mesh-node
+    environment:
+      PORT: 4000
+      OAH_BIND_IP: 0.0.0.0
+      OAH_DATA_DIR: /data
+    volumes:
+      - oah-data:/data
+    depends_on: [mesh-node]
+    restart: unless-stopped
+
+volumes:
+  ts-state:
+  oah-data:

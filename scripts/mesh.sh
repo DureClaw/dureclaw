@@ -20,6 +20,8 @@
 #     mesh.sh decode <코드>                  코드 내용 확인 (키는 일부만 표시)
 #
 # 환경 변수: MESH_DIR (기본 ~/.dureclaw/mesh), HEADSCALE_VERSION (기본 0.29.4)
+#   Docker 용: MESH_CONTAINER_DIR — 설정 파일 안의 경로를 컨테이너 기준으로 (파일은 MESH_DIR 에 씀)
+#              MESH_HS            — headscale 명령 대체 (예: "docker compose exec -T headscale headscale -c …")
 set -euo pipefail
 
 HEADSCALE_VERSION="${HEADSCALE_VERSION:-0.29.4}"
@@ -30,16 +32,20 @@ PIDFILE="$MESH_DIR/headscale.pid"
 LOG="$MESH_DIR/headscale.log"
 MESH_USER="dureclaw"
 CODE_PREFIX="dcj1:"
+# 설정 파일 안에 적을 경로의 기준 (Docker 면 컨테이너 안 경로)
+P="${MESH_CONTAINER_DIR:-$MESH_DIR}"
 # 유닉스 소켓 경로는 OS 한계(macOS 104자)가 있다 — 설치 경로가 길면 /tmp 아래 짧은 경로로
-SOCK="$MESH_DIR/run/headscale.sock"
-if [[ ${#SOCK} -gt 100 ]]; then
+SOCK="$P/run/headscale.sock"
+if [[ -z "${MESH_CONTAINER_DIR:-}" && ${#SOCK} -gt 100 ]]; then
   SOCK="/tmp/dc-mesh-$(id -u)-$(printf '%s' "$MESH_DIR" | cksum | cut -d' ' -f1).sock"
 fi
 
 die() { echo "mesh: $*" >&2; exit 1; }
 info() { echo "→ $*" >&2; }
 
-hs() { "$BIN" -c "$CONF" "$@"; }
+hs() {
+  if [[ -n "${MESH_HS:-}" ]]; then $MESH_HS "$@"; else "$BIN" -c "$CONF" "$@"; fi
+}
 
 _os_arch() {
   local os arch
@@ -88,7 +94,7 @@ cmd_init() {
     tls="acme_url: https://acme-v02.api.letsencrypt.org/directory
 acme_email: \"$email\"
 tls_letsencrypt_hostname: \"$domain\"
-tls_letsencrypt_cache_dir: $MESH_DIR/lib/cache
+tls_letsencrypt_cache_dir: $P/lib/cache
 tls_letsencrypt_challenge_type: HTTP-01
 tls_letsencrypt_listen: \":http\""
     derp_enabled=true
@@ -117,7 +123,7 @@ regions:
         stunonly: false
         derpport: 443
 DERP
-    derp_paths="[$MESH_DIR/derp-lan.yaml]"
+    derp_paths="[$P/derp-lan.yaml]"
     if [[ $public_derp -eq 1 ]]; then
       # 인터넷이 허용되면 Tailscale 공개 중계로 NAT 너머 연결을 돕는다 (트래픽은 종단 간 암호화)
       derp_urls="[https://controlplane.tailscale.com/derpmap/default]"
@@ -133,7 +139,7 @@ grpc_listen_addr: 127.0.0.1:50443
 grpc_allow_insecure: false
 
 noise:
-  private_key_path: $MESH_DIR/lib/noise_private.key
+  private_key_path: $P/lib/noise_private.key
 
 # DureClaw 서버의 키리스 자동 승인 범위(100.64.0.0/10)와 같은 대역
 prefixes:
@@ -149,7 +155,7 @@ derp:
     region_name: "DureClaw Embedded DERP"
     verify_clients: true
     stun_listen_addr: "0.0.0.0:3478"
-    private_key_path: $MESH_DIR/lib/derp_server_private.key
+    private_key_path: $P/lib/derp_server_private.key
     automatically_add_embedded_derp_region: true
   # 기본은 외부(Tailscale 사) 중계 목록을 쓰지 않는다 — 자체 망은 외부 의존 없이 동작 (--public-derp 로 추가)
   urls: $derp_urls
@@ -165,7 +171,7 @@ node:
 database:
   type: sqlite
   sqlite:
-    path: $MESH_DIR/lib/db.sqlite
+    path: $P/lib/db.sqlite
     write_ahead_log: true
 
 $tls
@@ -194,12 +200,17 @@ logtail:
 taildrop:
   enabled: true
 EOF
-  hs configtest >/dev/null 2>&1 || { hs configtest; die "설정 검사 실패"; }
+  if [[ -z "${MESH_CONTAINER_DIR:-}" ]]; then
+    hs configtest >/dev/null 2>&1 || { hs configtest; die "설정 검사 실패"; }
+  fi
   info "설정 생성: $CONF ($server_url)"
 }
 
 # ── 서버: 실행 ───────────────────────────────────────────────────────────────
-_running() { [[ -f "$PIDFILE" ]] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; }
+_running() {
+  if [[ -n "${MESH_HS:-}" ]]; then hs users list >/dev/null 2>&1; return; fi
+  [[ -f "$PIDFILE" ]] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null
+}
 
 cmd_start() {
   [[ -x "$BIN" ]] || die "Headscale 이 설치되지 않았습니다 — mesh.sh install"

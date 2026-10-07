@@ -297,3 +297,41 @@ jobs:
           docker exec node2 tail -n 80 /tmp/setup.log 2>/dev/null || true
           for f in $MESH_DIR/headscale.log $RUNNER_TEMP/server.log; do [ -f "$f" ] && { echo "::group::$f"; tail -n 60 "$f"; echo "::endgroup::"; }; done
           for f in /tmp/tailscaled.log /tmp/agent.log /tmp/join.out; do echo "::group::node $f"; docker exec node tail -n 60 $f 2>/dev/null; echo "::endgroup::"; done
+
+  # ── 자체 사설망 Docker 구성: docker-compose.mesh.yml (headscale + 서버 다리 + 서버) ──
+  mesh-docker:
+    name: Self-hosted mesh (Docker) — compose up · join code · task
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: mesh-docker.sh up
+        run: |
+          BRIDGE=$(ip -4 addr show docker0 | awk '/inet /{print $2}' | cut -d/ -f1)
+          MESH_URL=http://$BRIDGE:8080 scripts/mesh-docker.sh up | tee /tmp/up.out
+          CODE=$(grep -oE 'dcj1:[A-Za-z0-9_-]+' /tmp/up.out | tail -1)
+          echo "CODE=$CODE" >> $GITHUB_ENV
+          scripts/mesh-docker.sh nodes
+
+      - name: Node joins with the code and runs a task over the mesh
+        run: |
+          docker run -d --name node --hostname docker-mesh-node --cap-add NET_ADMIN --cap-add SYS_MODULE --device /dev/net/tun \
+            -v "$PWD":/repo -w /repo -e CODE="$CODE" oven/bun:1-debian sleep infinity
+          docker exec node bash -c 'apt-get update -qq && apt-get install -y -qq curl ca-certificates python3 iproute2 iptables >/dev/null'
+          docker exec node bash -c 'curl -fsSL https://tailscale.com/install.sh | sh >/dev/null 2>&1; (tailscaled --state=/var/lib/tailscale/tailscaled.state > /tmp/tailscaled.log 2>&1 &) ; sleep 3'
+          docker exec node bash -c 'scripts/mesh.sh join "$CODE" | tee /tmp/join.out'
+          BUS=$(docker exec node sed -n 's/^PHOENIX=//p' /tmp/join.out)
+          HTTP=${BUS/ws:/http:}
+          docker exec node bun install >/dev/null
+          docker exec -d node bash -c "STATE_SERVER=$BUS AGENT_ROLE=builder AGENT_NAME=builder@docker-mesh-node HOME=/tmp/n bun packages/agent-daemon/src/index.ts > /tmp/agent.log 2>&1"
+          # 이 러너(호스트)는 사설망 밖 → 사설망 안의 노드 컨테이너에서 확인. 작업 지시엔 서버 비밀키 사용
+          SECRET=$(docker compose -f docker-compose.mesh.yml exec -T dureclaw cat /data/server.secret | tr -d '\r\n')
+          docker exec node bun test/e2e/smoke.ts --server $HTTP --token "$SECRET" --agent builder@docker-mesh-node \
+            --cmd "[SHELL] echo hello-docker-mesh" --expect hello-docker-mesh --timeout 240
+
+      - name: Logs
+        if: always()
+        run: |
+          docker compose -f docker-compose.mesh.yml logs --tail 60 || true
+          docker exec node tail -n 60 /tmp/agent.log 2>/dev/null || true
