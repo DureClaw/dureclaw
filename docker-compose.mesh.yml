@@ -6,7 +6,11 @@
 #
 #   headscale  — 오픈소스 Tailscale 제어 서버 (설정은 ./mesh-data/config.yaml, mesh.sh init 이 생성)
 #   mesh-node  — 서버의 사설망 다리: 공식 Tailscale 클라이언트가 headscale 에 합류
-#   dureclaw   — 버스 서버. mesh-node 의 네트워크를 공유해 사설망 주소(100.64/10)로 접속을 받는다
+#   dureclaw   — 버스 서버. 사설망 주소(100.64/10)로 접속을 받는다
+#
+#   mesh-node·dureclaw 는 호스트 네트워크를 쓴다. 자체 망은 외부 중계 없이 '직접 연결'로 동작하는데,
+#   다리가 compose 전용 브리지망 안에 있으면 사내망의 다른 기기가 그 Tailscale 포트에 닿을 수 없다.
+#   호스트에서 이미 Tailscale 이 돌아도 충돌하지 않게 인터페이스(dureclaw0)·포트(41642)를 따로 쓴다.
 services:
   headscale:
     image: headscale/headscale:0.29.4
@@ -20,10 +24,13 @@ services:
 
   mesh-node:
     image: tailscale/tailscale:stable
-    hostname: dureclaw-server
+    network_mode: host
     environment:
       TS_AUTHKEY: ${TS_AUTHKEY:-}
-      TS_EXTRA_ARGS: --login-server=${MESH_LOGIN_URL:-http://headscale:8080} --accept-dns=false
+      TS_HOSTNAME: dureclaw-server
+      TS_EXTRA_ARGS: --login-server=${MESH_LOGIN_URL:-http://127.0.0.1:8080} --accept-dns=false
+      TS_TAILSCALED_EXTRA_ARGS: --tun=dureclaw0 --port=41642
+      TS_SOCKET: /var/run/tailscale/dureclaw.sock
       TS_STATE_DIR: /var/lib/tailscale
       TS_USERSPACE: "false"
     devices:
@@ -41,9 +48,9 @@ services:
       dockerfile: Dockerfile
     # 레지스트리의 예전 이미지는 사설망 주소 바인드(OAH_BIND_IP)를 모를 수 있다 → 항상 소스에서 빌드
     pull_policy: build
-    network_mode: service:mesh-node
+    network_mode: host
     environment:
-      PORT: 4000
+      PORT: ${PORT:-4000}
       OAH_BIND_IP: 0.0.0.0
       OAH_DATA_DIR: /data
     volumes:

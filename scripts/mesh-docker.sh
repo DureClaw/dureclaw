@@ -17,9 +17,9 @@ MESH="scripts/mesh.sh"
 # 서버 다리의 사설망 주소 → 버스 주소. 준비 전이면 return 1 (exit 하면 대기 루프째 스크립트가 끝난다)
 _bus() {
   local ip
-  ip="$("${COMPOSE[@]}" exec -T mesh-node tailscale ip -4 2>/dev/null | tr -d '\r' | head -1 || true)"
+  ip="$("${COMPOSE[@]}" exec -T mesh-node tailscale --socket=/var/run/tailscale/dureclaw.sock ip -4 2>/dev/null | tr -d '\r' | head -1 || true)"
   [[ "$ip" == 100.* ]] || { echo "mesh-docker: 서버가 아직 사설망에 합류하지 않았습니다" >&2; return 1; }
-  echo "ws://$ip:4000"
+  echo "ws://$ip:${PORT:-4000}"
 }
 
 case "${1:-}" in
@@ -48,7 +48,7 @@ case "${1:-}" in
     for _ in $(seq 1 60); do _bus >/dev/null 2>&1 && break; sleep 2; done
     bus="$(_bus)" || { "${COMPOSE[@]}" logs --tail 40 mesh-node >&2; exit 1; }
     "${COMPOSE[@]}" up -d --build dureclaw
-    for _ in $(seq 1 90); do "${COMPOSE[@]}" exec -T dureclaw curl -sf http://localhost:4000/api/health >/dev/null 2>&1 && break; sleep 2; done
+    for _ in $(seq 1 90); do "${COMPOSE[@]}" exec -T dureclaw curl -sf http://localhost:${PORT:-4000}/api/health >/dev/null 2>&1 && break; sleep 2; done
     echo ""
     echo "━━━ 자체 사설망 준비 완료 — 버스: $bus"
     echo " 노드 연결 코드 (24시간 · 여러 대):"
