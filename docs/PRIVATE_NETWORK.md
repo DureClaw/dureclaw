@@ -185,3 +185,50 @@ iex (iwr http://100.64.0.1:4000/setup.ps1).Content
 SECRET_KEY_BASE=$(openssl rand -hex 64) \
   PORT=4000 bash <(curl -fsSL .../setup-server.sh)
 ```
+
+---
+
+## 자체 사설망 — Tailscale 계정 없이 (Headscale, 오픈소스)
+
+공식 Tailscale 계정·외부 서비스를 쓸 수 없는 사내망·전용망에서는, DureClaw 서버가 **오픈소스 제어 서버 Headscale**을 직접 운영합니다. 노드는 공식 Tailscale 클라이언트(오픈소스)를 그대로 쓰고 접속할 제어 서버만 바꿉니다. 주소 대역은 같은 `100.64.0.0/10`이라 **키 없는 자동 승인도 그대로** 동작합니다.
+
+### 서버
+
+```bash
+# Linux 서버 — 사내망 모드 (HTTP, 노드끼리 직접 연결, 외부 의존 0)
+MESH=1 bash <(curl -fsSL https://dureclaw.baryon.ai/server)
+#   MESH_URL=http://10.0.0.5:8080     제어 서버 주소 지정 (기본: 이 서버의 LAN IP:8080)
+#   MESH_PUBLIC_DERP=1                인터넷 허용 시 Tailscale 공개 중계 추가 (NAT 너머 연결)
+#   MESH_DOMAIN=mesh.example.com MESH_EMAIL=ops@example.com
+#                                     지점 간 모드 (HTTPS 자동 인증서 + 내장 중계, 443 · 3478/UDP 개방)
+#   MESH_FORCE=1                      서버가 이미 다른 Tailscale 망에 있어도 자체 망으로 옮김
+
+# Docker — headscale + 서버 다리(공식 Tailscale 컨테이너) + 서버
+MESH_URL=http://<서버 LAN IP>:8080 scripts/mesh-docker.sh up
+scripts/mesh-docker.sh code      # 새 노드 연결 코드
+scripts/mesh-docker.sh nodes     # 합류한 노드
+```
+
+설치가 끝나면 **노드 연결 코드**(`dcj1:…`)가 출력됩니다. 코드에는 제어 서버 주소, 유효기간이 있는 가입 키, 버스 주소가 들어 있습니다.
+새 코드는 `bash ~/.dureclaw/mesh/mesh.sh join-code --bus ws://<서버 사설망 IP>:4000 [--ttl 1h] [--reusable]`로 발급합니다.
+
+### 노드
+
+```bash
+JOIN=dcj1:… bash <(curl -fsSL https://dureclaw.baryon.ai/agent)
+```
+
+이 명령은 다음을 차례로 처리합니다: Tailscale 클라이언트 설치(없으면) → 자체 망 합류 → 코드에 든 버스 주소로 에이전트 접속 → 키 없이 자동 승인.
+이 컴퓨터가 이미 다른 Tailscale 망(예: 공식 계정)에 연결돼 있으면 덮어쓰지 않고 멈춥니다. 옮기려면 `MESH_FORCE=1`을 붙이세요(기존 망 연결이 끊깁니다).
+
+### 검증 범위와 주의
+
+- **CI에서 자동 검증**(`.github/workflows/e2e.yml`의 `mesh`, `mesh-docker` 잡)
+  - 서버 자기 합류 → 다른 기기 역할의 컨테이너가 코드로 합류 → 사설망 주소로 작업 실행 → 사설망 주소에서 키리스 자동 승인
+  - 외부 중계 없이 직접 연결
+  - 실제 설치 명령(`JOIN=… setup-agent.sh`) 경로 포함
+- **아직 검증하지 않음**
+  - 지점 간(HTTPS·도메인) 모드
+  - Mac 서버 앱·Windows 노드
+  - 실제 다지점 NAT 환경
+- **사내망 모드의 연결 조건**: 중계가 없으므로 노드와 서버가 UDP로 서로 직접 닿아야 합니다. 방화벽이 막혀 있으면 `MESH_PUBLIC_DERP=1` 또는 지점 간 모드를 쓰세요.
