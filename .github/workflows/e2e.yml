@@ -308,6 +308,7 @@ jobs:
 
       - name: mesh-docker.sh up
         run: |
+          set -o pipefail
           BRIDGE=$(ip -4 addr show docker0 | awk '/inet /{print $2}' | cut -d/ -f1)
           MESH_URL=http://$BRIDGE:8080 scripts/mesh-docker.sh up | tee /tmp/up.out
           CODE=$(grep -oE 'dcj1:[A-Za-z0-9_-]+' /tmp/up.out | tail -1)
@@ -322,6 +323,7 @@ jobs:
           docker exec node bash -c 'curl -fsSL https://tailscale.com/install.sh | sh >/dev/null 2>&1; (tailscaled --state=/var/lib/tailscale/tailscaled.state > /tmp/tailscaled.log 2>&1 &) ; sleep 3'
           docker exec node bash -c 'scripts/mesh.sh join "$CODE" | tee /tmp/join.out'
           BUS=$(docker exec node sed -n 's/^PHOENIX=//p' /tmp/join.out)
+          [ -n "$BUS" ] || { echo "::error::join output has no bus address"; exit 1; }
           HTTP=${BUS/ws:/http:}
           docker exec node bun install >/dev/null
           docker exec -d node bash -c "STATE_SERVER=$BUS AGENT_ROLE=builder AGENT_NAME=builder@docker-mesh-node HOME=/tmp/n bun packages/agent-daemon/src/index.ts > /tmp/agent.log 2>&1"

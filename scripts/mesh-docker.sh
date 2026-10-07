@@ -14,10 +14,11 @@ export MESH_CONTAINER_DIR=/var/lib/dureclaw-mesh
 export MESH_HS="${COMPOSE[*]} exec -T headscale headscale -c $MESH_CONTAINER_DIR/config.yaml"
 MESH="scripts/mesh.sh"
 
+# 서버 다리의 사설망 주소 → 버스 주소. 준비 전이면 return 1 (exit 하면 대기 루프째 스크립트가 끝난다)
 _bus() {
   local ip
   ip="$("${COMPOSE[@]}" exec -T mesh-node tailscale ip -4 2>/dev/null | tr -d '\r' | head -1 || true)"
-  [[ "$ip" == 100.* ]] || { echo "mesh-docker: 서버가 아직 사설망에 합류하지 않았습니다" >&2; exit 1; }
+  [[ "$ip" == 100.* ]] || { echo "mesh-docker: 서버가 아직 사설망에 합류하지 않았습니다" >&2; return 1; }
   echo "ws://$ip:4000"
 }
 
@@ -45,15 +46,16 @@ case "${1:-}" in
     key="$(bash "$MESH" join-code --ttl 10m | sed 's/^dcj1://' | python3 -c 'import base64,json,sys; s=sys.stdin.read().strip(); s+="="*(-len(s)%4); print(json.loads(base64.urlsafe_b64decode(s))["key"])')"
     TS_AUTHKEY="$key" MESH_LOGIN_URL="$login" "${COMPOSE[@]}" up -d mesh-node
     for _ in $(seq 1 60); do _bus >/dev/null 2>&1 && break; sleep 2; done
-    "${COMPOSE[@]}" up -d dureclaw
-    bus="$(_bus)"
+    bus="$(_bus)" || { "${COMPOSE[@]}" logs --tail 40 mesh-node >&2; exit 1; }
+    "${COMPOSE[@]}" up -d --build dureclaw
+    for _ in $(seq 1 90); do "${COMPOSE[@]}" exec -T dureclaw curl -sf http://localhost:4000/api/health >/dev/null 2>&1 && break; sleep 2; done
     echo ""
     echo "━━━ 자체 사설망 준비 완료 — 버스: $bus"
     echo " 노드 연결 코드 (24시간 · 여러 대):"
     echo "   $(bash "$MESH" join-code --ttl 24h --reusable --bus "$bus")"
     echo " 노드: JOIN=<코드> bash <(curl -fsSL https://dureclaw.baryon.ai/agent)"
     ;;
-  code) shift; bash "$MESH" join-code --bus "$(_bus)" "$@" ;;
+  code) shift; bus="$(_bus)" || exit 1; bash "$MESH" join-code --bus "$bus" "$@" ;;
   nodes) $MESH_HS nodes list ;;
   down) "${COMPOSE[@]}" down ;;
   *) sed -n '2,8p' "$0"; exit 1 ;;
