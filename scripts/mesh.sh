@@ -294,8 +294,9 @@ cmd_decode() {
 _tailscale_bin() {
   command -v tailscale 2>/dev/null && return
   for p in /Applications/Tailscale.app/Contents/MacOS/Tailscale /usr/local/bin/tailscale /opt/homebrew/bin/tailscale; do
-    [[ -x "$p" ]] && { echo "$p"; return; }
+    [[ -x "$p" ]] && { echo "$p"; return 0; }
   done
+  return 0   # 못 찾으면 빈 출력 — 함수 끝이 [[ ]] && 로 끝나 1 을 돌리면 set -e 로 죽는다
 }
 
 _sudo() { if [[ $EUID -eq 0 ]]; then "$@"; else sudo "$@"; fi; }

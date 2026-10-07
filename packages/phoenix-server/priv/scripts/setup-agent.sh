@@ -244,7 +244,9 @@ _persist_env_to_rc() {
       echo "export OAH_ROLE=\"$role\""
       echo "export OAH_NAME=\"$name\""
       echo "export OAH_DIR=\"$dir\""
-      [[ -n "$wk" ]] && echo "export OAH_WK=\"$wk\""
+      # 마지막 줄이 [[ ]] && 이면 WK 가 비었을 때 묶음 전체가 1 을 돌려 set -e 로 스크립트가
+      # 조용히 끝났다(에이전트 미실행) — if 로 쓴다
+      if [[ -n "$wk" ]]; then echo "export OAH_WK=\"$wk\""; fi
     } >> "$primary_rc"
   fi
 }
