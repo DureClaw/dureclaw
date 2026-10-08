@@ -10,6 +10,7 @@
 ;
 ; 무인 설치 (대량 배포):
 ;   DureClaw-Agent-Setup.exe /VERYSILENT /SERVER=ws://100.64.0.1:4000 /ROLE=builder [/NAME=...] [/BRAIN=http://...]
+;   자체 사설망(Headscale): /JOIN=dcj1:... [/MESHFORCE=1]  — Tailscale 설치·합류 후 코드의 버스 주소로 연결
 
 #ifndef AppVersion
   #define AppVersion "0.0.0-dev"
@@ -55,6 +56,7 @@ Source: "oah-agent.exe";      DestDir: "{app}"; Flags: ignoreversion
 Source: "DureClaw.exe";       DestDir: "{app}"; Flags: ignoreversion
 Source: "DureClawTray.ps1";   DestDir: "{app}"; Flags: ignoreversion
 Source: "dureclaw.ico";       DestDir: "{app}"; Flags: ignoreversion
+Source: "MeshJoin.ps1";       DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{autoprograms}\DureClaw Agent";          Filename: "{app}\DureClaw.exe"; IconFilename: "{app}\dureclaw.ico"
@@ -81,6 +83,7 @@ Type: filesandordirs; Name: "{localappdata}\DureClaw\logs"
 var
   ConnPage: TInputQueryWizardPage;
   ExistingCfg: TStringList;
+  MeshBus: String;
 
 function ConfigPath(): String;
 begin
@@ -167,11 +170,13 @@ begin
   ConnPage.Add('역할 (builder / tester / executor / reviewer ...):', False);
   ConnPage.Add('노드 이름 (비우면 역할@' + GetComputerNameString() + '):', False);
   ConnPage.Add('브레인 URL (선택 — AI 작업을 마스터에 위임할 때):', False);
+  ConnPage.Add('노드 연결 코드 (선택 — 자체 사설망을 쓸 때, dcj1:… 붙여넣기):', False);
 
   ConnPage.Values[0] := ParamOrCfg('SERVER', 'PHOENIX', '');
   ConnPage.Values[1] := ParamOrCfg('ROLE', 'ROLE', 'builder');
   ConnPage.Values[2] := ParamOrCfg('NAME', 'NAME', '');
   ConnPage.Values[3] := ParamOrCfg('BRAIN', 'BRAIN_URL', '');
+  ConnPage.Values[4] := ExpandConstant('{param:JOIN|}');
 end;
 
 function NextButtonClick(CurPageID: Integer): Boolean;
@@ -184,7 +189,14 @@ begin
     Server := NormalizeServer(ConnPage.Values[0]);
     ConnPage.Values[0] := Server;
     if Trim(ConnPage.Values[1]) = '' then ConnPage.Values[1] := 'builder';
-    if (Server <> '') and not ServerReachable(Server) then
+    if (Trim(ConnPage.Values[4]) <> '') and (Pos('dcj1:', Trim(ConnPage.Values[4])) <> 1) then
+    begin
+      MsgBox('노드 연결 코드는 dcj1: 로 시작해야 합니다.', mbError, MB_OK);
+      Result := False;
+      Exit;
+    end;
+    { 연결 코드를 쓰면 사설망 합류 전이라 서버 주소 도달성 검사는 건너뛴다 }
+    if (Server <> '') and (Trim(ConnPage.Values[4]) = '') and not ServerReachable(Server) then
       Result := MsgBox('서버에 연결할 수 없습니다:' + #13#10 + HealthUrl(Server) + #13#10#13#10 +
         '주소가 맞는지, 이 PC가 같은 네트워크/Tailscale에 있는지 확인해 주세요.' + #13#10 +
         '그래도 이 주소로 계속 설치할까요? (나중에 서버가 켜지면 자동으로 연결됩니다)',
@@ -215,6 +227,74 @@ begin
   Result := '';
 end;
 
+{ join-result.txt 의 KEY= 값 }
+function ResultValue(Lines: TArrayOfString; Key: String): String;
+var
+  I: Integer;
+begin
+  Result := '';
+  for I := 0 to GetArrayLength(Lines) - 1 do
+    if Pos(Key + '=', Lines[I]) = 1 then
+      Result := Copy(Lines[I], Length(Key) + 2, Length(Lines[I]));
+end;
+
+{ MeshJoin.ps1 을 관리자 권한(UAC)으로 실행하고 종료 코드를 돌려준다 (결과 파일은 원래 사용자 폴더) }
+function RunMeshJoin(Code: String; Force: Boolean; var Msg: String): Integer;
+var
+  RC: Integer;
+  Params, ResultFile: String;
+  Lines: TArrayOfString;
+begin
+  ResultFile := ExpandConstant('{%USERPROFILE}\.dureclaw\mesh\join-result.txt');
+  ForceDirectories(ExtractFileDir(ResultFile));
+  DeleteFile(ResultFile);
+  Params := '-NoProfile -ExecutionPolicy Bypass -File "' + ExpandConstant('{app}\MeshJoin.ps1') + '"' +
+    ' -Code "' + Code + '" -ResultFile "' + ResultFile + '" -HostName "' + GetComputerNameString() + '"';
+  if Force then Params := Params + ' -Force';
+  if not ShellExec('runas', ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'), Params, '',
+                   SW_HIDE, ewWaitUntilTerminated, RC) then
+  begin
+    Msg := '관리자 권한으로 실행하지 못했습니다 (UAC 취소?)';
+    Result := 4;
+    Exit;
+  end;
+  if LoadStringsFromFile(ResultFile, Lines) then
+  begin
+    Result := StrToIntDef(ResultValue(Lines, 'EXIT'), 4);
+    Msg := ResultValue(Lines, 'MESSAGE');
+    MeshBus := ResultValue(Lines, 'PHOENIX');
+  end else begin
+    Result := 4;
+    Msg := '합류 결과를 읽지 못했습니다';
+  end;
+end;
+
+procedure JoinMeshIfRequested();
+var
+  Code, Msg: String;
+  RC: Integer;
+  Force: Boolean;
+begin
+  Code := Trim(ConnPage.Values[4]);
+  if Code = '' then Exit;
+  Force := ExpandConstant('{param:MESHFORCE|0}') <> '0';
+  RC := RunMeshJoin(Code, Force, Msg);
+  if (RC = 3) and not WizardSilent() then
+  begin
+    if MsgBox(Msg + #13#10#13#10 + '자체 망으로 전환할까요? 기존 망은 Tailscale 프로필로 남고, ' +
+              '트레이 메뉴의 ‘원래 망으로 돌아가기’로 되돌릴 수 있습니다.', mbConfirmation, MB_YESNO) = IDYES then
+      RC := RunMeshJoin(Code, True, Msg);
+  end;
+  if RC <> 0 then
+  begin
+    Log('mesh join failed: ' + Msg);
+    if not WizardSilent() then
+      MsgBox('자체 사설망 합류에 실패했습니다:' + #13#10 + Msg + #13#10#13#10 +
+             '설치는 계속되며, 서버 주소로 직접 연결을 시도합니다.', mbError, MB_OK);
+  end else
+    Log('mesh join ok: ' + Msg + ' bus=' + MeshBus);
+end;
+
 procedure WriteConfig();
 var
   Lines: TArrayOfString;
@@ -223,7 +303,11 @@ begin
   Dir := ExpandConstant('{%USERPROFILE}\.oah');
   ForceDirectories(Dir);
   SetArrayLength(Lines, 8);
-  Lines[0] := 'PHOENIX=' + NormalizeServer(ConnPage.Values[0]);
+  { 서버 주소를 비우고 연결 코드를 썼다면, 코드에 든 버스 주소(사설망)로 연결 }
+  if (Trim(ConnPage.Values[0]) = '') and (MeshBus <> '') then
+    Lines[0] := 'PHOENIX=' + MeshBus
+  else
+    Lines[0] := 'PHOENIX=' + NormalizeServer(ConnPage.Values[0]);
   Lines[1] := 'ROLE=' + Trim(ConnPage.Values[1]);
   Lines[2] := 'NAME=' + Trim(ConnPage.Values[2]);
   Lines[3] := 'BRAIN_URL=' + Trim(ConnPage.Values[3]);
@@ -237,7 +321,11 @@ end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
-  if CurStep = ssPostInstall then WriteConfig();
+  if CurStep = ssPostInstall then
+  begin
+    JoinMeshIfRequested();
+    WriteConfig();
+  end;
 end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);

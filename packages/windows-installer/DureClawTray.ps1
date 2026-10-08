@@ -214,6 +214,7 @@ $miDash     = $menu.Items.Add("대시보드 열기")
 $miLog      = $menu.Items.Add("로그 보기")
 $miRestart  = $menu.Items.Add("다시 연결")
 $miSettings = $menu.Items.Add("설정...")
+$miLeave    = $menu.Items.Add("원래 망으로 돌아가기 (자체 망 해제)")
 [void]$menu.Items.Add((New-Object System.Windows.Forms.ToolStripSeparator))
 $miQuit     = $menu.Items.Add("종료 (연결 끊기)")
 $tray.ContextMenuStrip = $menu
@@ -296,6 +297,18 @@ function Quit-Tray {
 $miLog.add_Click({ if (Test-Path $AgentLog) { Start-Process notepad.exe $AgentLog } else { Start-Process explorer.exe $LogDir } })
 $miRestart.add_Click({ Restart-Agent })
 $miSettings.add_Click({ Show-Settings })
+$miLeave.add_Click({
+    # 자체 사설망 합류 전의 Tailscale 프로필로 복귀 (관리자 권한 필요 → UAC)
+    $script = Join-Path $AppDir "MeshJoin.ps1"
+    $result = Join-Path $env:USERPROFILE ".dureclaw\mesh\join-result.txt"
+    try {
+        $p = Start-Process powershell.exe -Verb RunAs -WindowStyle Hidden -Wait -PassThru `
+            -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$script`" -Leave -ResultFile `"$result`""
+        $msg = (Get-Content $result -Encoding UTF8 | Where-Object { $_ -like "MESSAGE=*" }) -replace '^MESSAGE=', ''
+        $tray.ShowBalloonTip(5000, "DureClaw", "$msg", [System.Windows.Forms.ToolTipIcon]::Info)
+        Write-TrayLog "leave mesh: exit=$($p.ExitCode) $msg"
+    } catch { Write-TrayLog "leave mesh cancelled: $_" }
+})
 $miQuit.add_Click({ Quit-Tray })
 $miDash.add_Click({
     if ($script:Server) {

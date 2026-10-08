@@ -6,6 +6,7 @@ on:
     paths:
       - "web/**"
       - "scripts/**"
+      - "packages/windows-installer/MeshJoin.ps1"
   workflow_dispatch:
 
 permissions:
@@ -54,6 +55,8 @@ jobs:
           cp scripts/setup-mcp.sh    web/mcp
           # dureclaw.baryon.ai/mesh      → mesh.sh (자체 사설망 Headscale 도구)
           cp scripts/mesh.sh          web/mesh
+          # dureclaw.baryon.ai/mesh-join.ps1 → Windows 노드 자체 망 합류 (setup-agent.ps1 의 JOIN 이 사용)
+          cp packages/windows-installer/MeshJoin.ps1 web/mesh-join.ps1
           # dureclaw.baryon.ai/agent.ps1 → setup-agent.ps1 (Windows PowerShell)
           cp scripts/setup-agent.ps1 web/agent.ps1
           # dureclaw.baryon.ai/agent.bat → setup-agent.bat (Windows CMD)

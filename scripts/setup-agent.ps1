@@ -1,4 +1,4 @@
-# oah-agent — DureClaw Windows Agent Setup (PowerShell)
+﻿# oah-agent — DureClaw Windows Agent Setup (PowerShell)
 #
 # 사용법 (원라이너):
 #   $env:PHOENIX="ws://192.168.1.10:4000"; $env:ROLE="builder"; iex (irm https://dureclaw.baryon.ai/agent.ps1)
@@ -26,6 +26,29 @@ $JS_BUNDLE  = "$HOME\.oah-agent.js"
 $OAH_CONFIG = "$OAH_DIR\config"
 
 New-Item -ItemType Directory -Force -Path $OAH_DIR | Out-Null
+
+# ── 자체 사설망 합류 (서버가 발급한 노드 연결 코드) ──────────────────────────
+#   $env:JOIN="dcj1:..."; iex (irm https://dureclaw.baryon.ai/agent.ps1)
+#   $env:MESH_FORCE="1" : 이미 다른 Tailscale 망에 있어도 새 프로필로 자체 망에 합류
+if ($env:JOIN) {
+    Write-Host "-> joining the self-hosted mesh (node join code)..."
+    $mj = "$env:TEMP\dureclaw-mesh-join.ps1"
+    Invoke-WebRequest "$OAH_BASE/mesh-join.ps1" -OutFile $mj -UseBasicParsing
+    $res = Join-Path $env:USERPROFILE ".dureclaw\mesh\join-result.txt"
+    $mjArgs = "-NoProfile -ExecutionPolicy Bypass -File `"$mj`" -Code `"$env:JOIN`" -ResultFile `"$res`""
+    if ($env:MESH_FORCE -eq "1") { $mjArgs += " -Force" }
+    # Tailscale 설치·제어에는 관리자 권한이 필요 → UAC 확인
+    $p = Start-Process powershell.exe -Verb RunAs -Wait -PassThru -ArgumentList $mjArgs
+    $lines = Get-Content $res -Encoding UTF8 -ErrorAction SilentlyContinue
+    $msg = ($lines | Where-Object { $_ -like "MESSAGE=*" }) -replace '^MESSAGE=', ''
+    Write-Host "-> $msg"
+    if ($p.ExitCode -ne 0) {
+        if ($p.ExitCode -eq 3) { Write-Host "   set `$env:MESH_FORCE=`"1`" to switch (the current network stays as a Tailscale profile)." }
+        exit 1
+    }
+    $bus = ($lines | Where-Object { $_ -like "PHOENIX=*" }) -replace '^PHOENIX=', ''
+    if (-not $Phoenix -and $bus) { $Phoenix = $bus; Write-Host "-> bus (from code): $Phoenix" }
+}
 
 # ── Discover server (zero-config) ─────────────────────────────────────────────
 # No $PHOENIX given → auto-find: (1) mDNS oah.local on the LAN,
