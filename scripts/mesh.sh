@@ -375,7 +375,7 @@ except Exception: print("")')"
     fi
     mkdir -p "$MESH_DIR"
     # 되돌아갈 프로필 ID 를 기록 (tailscale switch 는 ID 를 받는다)
-    "$ts" switch --list --json 2>/dev/null | python3 -c 'import json,sys
+    _sudo "$ts" switch --list --json 2>/dev/null | python3 -c 'import json,sys
 for p in json.load(sys.stdin):
     if p.get("selected"): print(p["id"] + "\t" + p.get("tailnet",""))' > "$MESH_DIR/previous-profile" || true
     info "기존 망(${cur_net:-$cur_url})은 프로필로 남겨 두고, 새 프로필로 자체 망에 합류합니다"
@@ -400,11 +400,11 @@ cmd_leave() {
   if [[ -f "$MESH_DIR/previous-profile" ]]; then
     prev="$(cut -f1 "$MESH_DIR/previous-profile")"; prev_name="$(cut -f2 "$MESH_DIR/previous-profile")"
   fi
-  [[ -n "$prev" ]] || { "$ts" switch --list >&2 || true; die "되돌아갈 망 기록이 없습니다 — 위 목록의 ID 로 tailscale switch <ID>"; }
+  [[ -n "$prev" ]] || { _sudo "$ts" switch --list >&2 || true; die "되돌아갈 망 기록이 없습니다 — 위 목록의 ID 로 tailscale switch <ID>"; }
   info "원래 망으로 전환: ${prev_name:-$prev} (프로필 $prev)"
   _sudo "$ts" switch "$prev" >&2
   rm -f "$MESH_DIR/previous-profile"
-  "$ts" status --json 2>/dev/null | python3 -c 'import json,sys
+  _sudo "$ts" status --json 2>/dev/null | python3 -c 'import json,sys
 d=json.load(sys.stdin); print("현재 망:", (d.get("CurrentTailnet") or {}).get("Name",""), d.get("BackendState",""))' >&2 || true
 }
 
