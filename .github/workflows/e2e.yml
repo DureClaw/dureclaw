@@ -312,11 +312,15 @@ jobs:
           # 2) --force: 새 프로필로 B 에 합류 (A 프로필은 남는다)
           scripts/mesh.sh join "$CODE_B" --force --hostname dureclaw-server-b
           [ "$(ctl)" = "http://$BRIDGE:8081" ] && echo "joined B as a new profile ✓"
+          echo "--- on B:"; sudo tailscale ip -4
           sudo tailscale switch --list
           [ "$(sudo tailscale switch --list | tail -n +2 | wc -l)" -ge 2 ] && echo "previous profile kept ✓"
           # 3) leave: A 로 복귀
           scripts/mesh.sh leave
           [ "$(ctl)" = "$A" ] && echo "back on A ✓"
+          echo "--- after leave:"; sudo tailscale ip -4; sudo tailscale status || true
+          ip -4 addr show tailscale0 || true
+          curl -s -m 5 http://$SERVER_IP:4000/api/health || echo "(server not reachable on $SERVER_IP yet)"
           # 망을 잠시 떠났다 오면 기존 연결은 끊긴다 — 노드가 스스로 다시 붙을 때까지 기다린다
           # (에이전트의 하트비트 감시가 끊김을 감지해 재접속, 최대 ~90초)
           for i in $(seq 1 60); do NOW=$(since); [ -n "$NOW" ] && [ "$NOW" != "$BEFORE" ] && break; sleep 3; done
