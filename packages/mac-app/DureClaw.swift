@@ -51,6 +51,72 @@ func readSecret() -> String? {
     return t.isEmpty ? nil : t
 }
 
+// MARK: - Self-hosted mesh (Headscale)
+//
+// 공식 Tailscale 계정 대신, 앱에 들어 있는 오픈소스 Headscale 을 이 Mac 에서 띄운다.
+// 실제 동작은 번들한 scripts/mesh.sh 가 맡는다 (Linux 서버·Docker 와 같은 도구).
+
+enum Mesh {
+    static let dir = Paths.home.appendingPathComponent(".dureclaw/mesh")
+    static var bundled: URL { Bundle.main.resourceURL!.appendingPathComponent("mesh") }
+    static var script: URL { bundled.appendingPathComponent("mesh.sh") }
+    static var enabledFlag: URL { Paths.base.appendingPathComponent("mesh.enabled") }
+    static var publicDerpFlag: URL { Paths.base.appendingPathComponent("mesh.public-derp") }
+    static var configFile: URL { dir.appendingPathComponent("config.yaml") }
+
+    static var available: Bool { FileManager.default.fileExists(atPath: script.path) }
+    static var enabled: Bool { FileManager.default.fileExists(atPath: enabledFlag.path) }
+    static var publicDerp: Bool { FileManager.default.fileExists(atPath: publicDerpFlag.path) }
+
+    /// config.yaml 의 server_url (제어 서버 주소)
+    static var serverURL: String? {
+        guard let text = try? String(contentsOf: configFile, encoding: .utf8) else { return nil }
+        for line in text.split(separator: "\n") where line.hasPrefix("server_url: ") {
+            return String(line.dropFirst("server_url: ".count))
+        }
+        return nil
+    }
+
+    /// mesh.sh 실행 → (종료 코드, stdout, stderr)
+    @discardableResult
+    static func run(_ args: [String]) -> (code: Int32, out: String, err: String) {
+        let fm = FileManager.default
+        // 번들의 headscale 을 MESH_DIR/bin 으로 (mesh.sh 가 그 경로를 쓴다)
+        let bin = dir.appendingPathComponent("bin/headscale")
+        if !fm.fileExists(atPath: bin.path) {
+            try? fm.createDirectory(at: bin.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try? fm.copyItem(at: bundled.appendingPathComponent("headscale"), to: bin)
+        }
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/bin/bash")
+        p.arguments = [script.path] + args
+        var env = ProcessInfo.processInfo.environment
+        env["MESH_DIR"] = dir.path
+        env["PATH"] = "/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/usr/local/bin:/Applications/Tailscale.app/Contents/MacOS"
+        p.environment = env
+        let o = Pipe(), e = Pipe()
+        p.standardOutput = o
+        p.standardError = e
+        do { try p.run() } catch { return (127, "", "\(error)") }
+        let outData = o.fileHandleForReading.readDataToEndOfFile()
+        let errData = e.fileHandleForReading.readDataToEndOfFile()
+        p.waitUntilExit()
+        let trim = { (d: Data) in (String(data: d, encoding: .utf8) ?? "").trimmingCharacters(in: .whitespacesAndNewlines) }
+        return (p.terminationStatus, trim(outData), trim(errData))
+    }
+
+    /// 이 Mac 의 Tailscale 이 지금 자체 망 제어 서버에 붙어 있으면 그 사설망 IP
+    static func thisMacMeshIP() -> String? {
+        guard let url = serverURL else { return nil }
+        let ts = "/Applications/Tailscale.app/Contents/MacOS/Tailscale"
+        guard let prefs = runCapture(ts, ["debug", "prefs"]),
+              let data = prefs.data(using: .utf8),
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              (obj["ControlURL"] as? String) == url else { return nil }
+        return tailscaleIP()
+    }
+}
+
 // MARK: - Network helpers
 
 /// 127.0.0.1:port 에 TCP 연결이 되면 누군가 이미 듣고 있는 것.
@@ -135,6 +201,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var restarting = false
     private var externalServer = false
     private var workKeyEnsured = false
+    private var meshStatusItem: NSMenuItem!
+    private var meshToggleItem: NSMenuItem!
+    private var meshDerpItem: NSMenuItem!
     private let port = configuredPort()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -146,11 +215,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         pollTimer = Timer.scheduledTimer(withTimeInterval: 4, repeats: true) { [weak self] _ in self?.poll() }
         poll()
         showWelcomeOnce()
+        if Mesh.available && Mesh.enabled { DispatchQueue.global().async { self.meshStart(silent: true) } }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         quitting = true
         stopServer()
+        // 앱을 끄면 자체 망 제어 서버도 함께 멈춘다 (다음 실행 때 '켜짐'이었으면 다시 켠다)
+        if Mesh.available && Mesh.enabled { Mesh.run(["stop"]) }
     }
 
     // MARK: Menu
@@ -177,6 +249,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(item("Windows 설치 프로그램 다운로드", #selector(openWindowsDownload)))
         menu.addItem(item("Linux/Mac 노드 추가 명령 복사", #selector(copyAgentCommand)))
         menu.addItem(item("Claude Code 연결 명령 복사", #selector(copyClaudeCommand)))
+        if Mesh.available {
+            menu.addItem(.separator())
+            let meshMenu = NSMenu()
+            meshStatusItem = NSMenuItem(title: "꺼짐", action: nil, keyEquivalent: "")
+            meshStatusItem.isEnabled = false
+            meshMenu.addItem(meshStatusItem)
+            meshMenu.addItem(.separator())
+            meshToggleItem = item("자체 망 켜기", #selector(toggleMesh))
+            meshMenu.addItem(meshToggleItem)
+            meshMenu.addItem(item("노드 연결 코드 복사", #selector(copyJoinCode)))
+            meshMenu.addItem(.separator())
+            meshMenu.addItem(item("이 Mac을 자체 망에 합류 (망 전환)…", #selector(joinThisMac)))
+            meshMenu.addItem(item("원래 망으로 돌아가기", #selector(leaveMesh)))
+            meshMenu.addItem(.separator())
+            meshDerpItem = item("외부 중계 허용 (NAT 너머 연결)", #selector(toggleDerp))
+            meshMenu.addItem(meshDerpItem)
+            let parent = NSMenuItem(title: "자체 사설망 (Headscale)", action: nil, keyEquivalent: "")
+            parent.submenu = meshMenu
+            menu.addItem(parent)
+            menu.delegate = self
+        }
         menu.addItem(.separator())
         menu.addItem(item("로그 보기", #selector(openLog), "l"))
         menu.addItem(item("서버 재시작", #selector(restartServer), "r"))
@@ -400,6 +493,136 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         copy(cmd, "Claude Code 연결(MCP 등록) 명령을 복사했습니다 — 터미널에 붙여 넣으세요", display: shown)
     }
 
+    // MARK: Self-hosted mesh actions
+
+    private func alert(_ title: String, _ text: String) {
+        DispatchQueue.main.async {
+            let a = NSAlert()
+            a.messageText = title
+            a.informativeText = text
+            a.addButton(withTitle: "확인")
+            NSApp.activate(ignoringOtherApps: true)
+            a.runModal()
+        }
+    }
+
+    private func refreshMesh() {
+        guard Mesh.available else { return }
+        let running = Mesh.run(["status"]).code == 0
+        let url = Mesh.serverURL ?? ""
+        let macIP = Mesh.thisMacMeshIP()
+        DispatchQueue.main.async {
+            self.meshToggleItem.title = running ? "자체 망 끄기" : "자체 망 켜기"
+            self.meshDerpItem.state = Mesh.publicDerp ? .on : .off
+            if running {
+                self.meshStatusItem.title = "● 켜짐 · \(url)" + (macIP.map { " · 이 Mac \($0)" } ?? " · 이 Mac 미합류")
+            } else {
+                self.meshStatusItem.title = "꺼짐"
+            }
+        }
+    }
+
+    /// 제어 서버 시작 (설정이 없으면 이 Mac 의 LAN 주소로 사내망 모드 설정을 만든다)
+    private func meshStart(silent: Bool = false) {
+        if !FileManager.default.fileExists(atPath: Mesh.configFile.path) {
+            guard let ip = lanIP() else { if !silent { alert("자체 망을 켤 수 없습니다", "이 Mac의 LAN 주소를 찾지 못했습니다.") }; return }
+            var args = ["init", "--url", "http://\(ip):8080"]
+            if Mesh.publicDerp { args.append("--public-derp") }
+            let r = Mesh.run(args)
+            guard r.code == 0 else { if !silent { alert("자체 망 설정 실패", r.err) }; return }
+        }
+        let r = Mesh.run(["start"])
+        if r.code == 0 {
+            FileManager.default.createFile(atPath: Mesh.enabledFlag.path, contents: nil)
+        } else if !silent {
+            alert("자체 망을 시작하지 못했습니다", r.err)
+        }
+        refreshMesh()
+    }
+
+    @objc private func toggleMesh() {
+        DispatchQueue.global().async {
+            if Mesh.run(["status"]).code == 0 {
+                Mesh.run(["stop"])
+                try? FileManager.default.removeItem(at: Mesh.enabledFlag)
+                self.refreshMesh()
+            } else {
+                self.meshStart()
+            }
+        }
+    }
+
+    @objc private func toggleDerp() {
+        DispatchQueue.global().async {
+            let fm = FileManager.default
+            if Mesh.publicDerp { try? fm.removeItem(at: Mesh.publicDerpFlag) }
+            else { fm.createFile(atPath: Mesh.publicDerpFlag.path, contents: nil) }
+            // 설정을 다시 만들고(노드 DB 는 유지) 켜져 있었다면 재시작
+            if let url = Mesh.serverURL {
+                var args = ["init", "--url", url, "--force"]
+                if Mesh.publicDerp { args.append("--public-derp") }
+                Mesh.run(args)
+                if Mesh.run(["status"]).code == 0 { Mesh.run(["stop"]); self.meshStart() }
+            }
+            self.refreshMesh()
+        }
+    }
+
+    @objc private func copyJoinCode() {
+        DispatchQueue.global().async {
+            guard Mesh.run(["status"]).code == 0 else {
+                self.alert("자체 망이 꺼져 있습니다", "먼저 '자체 망 켜기'를 눌러 주세요."); return
+            }
+            guard let ip = Mesh.thisMacMeshIP() else {
+                self.alert("이 Mac이 아직 자체 망에 없습니다",
+                           "노드가 이 Mac의 버스에 사설망으로 붙으려면, 먼저 '이 Mac을 자체 망에 합류'를 눌러 주세요.")
+                return
+            }
+            let r = Mesh.run(["join-code", "--ttl", "24h", "--reusable", "--bus", "ws://\(ip):\(self.port)"])
+            guard r.code == 0, !r.out.isEmpty else { self.alert("연결 코드 발급 실패", r.err); return }
+            DispatchQueue.main.async {
+                self.copy(r.out, "노드 연결 코드를 복사했습니다 (24시간 · 여러 대)",
+                          display: "Windows: 설치 마법사의 '노드 연결 코드' 칸에 붙여 넣기\n" +
+                                   "Linux·Mac: JOIN=<코드> bash <(curl -fsSL https://dureclaw.baryon.ai/agent)\n\n" +
+                                   String(r.out.prefix(24)) + "…")
+            }
+        }
+    }
+
+    @objc private func joinThisMac() {
+        let a = NSAlert()
+        a.messageText = "이 Mac을 자체 망으로 전환할까요?"
+        a.informativeText = """
+        지금 연결된 Tailscale 망(예: 공식 계정)은 프로필로 그대로 남고, 새 프로필로 자체 망에 합류합니다.
+        전환하는 동안 기존 망의 다른 기기와는 연결되지 않습니다.
+        '원래 망으로 돌아가기'로 언제든 되돌릴 수 있습니다.
+        """
+        a.addButton(withTitle: "전환")
+        a.addButton(withTitle: "취소")
+        NSApp.activate(ignoringOtherApps: true)
+        guard a.runModal() == .alertFirstButtonReturn else { return }
+        DispatchQueue.global().async {
+            if Mesh.run(["status"]).code != 0 { self.meshStart() }
+            let code = Mesh.run(["join-code", "--ttl", "10m"])
+            guard code.code == 0 else { self.alert("가입 키 발급 실패", code.err); return }
+            let r = Mesh.run(["join", code.out, "--force", "--hostname", "dureclaw-server"])
+            if r.code == 0 {
+                self.alert("자체 망에 합류했습니다", r.err.split(separator: "\n").last.map(String.init) ?? "")
+            } else {
+                self.alert("합류하지 못했습니다", r.err)
+            }
+            self.refreshMesh()
+        }
+    }
+
+    @objc private func leaveMesh() {
+        DispatchQueue.global().async {
+            let r = Mesh.run(["leave"])
+            self.alert(r.code == 0 ? "원래 망으로 돌아갔습니다" : "되돌리지 못했습니다", r.err)
+            self.refreshMesh()
+        }
+    }
+
     @objc private func openLog() {
         if FileManager.default.fileExists(atPath: Paths.log.path) {
             NSWorkspace.shared.open(Paths.log)
@@ -463,6 +686,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
            !FileManager.default.fileExists(atPath: Paths.launchAgent.path) {
             toggleLogin()
         }
+    }
+}
+
+extension AppDelegate: NSMenuDelegate {
+    func menuWillOpen(_ menu: NSMenu) {
+        DispatchQueue.global().async { self.refreshMesh() }
     }
 }
 

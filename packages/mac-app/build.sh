@@ -91,6 +91,18 @@ LEFT=$(find "$SERVER" -type f \( -name "*.so" -o -name "*.dylib" \) -exec otool 
 [[ -z "$LEFT" ]] || { echo "unbundled dylib refs remain:"; echo "$LEFT"; exit 1; }
 ls "$DYLIBS"
 
+echo "→ bundle self-hosted mesh (Headscale v${HEADSCALE_VERSION:-0.29.4} + mesh.sh)"
+# 자체 사설망: 오픈소스 Tailscale 제어 서버 Headscale 을 앱이 직접 띄운다 (메뉴 '자체 사설망')
+MESHB="$APP/Contents/Resources/mesh"
+mkdir -p "$MESHB"
+HS_VER="${HEADSCALE_VERSION:-0.29.4}"
+HS_CACHE="$DIST/headscale_${HS_VER}_darwin_arm64"
+[[ -f "$HS_CACHE" ]] || curl -fsSL -o "$HS_CACHE" \
+  "https://github.com/juanfont/headscale/releases/download/v${HS_VER}/headscale_${HS_VER}_darwin_arm64"
+cp "$HS_CACHE" "$MESHB/headscale" && chmod +x "$MESHB/headscale"
+cp "$ROOT/scripts/mesh.sh" "$MESHB/mesh.sh" && chmod +x "$MESHB/mesh.sh"
+"$MESHB/headscale" version | head -1
+
 echo "→ ad-hoc codesign"
 codesign --force --deep -s - "$APP"
 codesign --verify --deep "$APP"

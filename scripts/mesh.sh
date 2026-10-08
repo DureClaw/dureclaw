@@ -70,6 +70,10 @@ cmd_install() {
   "$BIN" version | head -1 >&2
 }
 
+_free_port() {
+  python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1]); s.close()'
+}
+
 # ── 서버: 설정 ───────────────────────────────────────────────────────────────
 cmd_init() {
   local url="" domain="" email="" listen="" force=0 public_derp=0
@@ -89,6 +93,10 @@ cmd_init() {
   mkdir -p "$MESH_DIR/lib" "$MESH_DIR/run"
 
   local server_url tls derp_enabled derp_urls="[]" derp_paths="[]"
+  # 내부용 포트(메트릭·gRPC)는 비어 있는 포트를 고른다 — 9090 등은 다른 프로그램과 흔히 겹치고,
+  # 한 기기에서 자체 망을 둘 이상 띄울 때도 충돌한다
+  local metrics_port grpc_port
+  metrics_port="$(_free_port)"; grpc_port="$(_free_port)"
   if [[ -n "$domain" ]]; then
     # 지점 간: HTTPS(Let's Encrypt 자동) + 내장 DERP 중계·STUN. 외부 Tailscale 중계에 의존하지 않는다.
     [[ -n "$email" ]] || die "--domain 에는 인증서 발급용 --email 이 필요합니다"
@@ -137,8 +145,8 @@ DERP
 # DureClaw 자체 사설망 — Headscale v$HEADSCALE_VERSION 설정 (mesh.sh init 이 생성)
 server_url: $server_url
 listen_addr: $listen
-metrics_listen_addr: 127.0.0.1:9090
-grpc_listen_addr: 127.0.0.1:50443
+metrics_listen_addr: 127.0.0.1:$metrics_port
+grpc_listen_addr: 127.0.0.1:$grpc_port
 grpc_allow_insecure: false
 
 noise:
