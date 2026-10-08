@@ -291,6 +291,33 @@ jobs:
             --cmd "[SHELL] echo hello-setup-agent" --expect hello-setup-agent --timeout 300
           scripts/mesh.sh nodes
 
+      - name: Switch networks safely (new profile) and come back (leave)
+        run: |
+          ctl() { sudo tailscale debug prefs | python3 -c 'import json,sys; print(json.load(sys.stdin)["ControlURL"])'; }
+          A=$(ctl); echo "on network A: $A"
+          # 두 번째 자체 망 B
+          export MESH_DIR=/home/runner/dc-mesh-b
+          scripts/mesh.sh install >/dev/null 2>&1 || true
+          mkdir -p $MESH_DIR/bin && cp /home/runner/dc-mesh/bin/headscale $MESH_DIR/bin/
+          scripts/mesh.sh init --url http://$BRIDGE:8081
+          scripts/mesh.sh start
+          CODE_B=$(scripts/mesh.sh join-code --ttl 10m)
+          # 1) --force 없이: 이미 A 에 있으므로 멈춰야 한다
+          if scripts/mesh.sh join "$CODE_B" 2>/tmp/refuse.txt; then echo "::error::should refuse without --force"; exit 1; fi
+          grep -q "이미 다른 사설망" /tmp/refuse.txt && echo "refused without --force ✓"
+          # 2) --force: 새 프로필로 B 에 합류 (A 프로필은 남는다)
+          scripts/mesh.sh join "$CODE_B" --force --hostname dureclaw-server-b
+          [ "$(ctl)" = "http://$BRIDGE:8081" ] && echo "joined B as a new profile ✓"
+          sudo tailscale switch --list
+          [ "$(sudo tailscale switch --list | tail -n +2 | wc -l)" -ge 2 ] && echo "previous profile kept ✓"
+          # 3) leave: A 로 복귀
+          scripts/mesh.sh leave
+          [ "$(ctl)" = "$A" ] && echo "back on A ✓"
+          # 복귀 후에도 노드가 서버에 작업을 받는다
+          export MESH_DIR=/home/runner/dc-mesh
+          bun test/e2e/smoke.ts --server http://$SERVER_IP:4000 --token ci-secret --agent builder@mesh-node \
+            --cmd "[SHELL] echo back-on-mesh-a" --expect back-on-mesh-a --timeout 120
+
       - name: Logs
         if: always()
         run: |

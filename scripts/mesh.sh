@@ -17,6 +17,9 @@
 #   노드 쪽
 #     mesh.sh join <코드> [--hostname NAME] [--force]
 #                                           Tailscale 클라이언트 설치(없으면) → 자체 망 합류 → 버스 주소 출력
+#                                           이미 다른 망에 있으면 멈춘다. --force 는 '새 프로필'로 합류
+#                                           (기존 망 프로필은 그대로 남는다)
+#     mesh.sh leave                         --force 로 옮기기 전의 원래 망으로 되돌아간다
 #     mesh.sh decode <코드>                  코드 내용 확인 (키는 일부만 표시)
 #
 # 환경 변수: MESH_DIR (기본 ~/.dureclaw/mesh), HEADSCALE_VERSION (기본 0.29.4)
@@ -310,7 +313,12 @@ _tailscale_bin() {
   return 0   # 못 찾으면 빈 출력 — 함수 끝이 [[ ]] && 로 끝나 1 을 돌리면 set -e 로 죽는다
 }
 
-_sudo() { if [[ $EUID -eq 0 ]]; then "$@"; else sudo "$@"; fi; }
+# Linux 의 tailscale CLI 는 root 가 필요, macOS 앱의 CLI 는 사용자 권한으로 동작
+_sudo() {
+  if [[ $EUID -eq 0 || "$(uname -s)" == "Darwin" ]]; then "$@"; else sudo "$@"; fi
+}
+
+_ts_json() { "$1" status --json 2>/dev/null || true; }
 
 cmd_join() {
   local code="" hostname="" force=0
@@ -335,31 +343,61 @@ cmd_join() {
     ts="$(_tailscale_bin)"
   fi
 
-  # 이미 다른 망(예: 공식 Tailscale 계정)에 로그인돼 있으면 덮어쓰기 전에 멈춘다
-  local current
-  current="$("$ts" status --json 2>/dev/null | python3 -c 'import json,sys
-try: d=json.load(sys.stdin); print(d.get("BackendState",""))
-except Exception: print("")' || true)"
-  if [[ "$current" == "Running" && $force -eq 0 ]]; then
-    local cur_url
-    cur_url="$("$ts" debug prefs 2>/dev/null | python3 -c 'import json,sys
+  # 지금 상태: 실행 중인지, 어느 제어 서버·망에 붙어 있는지
+  local state cur_url cur_net
+  state="$(_ts_json "$ts" | python3 -c 'import json,sys
+try: print(json.load(sys.stdin).get("BackendState",""))
+except Exception: print("")')"
+  cur_url="$("$ts" debug prefs 2>/dev/null | python3 -c 'import json,sys
 try: print(json.load(sys.stdin).get("ControlURL",""))
 except Exception: print("")' || true)"
-    if [[ "$cur_url" != "$login" ]]; then
-      die "이 컴퓨터는 이미 다른 사설망(${cur_url:-알 수 없음})에 연결돼 있습니다. 자체 망으로 옮기려면 --force (기존 망 연결이 끊깁니다)"
-    fi
-  fi
+  cur_net="$(_ts_json "$ts" | python3 -c 'import json,sys
+try: print((json.load(sys.stdin).get("CurrentTailnet") or {}).get("Name",""))
+except Exception: print("")')"
 
   hostname="${hostname:-$(hostname -s 2>/dev/null || hostname)}"
-  info "자체 망 합류: $login (hostname=$hostname)"
-  local extra=()
-  [[ $force -eq 1 ]] && extra+=(--force-reauth)
-  _sudo "$ts" up --login-server="$login" --authkey="$key" --hostname="$hostname" \
-    --accept-dns=false --reset "${extra[@]}" >&2
+  local common=(--login-server="$login" --auth-key="$key" --hostname="$hostname" --accept-dns=false)
+
+  if [[ "$state" == "Running" && -n "$cur_url" && "$cur_url" != "$login" ]]; then
+    # 이미 다른 망(예: 공식 Tailscale 계정)에 연결돼 있다 — 덮어쓰지 않는다
+    if [[ $force -eq 0 ]]; then
+      die "이 컴퓨터는 이미 다른 사설망(${cur_net:-$cur_url})에 연결돼 있습니다.
+  자체 망으로 옮기려면 --force (MESH_FORCE=1): 새 프로필로 합류하고 기존 망 프로필은 그대로 남습니다.
+  되돌리기: mesh.sh leave  (또는 tailscale switch --list 에서 원래 망의 ID 로 tailscale switch <ID>)"
+    fi
+    mkdir -p "$MESH_DIR"
+    # 되돌아갈 프로필 ID 를 기록 (tailscale switch 는 ID 를 받는다)
+    "$ts" switch --list --json 2>/dev/null | python3 -c 'import json,sys
+for p in json.load(sys.stdin):
+    if p.get("selected"): print(p["id"] + "\t" + p.get("tailnet",""))' > "$MESH_DIR/previous-profile" || true
+    info "기존 망(${cur_net:-$cur_url})은 프로필로 남겨 두고, 새 프로필로 자체 망에 합류합니다"
+    _sudo "$ts" login "${common[@]}" >&2
+  elif [[ "$state" == "Running" && "$cur_url" == "$login" ]]; then
+    info "이미 이 자체 망에 연결돼 있습니다"
+  else
+    info "자체 망 합류: $login (hostname=$hostname)"
+    _sudo "$ts" up "${common[@]}" --reset >&2
+  fi
+
   local ip; ip="$("$ts" ip -4 2>/dev/null | head -1)"
   [[ "$ip" == 100.* ]] || die "합류 후 사설망 IP 를 받지 못했습니다"
   info "합류 완료 — 이 노드의 사설망 IP: $ip"
   if [[ -n "$bus" ]]; then echo "PHOENIX=$bus"; fi
+}
+
+cmd_leave() {
+  local ts; ts="$(_tailscale_bin)"
+  [[ -n "$ts" ]] || die "Tailscale 클라이언트가 없습니다"
+  local prev="" prev_name=""
+  if [[ -f "$MESH_DIR/previous-profile" ]]; then
+    prev="$(cut -f1 "$MESH_DIR/previous-profile")"; prev_name="$(cut -f2 "$MESH_DIR/previous-profile")"
+  fi
+  [[ -n "$prev" ]] || { "$ts" switch --list >&2 || true; die "되돌아갈 망 기록이 없습니다 — 위 목록의 ID 로 tailscale switch <ID>"; }
+  info "원래 망으로 전환: ${prev_name:-$prev} (프로필 $prev)"
+  _sudo "$ts" switch "$prev" >&2
+  rm -f "$MESH_DIR/previous-profile"
+  "$ts" status --json 2>/dev/null | python3 -c 'import json,sys
+d=json.load(sys.stdin); print("현재 망:", (d.get("CurrentTailnet") or {}).get("Name",""), d.get("BackendState",""))' >&2 || true
 }
 
 case "${1:-}" in
@@ -372,5 +410,6 @@ case "${1:-}" in
   join-code) shift; cmd_join_code "$@" ;;
   join) shift; cmd_join "$@" ;;
   decode) shift; cmd_decode "$@" ;;
+  leave) shift; cmd_leave ;;
   *) sed -n '2,24p' "$0"; exit 1 ;;
 esac
