@@ -330,7 +330,15 @@ jobs:
           sudo tailscale ping -c 3 --timeout 3s 100.64.0.2 || true
           # 망을 잠시 떠났다 오면 기존 연결은 끊긴다 — 노드가 스스로 다시 붙을 때까지 기다린다
           # (에이전트의 하트비트 감시가 끊김을 감지해 재접속, 최대 ~90초)
-          for i in $(seq 1 60); do NOW=$(since); [ -n "$NOW" ] && [ "$NOW" != "$BEFORE" ] && break; sleep 3; done
+          T0=$(date +%s)
+          for i in $(seq 1 72); do
+            NOW=$(since); [ -n "$NOW" ] && [ "$NOW" != "$BEFORE" ] && break
+            if [ $((i % 10)) -eq 0 ]; then
+              echo "[$(( $(date +%s) - T0 ))s] node path: $(docker exec node tailscale status 2>/dev/null | grep dureclaw-server)"
+            fi
+            sleep 5
+          done
+          echo "recovery took $(( $(date +%s) - T0 ))s"
           echo "node reconnected at: $NOW"
           [ -n "$NOW" ] && [ "$NOW" != "$BEFORE" ] && echo "node re-joined after the switch ✓"
           # 복귀 후에도 노드가 서버에 작업을 받는다
