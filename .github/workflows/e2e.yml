@@ -321,6 +321,13 @@ jobs:
           echo "--- after leave:"; sudo tailscale ip -4; sudo tailscale status || true
           ip -4 addr show tailscale0 || true
           curl -s -m 5 http://$SERVER_IP:4000/api/health || echo "(server not reachable on $SERVER_IP yet)"
+          echo "--- node side:"; docker exec node tailscale status || true
+          docker exec node tailscale ping -c 5 --timeout 3s $SERVER_IP || true
+          docker exec node bash -c "curl -s -m 5 http://$SERVER_IP:4000/api/health" || echo "(node cannot reach server)"
+          sleep 20
+          echo "--- node side after 20s:"; docker exec node tailscale ping -c 3 --timeout 3s $SERVER_IP || true
+          docker exec node bash -c "curl -s -m 5 http://$SERVER_IP:4000/api/health" || echo "(node still cannot reach server)"
+          sudo tailscale ping -c 3 --timeout 3s 100.64.0.2 || true
           # 망을 잠시 떠났다 오면 기존 연결은 끊긴다 — 노드가 스스로 다시 붙을 때까지 기다린다
           # (에이전트의 하트비트 감시가 끊김을 감지해 재접속, 최대 ~90초)
           for i in $(seq 1 60); do NOW=$(since); [ -n "$NOW" ] && [ "$NOW" != "$BEFORE" ] && break; sleep 3; done
