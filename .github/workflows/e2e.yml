@@ -291,61 +291,6 @@ jobs:
             --cmd "[SHELL] echo hello-setup-agent" --expect hello-setup-agent --timeout 300
           scripts/mesh.sh nodes
 
-      - name: Switch networks safely (new profile) and come back (leave)
-        run: |
-          ctl() { sudo tailscale debug prefs | python3 -c 'import json,sys; print(json.load(sys.stdin)["ControlURL"])'; }
-          since() { curl -s -H "Authorization: Bearer ci-secret" http://$SERVER_IP:4000/api/presence 2>/dev/null | python3 -c 'import json,sys
-          try: print(next((a.get("online_since","") for a in json.load(sys.stdin)["agents"] if a["name"]=="builder@mesh-node"), ""))
-          except Exception: print("")'; }
-          A=$(ctl); echo "on network A: $A"
-          BEFORE=$(since); echo "node online since: $BEFORE"
-          # 두 번째 자체 망 B
-          export MESH_DIR=/home/runner/dc-mesh-b
-          scripts/mesh.sh install >/dev/null 2>&1 || true
-          mkdir -p $MESH_DIR/bin && cp /home/runner/dc-mesh/bin/headscale $MESH_DIR/bin/
-          scripts/mesh.sh init --url http://$BRIDGE:8081
-          scripts/mesh.sh start
-          CODE_B=$(scripts/mesh.sh join-code --ttl 10m)
-          # 1) --force 없이: 이미 A 에 있으므로 멈춰야 한다
-          if scripts/mesh.sh join "$CODE_B" 2>/tmp/refuse.txt; then echo "::error::should refuse without --force"; exit 1; fi
-          grep -q "이미 다른 사설망" /tmp/refuse.txt && echo "refused without --force ✓"
-          # 2) --force: 새 프로필로 B 에 합류 (A 프로필은 남는다)
-          scripts/mesh.sh join "$CODE_B" --force --hostname dureclaw-server-b
-          [ "$(ctl)" = "http://$BRIDGE:8081" ] && echo "joined B as a new profile ✓"
-          echo "--- on B:"; sudo tailscale ip -4
-          sudo tailscale switch --list
-          [ "$(sudo tailscale switch --list | tail -n +2 | wc -l)" -ge 2 ] && echo "previous profile kept ✓"
-          # 3) leave: A 로 복귀
-          scripts/mesh.sh leave
-          [ "$(ctl)" = "$A" ] && echo "back on A ✓"
-          echo "--- after leave:"; sudo tailscale ip -4; sudo tailscale status || true
-          ip -4 addr show tailscale0 || true
-          curl -s -m 5 http://$SERVER_IP:4000/api/health || echo "(server not reachable on $SERVER_IP yet)"
-          echo "--- node side:"; docker exec node tailscale status || true
-          docker exec node tailscale ping -c 5 --timeout 3s $SERVER_IP || true
-          docker exec node bash -c "curl -s -m 5 http://$SERVER_IP:4000/api/health" || echo "(node cannot reach server)"
-          sleep 20
-          echo "--- node side after 20s:"; docker exec node tailscale ping -c 3 --timeout 3s $SERVER_IP || true
-          docker exec node bash -c "curl -s -m 5 http://$SERVER_IP:4000/api/health" || echo "(node still cannot reach server)"
-          sudo tailscale ping -c 3 --timeout 3s 100.64.0.2 || true
-          # 망을 잠시 떠났다 오면 기존 연결은 끊긴다 — 노드가 스스로 다시 붙을 때까지 기다린다
-          # (에이전트의 하트비트 감시가 끊김을 감지해 재접속, 최대 ~90초)
-          T0=$(date +%s)
-          for i in $(seq 1 72); do
-            NOW=$(since); [ -n "$NOW" ] && [ "$NOW" != "$BEFORE" ] && break
-            if [ $((i % 10)) -eq 0 ]; then
-              echo "[$(( $(date +%s) - T0 ))s] node path: $(docker exec node tailscale status 2>/dev/null | grep dureclaw-server)"
-            fi
-            sleep 5
-          done
-          echo "recovery took $(( $(date +%s) - T0 ))s"
-          echo "node reconnected at: $NOW"
-          [ -n "$NOW" ] && [ "$NOW" != "$BEFORE" ] && echo "node re-joined after the switch ✓"
-          # 복귀 후에도 노드가 서버에 작업을 받는다
-          export MESH_DIR=/home/runner/dc-mesh
-          bun test/e2e/smoke.ts --server http://$SERVER_IP:4000 --token ci-secret --agent builder@mesh-node \
-            --cmd "[SHELL] echo back-on-mesh-a" --expect back-on-mesh-a --timeout 120
-
       - name: Logs
         if: always()
         run: |
@@ -392,3 +337,69 @@ jobs:
         run: |
           docker compose -f docker-compose.mesh.yml logs --tail 60 || true
           docker exec node tail -n 60 /tmp/agent.log 2>/dev/null || true
+
+  # ── 망 전환 후 회복 실험 (병렬 변형) ─────────────────────────────────────────
+  # 서버가 다른 망(새 프로필)으로 갔다가 돌아오면, 노드→서버 TCP 가 회복되지 않는 현상
+  # (노드 tx 증가·rx 정지, 6분 이상)의 해결책을 변형별로 동시에 가린다.
+  mesh-switch:
+    name: Mesh switch-back recovery — ${{ matrix.variant }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [none, public-derp, server-downup, server-restart, node-downup]
+    env:
+      MESH_DIR: /home/runner/dc-mesh
+    steps:
+      - uses: actions/checkout@v4
+      - name: Network A + server joins + node joins
+        run: |
+          BRIDGE=$(ip -4 addr show docker0 | awk '/inet /{print $2}' | cut -d/ -f1); echo "BRIDGE=$BRIDGE" >> $GITHUB_ENV
+          scripts/mesh.sh install
+          EXTRA=""; [ "${{ matrix.variant }}" = public-derp ] && EXTRA=--public-derp
+          scripts/mesh.sh init --url http://$BRIDGE:8080 $EXTRA
+          scripts/mesh.sh start
+          curl -fsSL https://tailscale.com/install.sh | sh >/dev/null 2>&1
+          scripts/mesh.sh join "$(scripts/mesh.sh join-code --ttl 10m)" --hostname server
+          SERVER_IP=$(tailscale ip -4 | head -1); echo "SERVER_IP=$SERVER_IP" >> $GITHUB_ENV
+          # 버스 대신 단순 HTTP 서버 (0.0.0.0:4000)
+          (cd /tmp && nohup python3 -m http.server 4000 --bind 0.0.0.0 >/tmp/http.log 2>&1 &)
+          CODE=$(scripts/mesh.sh join-code --ttl 1h)
+          docker run -d --name node --cap-add NET_ADMIN --cap-add SYS_MODULE --device /dev/net/tun \
+            -v "$PWD":/repo -w /repo -e CODE="$CODE" debian:bookworm sleep infinity
+          docker exec node bash -c 'apt-get update -qq && apt-get install -y -qq curl ca-certificates python3 iproute2 iptables >/dev/null 2>&1'
+          docker exec node bash -c 'curl -fsSL https://tailscale.com/install.sh | sh >/dev/null 2>&1; (tailscaled --state=/var/lib/tailscale/tailscaled.state > /tmp/tailscaled.log 2>&1 &) ; sleep 3'
+          docker exec node bash -c 'scripts/mesh.sh join "$CODE" --hostname node'
+          docker exec node curl -s -m 5 -o /dev/null -w "before switch: HTTP %{http_code}\n" http://$SERVER_IP:4000/
+
+      - name: Server goes to network B and comes back
+        run: |
+          export MESH_DIR=/home/runner/dc-mesh-b
+          mkdir -p $MESH_DIR/bin && cp /home/runner/dc-mesh/bin/headscale $MESH_DIR/bin/
+          scripts/mesh.sh init --url http://$BRIDGE:8081
+          scripts/mesh.sh start
+          scripts/mesh.sh join "$(scripts/mesh.sh join-code --ttl 10m)" --force --hostname server-b
+          sleep 10
+          scripts/mesh.sh leave
+          echo "server back on A: $(tailscale ip -4 | head -1)"
+
+      - name: Remedy (${{ matrix.variant }})
+        run: |
+          case "${{ matrix.variant }}" in
+            server-downup)  sudo tailscale down && sudo tailscale up --accept-dns=false --login-server=http://$BRIDGE:8080 --hostname=server ;;
+            server-restart) sudo systemctl restart tailscaled ;;
+            node-downup)    docker exec node bash -c "tailscale down && tailscale up --accept-dns=false --login-server=http://$BRIDGE:8080 --hostname=node" ;;
+            *) echo "no remedy" ;;
+          esac
+
+      - name: Measure recovery (node → server TCP, up to 3 min)
+        run: |
+          T0=$(date +%s); OK=0
+          for i in $(seq 1 36); do
+            if docker exec node curl -s -m 4 -o /dev/null http://$SERVER_IP:4000/; then OK=1; break; fi
+            sleep 1
+          done
+          DT=$(( $(date +%s) - T0 ))
+          docker exec node tailscale status | grep server || true
+          if [ $OK = 1 ]; then echo "RESULT ${{ matrix.variant }}: recovered in ${DT}s"; else echo "RESULT ${{ matrix.variant }}: NOT recovered after ${DT}s"; exit 1; fi
