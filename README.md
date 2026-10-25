@@ -24,7 +24,7 @@ export OAH_SECRET=<서버 비밀값>      # 서버의 ~/.oah-server/data/server.
 ### Claude Code — 플러그인 (MCP + Skills + 에이전트 + 명령)
 
 ```
-/plugin marketplace add DureClaw/dureclaw
+/plugin marketplace add dureclaw/dureclaw
 /plugin install dureclaw@dureclaw
 ```
 
@@ -33,19 +33,19 @@ export OAH_SECRET=<서버 비밀값>      # 서버의 ~/.oah-server/data/server.
 ### Gemini CLI — 확장
 
 ```bash
-gemini extensions install https://github.com/DureClaw/dureclaw
+gemini extensions install https://github.com/dureclaw/dureclaw
 ```
 
 ### Skills만 (여러 에이전트 공통)
 
 ```bash
-npx skills add DureClaw/dureclaw
+npx skills add dureclaw/dureclaw
 ```
 
 ### Codex · Cursor · VS Code · 그 밖의 MCP 클라이언트
 
 ```bash
-git clone https://github.com/DureClaw/dureclaw ~/.dureclaw/plugin
+git clone https://github.com/dureclaw/dureclaw ~/.dureclaw/plugin
 ```
 
 Codex:

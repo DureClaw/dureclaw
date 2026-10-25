@@ -4,7 +4,7 @@
   "description": "흩어진 컴퓨터와 브라우저를 하나의 AI 팀으로 — DureClaw 버스에 작업을 보내고 결과·알림을 받는 MCP 도구 + Agent Skills. Distributed agent fleet: dispatch tasks to Windows/Linux/GPU/Raspberry Pi/Chrome nodes from any agent.",
   "author": { "name": "Seungwoo Hong (홍승우)", "url": "https://github.com/hongsw" },
   "homepage": "https://dureclaw.baryon.ai",
-  "repository": "https://github.com/DureClaw/dureclaw",
+  "repository": "https://github.com/dureclaw/dureclaw",
   "license": "MIT",
   "keywords": ["dureclaw", "agent-skills", "mcp", "multi-agent", "distributed-agents", "fleet", "orchestration", "claude-code", "codex", "gemini-cli"]
 }

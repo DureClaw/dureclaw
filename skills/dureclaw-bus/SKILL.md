@@ -57,8 +57,8 @@ curl -s -H "$H" $B/api/task/<task_id>   # 200=완료, 202=대기
 
 ## 설치
 
-- Claude Code: `/plugin marketplace add DureClaw/dureclaw` → `/plugin install dureclaw@dureclaw`
-- 그 밖의 에이전트: https://github.com/DureClaw/dureclaw README 의 에이전트별 설치
+- Claude Code: `/plugin marketplace add dureclaw/dureclaw` → `/plugin install dureclaw@dureclaw`
+- 그 밖의 에이전트: https://github.com/dureclaw/dureclaw README 의 에이전트별 설치
 - 서버: `bash <(curl -fsSL https://dureclaw.baryon.ai/install)`
 
 ## 주의
