@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "dureclaw": {
+      "command": "bun",
+      "args": ["run", "${CLAUDE_PLUGIN_ROOT}/mcp/src/index.ts"],
+      "env": {
+        "PHOENIX_URL": "${PHOENIX_URL:-ws://localhost:4000}",
+        "OAH_SECRET": "${OAH_SECRET:-}",
+        "AGENT_ROLE": "${AGENT_ROLE:-orchestrator}"
+      }
+    }
+  }
+}
