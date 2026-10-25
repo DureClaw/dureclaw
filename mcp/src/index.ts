@@ -78,6 +78,18 @@ let channelJoined = false;
 const taskQueue: Array<Record<string, unknown>> = [];
 const taskWaiters: Array<(task: Record<string, unknown>) => void> = [];
 
+// 채널 presence — REST /api/presence 가 등록 안 된 Work Key 를 못 보는 서버에서도 노드를 찾는다
+type Metas = { metas?: Array<Record<string, unknown>> };
+const channelPresence = new Map<string, Record<string, unknown>>();
+
+export function applyPresence(map: Map<string, Record<string, unknown>>, state?: Record<string, Metas>, leaves?: Record<string, Metas>) {
+  for (const name of Object.keys(leaves ?? {})) map.delete(name);
+  for (const [name, v] of Object.entries(state ?? {})) {
+    const meta = v?.metas?.[0];
+    if (meta) map.set(name, { ...meta, name });
+  }
+}
+
 // ─── Notifications ────────────────────────────────────────────────────────────
 
 export type Notice = {
@@ -164,11 +176,24 @@ function handleMessage(msg: PhxMsg) {
 
   if (event === "phx_reply") {
     if (topic === "phoenix") return; // heartbeat
-    const status = (payload as { status?: string }).status;
-    if (status === "ok") {
+    const { status, response } = payload as { status?: string; response?: { presences?: Record<string, Metas> } };
+    if (status === "ok" && msg[1] === joinRef) {
       channelJoined = true;
-      log(`joined ${topic}`);
+      channelPresence.clear();
+      applyPresence(channelPresence, response?.presences);
+      log(`joined ${topic} (${channelPresence.size} online)`);
     }
+    return;
+  }
+
+  if (event === "presence_state") {
+    channelPresence.clear();
+    applyPresence(channelPresence, payload as Record<string, Metas>);
+    return;
+  }
+  if (event === "presence_diff") {
+    const d = payload as { joins?: Record<string, Metas>; leaves?: Record<string, Metas> };
+    applyPresence(channelPresence, d.joins, d.leaves);
     return;
   }
 
@@ -424,9 +449,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     // ── get_presence ──────────────────────────────────────────────────────────
     case "get_presence": {
-      const res = await api("/api/presence");
-      const data = await res.json() as { agents: unknown[] };
-      return text(JSON.stringify(data, null, 2));
+      // REST(서버에 등록된 Work Key 전체) + 이 채널의 presence 를 합친다
+      const rest = await api("/api/presence").then((r) => r.json() as Promise<{ agents?: Array<Record<string, unknown>> }>)
+        .then((j) => j.agents ?? []).catch(() => []);
+      const byName = new Map<string, Record<string, unknown>>();
+      for (const a of rest) byName.set(String(a.name), a);
+      for (const [name, a] of channelPresence) if (!byName.has(name)) byName.set(name, { work_key: WORK_KEY, ...a });
+      const agents = [...byName.values()].filter((a) => a.name !== AGENT_NAME);
+      return text(JSON.stringify({ work_key: WORK_KEY, connected: channelJoined, agents }, null, 2));
     }
 
     // ── read_state ────────────────────────────────────────────────────────────
