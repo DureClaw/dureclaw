@@ -1,6 +1,6 @@
 {
   "name": "@dureclaw/mcp",
-  "version": "0.4.6",
+  "version": "0.4.7",
   "type": "module",
   "description": "DureClaw MCP server — Phoenix Channel bridge for Claude Code distributed agent orchestration",
   "mcpName": "io.github.dureclaw/mcp",
@@ -8,7 +8,7 @@
   "homepage": "https://dureclaw.baryon.ai",
   "repository": {
     "type": "git",
-    "url": "https://github.com/DureClaw/dureclaw-mcp.git"
+    "url": "https://github.com/dureclaw/dureclaw.git"
   },
   "license": "MIT",
   "author": "Seungwoo Hong (홍승우)",

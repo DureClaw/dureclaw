@@ -1,12 +1,15 @@
 {
   "name": "dureclaw",
-  "version": "0.4.6",
+  "version": "0.4.7",
   "description": "흩어진 컴퓨터와 브라우저를 하나의 AI 팀으로 — DureClaw 버스 MCP 도구",
   "contextFileName": "AGENTS.md",
   "mcpServers": {
     "dureclaw": {
       "command": "bun",
-      "args": ["run", "${extensionPath}/mcp/src/index.ts"]
+      "args": [
+        "run",
+        "${extensionPath}/mcp/src/index.ts"
+      ]
     }
   }
 }
