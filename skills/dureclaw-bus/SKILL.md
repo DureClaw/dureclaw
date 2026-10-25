@@ -16,7 +16,7 @@ DureClaw는 흩어진 컴퓨터(Windows·macOS·Linux·라즈베리파이)와 �
 ## 준비 확인
 
 1. MCP 도구 `get_version` 이 있으면 연결된 것이다. 없으면 아래 **설치** 참고.
-2. `get_presence` 로 온라인 노드를 본다. 각 노드는 `name`(예: `builder@win-pc`), `role`, `machine`, `capabilities` 를 가진다.
+2. `get_presence` 로 온라인 노드를 본다. 응답의 `work_key` 가 노드들이 있는 Work Key 와 다르면 노드가 안 보인다 — 사용자에게 `WORK_KEY` 환경변수를 확인하게 한다. 각 노드는 `name`(예: `builder@win-pc`), `role`, `machine`, `capabilities` 를 가진다.
 3. 노드가 없으면 사용자에게 노드 추가를 안내한다: Linux/macOS `PHOENIX=ws://<서버>:4000 bash <(curl -fsSL https://dureclaw.baryon.ai/agent)`, Windows는 https://dureclaw.baryon.ai/windows
 
 ## 작업 보내기 → 결과 받기
@@ -24,7 +24,7 @@ DureClaw는 흩어진 컴퓨터(Windows·macOS·Linux·라즈베리파이)와 �
 | 도구 | 용도 |
 |---|---|
 | `send_task` | `{to?, role?, instructions, task_id?}` — `to` 를 비우면 해당 `role` 노드 전체에 브로드캐스트 |
-| `get_notifications` | 완료·실패·막힘·승인 요청·노드 접속/이탈 알림(최근 200건, `since` 로 증분 조회) |
+| `get_notifications` | 완료·실패·막힘·승인 요청·노드 접속/이탈 알림(최근 200건, `task_id`·`since` 로 거르기) |
 | `get_presence` | 온라인 노드 목록 |
 | `read_state` / `write_state` | Work Key 단위 공유 상태(JSON) |
 | `read_mailbox` / `post_message` | 노드 간 메시지 |
@@ -35,7 +35,7 @@ DureClaw는 흩어진 컴퓨터(Windows·macOS·Linux·라즈베리파이)와 �
 
 1. `get_presence` → 대상 노드 이름 확인 (추측 금지)
 2. `send_task` 로 지시 — 지시문은 그 머신에서 그대로 실행 가능한 구체적 문장으로. 셸 작업은 `[SHELL] <명령>` 으로 시작하면 노드가 LLM 없이 바로 실행한다.
-3. `get_notifications(since=<보낸 시각>)` 를 몇 초 간격으로 확인 — `✅ 작업 완료` / `❌ 작업 실패` / `⏸ 작업 막힘`
+3. `get_notifications(task_id=<send_task 가 돌려준 task_id>)` 를 몇 초 간격으로 확인 — `✅ 작업 완료` / `❌ 작업 실패` / `⏸ 작업 막힘`
 4. 결과를 사용자에게 요약. 여러 노드에 보냈으면 노드별로 정리.
 
 **병렬**: 노드마다 `send_task` 를 연달아 보내고, 알림이 모두 올 때까지 기다린 뒤 한 번에 정리한다.

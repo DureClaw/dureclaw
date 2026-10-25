@@ -39,7 +39,7 @@ import { hostname } from "os";
 // ─── Config ───────────────────────────────────────────────────────────────────
 
 // scripts/sync-version.ts 가 루트 VERSION 에 맞춰 갱신한다
-export const MCP_VERSION = "0.4.7";
+export const MCP_VERSION = "0.4.8";
 const LATEST_URL = "https://dureclaw.baryon.ai/latest.json";
 
 const PHOENIX_URL_RAW = process.env.PHOENIX_URL ?? "ws://localhost:4000";
@@ -98,6 +98,7 @@ export type Notice = {
   level: "info" | "warning" | "error";
   title: string;
   body: string;
+  task_id?: string;
   payload: Record<string, unknown>;
 };
 
@@ -112,7 +113,7 @@ const clip = (v: unknown, n = 80) => {
 /** 버스 이벤트 → 알림. 알릴 이벤트가 아니면 null. (공통 사양: docs/PLAN_windows-server-gui-notify-update.md) */
 export function toNotice(event: string, p: Record<string, unknown>, self: string): Notice | null {
   const from = (p.from ?? p.agent ?? "?") as string;
-  const base = { ts: new Date().toISOString(), event, payload: p };
+  const base = { ts: new Date().toISOString(), event, payload: p, ...(p.task_id ? { task_id: String(p.task_id) } : {}) };
   switch (event) {
     case "task.result": {
       const ok = p.status === "done" || p.status === undefined;
@@ -139,7 +140,7 @@ function notify(n: Notice) {
   notices.push(n);
   if (notices.length > NOTICE_LIMIT) notices.shift();
   log(`${n.title} ${n.body}`);
-  server.sendLoggingMessage({ level: n.level, logger: "dureclaw", data: { title: n.title, body: n.body, event: n.event, ts: n.ts } })
+  server.sendLoggingMessage({ level: n.level, logger: "dureclaw", data: { title: n.title, body: n.body, event: n.event, task_id: n.task_id, ts: n.ts } })
     .catch(() => { /* 클라이언트 미연결 */ });
 }
 
@@ -362,6 +363,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         type: "object",
         properties: {
           since: { type: "string", description: "이 시각(ISO8601) 이후 알림만" },
+          task_id: { type: "string", description: "이 task_id 의 알림만 (send_task 가 돌려준 값)" },
           limit: { type: "number", description: "최대 개수 (기본 20)" },
         },
         required: [],
@@ -505,6 +507,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const limit = Number(a.limit) > 0 ? Number(a.limit) : 20;
       const list = notices
         .filter((n) => Number.isNaN(since) || Date.parse(n.ts) > since)
+        .filter((n) => !a.task_id || n.task_id === a.task_id)
         .slice(-limit)
         .map(({ payload: _p, ...n }) => n);
       return text(list.length ? JSON.stringify(list, null, 2) : "알림 없음");

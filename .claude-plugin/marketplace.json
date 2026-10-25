@@ -12,7 +12,7 @@
       "name": "dureclaw",
       "source": "./",
       "description": "흩어진 컴퓨터와 브라우저를 하나의 AI 팀으로 — MCP 도구 + Agent Skills",
-      "version": "0.4.7"
+      "version": "0.4.8"
     }
   ]
 }
