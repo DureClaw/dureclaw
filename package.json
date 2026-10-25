@@ -1,6 +1,6 @@
 {
   "name": "@dureclaw/mcp",
-  "version": "1.0.0",
+  "version": "0.4.6",
   "type": "module",
   "description": "DureClaw MCP server — Phoenix Channel bridge for Claude Code distributed agent orchestration",
   "mcpName": "io.github.dureclaw/mcp",

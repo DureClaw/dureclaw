@@ -14,12 +14,18 @@
  *   write_state    — update work key state
  *   read_mailbox   — read agent mailbox messages
  *   post_message   — post message to agent mailbox
+ *   get_notifications — recent bus events (task 완료·실패·막힘, 승인 요청, 노드 접속·이탈)
+ *   get_version    — MCP / 서버 / 최신 릴리스 버전
+ *
+ * Notifications:
+ *   위 버스 이벤트를 MCP logging(notifications/message)으로도 클라이언트에 푸시한다.
  *
  * Env vars:
  *   PHOENIX_URL    ws://host:4000  (default: ws://localhost:4000)
  *   AGENT_NAME     agent@machine   (default: agent@local)
  *   AGENT_ROLE     orchestrator|builder|...  (default: builder)
  *   WORK_KEY       LN-YYYYMMDD-XXX  (auto-discovered if omitted)
+ *   OAH_SECRET     server secret — WS token + HTTP Bearer (서버에 비밀값이 있으면 필수)
  */
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
@@ -32,14 +38,27 @@ import { hostname } from "os";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
+// scripts/sync-version.ts 가 루트 VERSION 에 맞춰 갱신한다
+export const MCP_VERSION = "0.4.6";
+const LATEST_URL = "https://dureclaw.baryon.ai/latest.json";
+
 const PHOENIX_URL_RAW = process.env.PHOENIX_URL ?? "ws://localhost:4000";
 const AGENT_ROLE      = process.env.AGENT_ROLE  ?? "builder";
 const AGENT_MACHINE   = hostname();
 const AGENT_NAME      = process.env.AGENT_NAME  ?? `${AGENT_ROLE}@${AGENT_MACHINE}`;
+const OAH_SECRET      = process.env.OAH_SECRET  ?? "";
 
 const WS_BASE   = PHOENIX_URL_RAW.replace(/^http/, "ws").replace(/\/$/, "");
 const HTTP_BASE = PHOENIX_URL_RAW.replace(/^ws/, "http").replace(/\/$/, "");
-const WS_URL    = `${WS_BASE}/socket/websocket?vsn=2.0.0`;
+const WS_URL    = `${WS_BASE}/socket/websocket?vsn=2.0.0`
+  + (OAH_SECRET ? `&token=${encodeURIComponent(OAH_SECRET)}` : "");
+
+// 서버 REST 호출 — 비밀값이 있으면 Bearer 를 붙인다
+function api(path: string, init: RequestInit = {}): Promise<Response> {
+  const headers = new Headers(init.headers);
+  if (OAH_SECRET) headers.set("Authorization", `Bearer ${OAH_SECRET}`);
+  return fetch(`${HTTP_BASE}${path}`, { ...init, headers });
+}
 
 let WORK_KEY = process.env.WORK_KEY ?? "";
 
@@ -59,6 +78,59 @@ let channelJoined = false;
 const taskQueue: Array<Record<string, unknown>> = [];
 const taskWaiters: Array<(task: Record<string, unknown>) => void> = [];
 
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+export type Notice = {
+  ts: string;
+  event: string;
+  level: "info" | "warning" | "error";
+  title: string;
+  body: string;
+  payload: Record<string, unknown>;
+};
+
+const NOTICE_LIMIT = 200;
+const notices: Notice[] = [];
+
+const clip = (v: unknown, n = 80) => {
+  const s = typeof v === "string" ? v : v == null ? "" : JSON.stringify(v);
+  return s.length > n ? `${s.slice(0, n)}…` : s;
+};
+
+/** 버스 이벤트 → 알림. 알릴 이벤트가 아니면 null. (공통 사양: docs/PLAN_windows-server-gui-notify-update.md) */
+export function toNotice(event: string, p: Record<string, unknown>, self: string): Notice | null {
+  const from = (p.from ?? p.agent ?? "?") as string;
+  const base = { ts: new Date().toISOString(), event, payload: p };
+  switch (event) {
+    case "task.result": {
+      const ok = p.status === "done" || p.status === undefined;
+      return { ...base, level: ok ? "info" : "error", title: ok ? "✅ 작업 완료" : "❌ 작업 실패",
+        body: `${from}: ${clip(p.summary ?? p.output ?? p.task_id)}` };
+    }
+    case "task.blocked":
+      return { ...base, level: "warning", title: "⏸ 작업 막힘", body: `${from}: ${clip(p.reason ?? p.summary ?? p.task_id)}` };
+    case "task.approval_requested":
+      return { ...base, level: "warning", title: "🙋 승인 요청", body: `${from}: ${clip(p.instructions ?? p.reason ?? p.task_id)}` };
+    case "mailbox.message":
+      return { ...base, level: "info", title: "✉ 메일박스", body: `${from}: ${clip(p.event ?? p.type ?? p.payload)}` };
+    case "agent.hello":
+    case "agent.bye":
+      if (from === self) return null;
+      return { ...base, level: "info", title: event === "agent.hello" ? "🟢 노드 접속" : "⚪ 노드 이탈",
+        body: `${from}${p.role ? ` (${p.role})` : ""}` };
+    default:
+      return null;
+  }
+}
+
+function notify(n: Notice) {
+  notices.push(n);
+  if (notices.length > NOTICE_LIMIT) notices.shift();
+  log(`${n.title} ${n.body}`);
+  server.sendLoggingMessage({ level: n.level, logger: "dureclaw", data: { title: n.title, body: n.body, event: n.event, ts: n.ts } })
+    .catch(() => { /* 클라이언트 미연결 */ });
+}
+
 function nextRef() { return String(++refCounter); }
 
 function sendRaw(msg: PhxMsg) {
@@ -75,14 +147,14 @@ function sendEvent(event: string, payload: Record<string, unknown>) {
 
 async function fetchOrCreateWorkKey(): Promise<string> {
   try {
-    const res = await fetch(`${HTTP_BASE}/api/work-keys/latest`);
+    const res = await api("/api/work-keys/latest");
     if (res.ok) {
       const { work_key } = await res.json() as { work_key: string };
       return work_key;
     }
   } catch { /* server not ready */ }
 
-  const res = await fetch(`${HTTP_BASE}/api/work-keys`, { method: "POST" });
+  const res = await api("/api/work-keys", { method: "POST" });
   const { work_key } = await res.json() as { work_key: string };
   return work_key;
 }
@@ -114,16 +186,8 @@ function handleMessage(msg: PhxMsg) {
     return;
   }
 
-  if (event === "agent.hello") {
-    const p = payload as { agent?: string };
-    if (p.agent && p.agent !== AGENT_NAME) log(`+ ${p.agent} joined`);
-    return;
-  }
-
-  if (event === "agent.bye") {
-    const p = payload as { agent?: string };
-    if (p.agent) log(`- ${p.agent} left`);
-  }
+  const n = toNotice(event, payload, AGENT_NAME);
+  if (n) notify(n);
 }
 
 function connect() {
@@ -143,6 +207,7 @@ function connect() {
       agent_name: AGENT_NAME,
       role: AGENT_ROLE,
       machine: AGENT_MACHINE,
+      version: MCP_VERSION,
     }]);
 
     if (heartbeatTimer) clearInterval(heartbeatTimer);
@@ -166,6 +231,14 @@ function connect() {
   };
 }
 
+/** a > b (MAJOR.MINOR.PATCH 숫자 비교, 접미사 무시) */
+export function newerThan(a: string, b: string): boolean {
+  const p = (v: string) => v.replace(/^v/, "").split(/[.-]/).slice(0, 3).map((x) => parseInt(x, 10) || 0);
+  const [x, y] = [p(a), p(b)];
+  for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] > y[i];
+  return false;
+}
+
 function log(msg: string) {
   process.stderr.write(`[oah-mcp:${AGENT_NAME}] ${msg}\n`);
 }
@@ -173,8 +246,8 @@ function log(msg: string) {
 // ─── MCP Server ───────────────────────────────────────────────────────────────
 
 const server = new Server(
-  { name: "oah", version: "1.0.0" },
-  { capabilities: { tools: {} } }
+  { name: "oah", version: MCP_VERSION },
+  { capabilities: { tools: {}, logging: {} } }
 );
 
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
@@ -257,6 +330,23 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         required: ["to", "type", "payload"],
       },
     },
+    {
+      name: "get_notifications",
+      description: "최근 버스 알림(작업 완료·실패·막힘, 승인 요청, 메일박스, 노드 접속·이탈)을 반환한다.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          since: { type: "string", description: "이 시각(ISO8601) 이후 알림만" },
+          limit: { type: "number", description: "최대 개수 (기본 20)" },
+        },
+        required: [],
+      },
+    },
+    {
+      name: "get_version",
+      description: "MCP·서버·최신 릴리스 버전을 반환하고 업데이트가 필요한지 알려준다.",
+      inputSchema: { type: "object", properties: {}, required: [] },
+    },
   ],
 }));
 
@@ -299,7 +389,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       // Also enqueue to mailbox if `to` specified
       if (a.to) {
-        await fetch(`${HTTP_BASE}/api/mailbox/${a.to}`, {
+        await api(`/api/mailbox/${encodeURIComponent(a.to as string)}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -323,7 +413,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       sendEvent("task.result", payload);
 
       // Also persist via REST for polling
-      await fetch(`${HTTP_BASE}/api/task/${a.task_id}/result`, {
+      await api(`/api/task/${a.task_id}/result`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -334,7 +424,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     // ── get_presence ──────────────────────────────────────────────────────────
     case "get_presence": {
-      const res = await fetch(`${HTTP_BASE}/api/presence`);
+      const res = await api("/api/presence");
       const data = await res.json() as { agents: unknown[] };
       return text(JSON.stringify(data, null, 2));
     }
@@ -342,7 +432,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     // ── read_state ────────────────────────────────────────────────────────────
     case "read_state": {
       if (!WORK_KEY) return text("WORK_KEY not set");
-      const res = await fetch(`${HTTP_BASE}/api/state/${WORK_KEY}`);
+      const res = await api(`/api/state/${WORK_KEY}`);
       return text(JSON.stringify(await res.json(), null, 2));
     }
 
@@ -351,7 +441,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       if (!WORK_KEY) return text("WORK_KEY not set");
       let updates: unknown;
       try { updates = JSON.parse(a.updates as string); } catch { return text("updates must be valid JSON"); }
-      const res = await fetch(`${HTTP_BASE}/api/state/${WORK_KEY}`, {
+      const res = await api(`/api/state/${WORK_KEY}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updates),
@@ -362,7 +452,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     // ── read_mailbox ──────────────────────────────────────────────────────────
     case "read_mailbox": {
       const agent = (a.agent as string) || AGENT_NAME;
-      const res = await fetch(`${HTTP_BASE}/api/mailbox/${encodeURIComponent(agent)}`);
+      const res = await api(`/api/mailbox/${encodeURIComponent(agent)}`);
       return text(JSON.stringify(await res.json(), null, 2));
     }
 
@@ -371,12 +461,39 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       let payload: unknown;
       try { payload = JSON.parse(a.payload as string); } catch { payload = a.payload; }
       const body = { from: AGENT_NAME, to: a.to, event: a.type, payload, ts: new Date().toISOString() };
-      await fetch(`${HTTP_BASE}/api/mailbox/${encodeURIComponent(a.to as string)}`, {
+      await api(`/api/mailbox/${encodeURIComponent(a.to as string)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
       return text(`메시지 전송 완료 → ${a.to} (type: ${a.type})`);
+    }
+
+    // ── get_notifications ─────────────────────────────────────────────────────
+    case "get_notifications": {
+      const since = a.since ? Date.parse(a.since as string) : NaN;
+      const limit = Number(a.limit) > 0 ? Number(a.limit) : 20;
+      const list = notices
+        .filter((n) => Number.isNaN(since) || Date.parse(n.ts) > since)
+        .slice(-limit)
+        .map(({ payload: _p, ...n }) => n);
+      return text(list.length ? JSON.stringify(list, null, 2) : "알림 없음");
+    }
+
+    // ── get_version ───────────────────────────────────────────────────────────
+    case "get_version": {
+      const serverVersion = await api("/api/health").then((r) => r.json() as Promise<{ version?: string }>)
+        .then((j) => j.version ?? null).catch(() => null);
+      const latest = await fetch(LATEST_URL).then((r) => r.ok ? r.json() as Promise<{ version?: string }> : null)
+        .then((j) => j?.version ?? null).catch(() => null);
+      const outdated = (v: string | null) => !!(latest && v && newerThan(latest, v));
+      return text(JSON.stringify({
+        mcp: MCP_VERSION,
+        server: serverVersion,
+        latest,
+        mcp_update: outdated(MCP_VERSION) ? "bash <(curl -fsSL https://dureclaw.baryon.ai/mcp)" : null,
+        server_update: outdated(serverVersion) ? "https://github.com/DureClaw/homepage/releases/latest" : null,
+      }, null, 2));
     }
 
     default:
@@ -386,7 +503,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 
-connect();
-
-const transport = new StdioServerTransport();
-await server.connect(transport);
+if (import.meta.main) {
+  connect();
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+}
