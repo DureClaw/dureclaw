@@ -1,3 +1,7 @@
+---
+description: DureClaw 팀 상태 — 접속 노드, Work Key, 진행 중 작업 확인
+---
+
 DureClaw 두레팀 현재 상태를 확인합니다.
 
 먼저 Phoenix 서버 상태를 확인하고, **서버가 꺼져 있으면 실행 명령을 안내한 뒤 종료합니다**.

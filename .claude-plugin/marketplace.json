@@ -1,6 +1,12 @@
 {
   "name": "dureclaw",
-  "owner": { "name": "DureClaw", "url": "https://github.com/DureClaw" },
+  "owner": {
+    "name": "DureClaw",
+    "url": "https://github.com/DureClaw"
+  },
+  "metadata": {
+    "description": "DureClaw 공식 마켓플레이스 — 흩어진 컴퓨터와 브라우저를 하나의 AI 팀으로 묶는 플러그인"
+  },
   "plugins": [
     {
       "name": "dureclaw",
