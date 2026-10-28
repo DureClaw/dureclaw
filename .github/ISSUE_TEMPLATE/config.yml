@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 📖 공식 문서 및 시작 가이드
+    url: https://dureclaw.baryon.ai/start/
+    about: 설치 방법과 플랫폼별 연동 안내를 확인하세요.
+  - name: 🏢 엔터프라이즈 도입 문의
+    url: https://dureclaw.baryon.ai/enterprise/
+    about: 3대 이상 병렬 제어, 온프레미스 Headscale 폐쇄망 구축 문의는 전용 채널로 접수하실 수 있습니다.

@@ -1,0 +1,95 @@
+name: "🐛 버그 리포트 (Bug Report)"
+description: "DureClaw 실행 중 발생한 오류나 예기치 않은 동작을 보고합니다."
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        DureClaw 버그를 제보해 주셔서 감사합니다! 신속한 분석을 위해 아래 내용을 작성해 주세요.
+        > [!TIP]
+        > 로그 확인 방법: Mac(`~/Library/Logs/DureClaw/`), Windows(`%LOCALAPPDATA%\DureClaw\logs\`), 터미널(`dureclaw logs`)
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: 운영체제 및 아키텍처
+      description: 문제가 발생한 기기의 OS 환경을 선택해 주세요.
+      options:
+        - macOS (Apple Silicon M1/M2/M3/M4)
+        - macOS (Intel x86_64)
+        - Windows 11 (x64)
+        - Windows 10 (x64)
+        - Ubuntu / Debian (x86_64)
+        - Raspberry Pi OS (arm64)
+        - 기타 (본문에 기재)
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: DureClaw 버전
+      description: "`dureclaw --version` 실행 결과 또는 앱 정보창의 버전을 적어주세요."
+      placeholder: "예: 0.5.3"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: 문제가 발생한 컴포넌트
+      options:
+        - Core Bus / Server (Phoenix WebSocket / Headscale)
+        - Mac App (DureClaw MenuBar / GUI)
+        - Windows Server / DeskClaw (RPA, Win32 GUI)
+        - WebClaw (Chrome Extension / Browser)
+        - Remote MCP Bridge (Claude Code / Cursor / Windsurf SSE)
+        - Orca Mobile App 연동
+        - 기타 / 불명
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 버그 설명
+      description: 어떤 문제가 발생했는지 간략히 설명해 주세요.
+      placeholder: "예: Mac 서버에 Windows DeskClaw 노드를 join 시킨 후 task.assign 시 'Connection timed out' 에러가 발생하며 작업이 큐에서 멈춥니다."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 재현 절차
+      description: 문제를 재현할 수 있는 구체적인 순서를 적어주세요.
+      placeholder: |
+        1. Mac에서 `dureclaw start`로 버스 서버 구동
+        2. Windows 기기에서 `dureclaw join <join_code>` 실행
+        3. Mac Claude Code 터미널에서 MCP `dureclaw_dispatch_task` 도구 호출
+        4. Windows 화면에 아무런 반응 없이 30초 후 타임아웃 오류 발생
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 기대했던 정상 동작
+      placeholder: "예: Windows DeskClaw 워커에서 지시된 브라우저가 열리고 텍스트가 정상 입력되어야 합니다."
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 에러 로그 및 터미널 출력
+      description: 발생한 에러 메시지나 로그 스택트레이스를 붙여넣어 주세요. (개인정보/토큰은 마스킹)
+      placeholder: |
+        ```
+        [ERROR] 15:32:01.402 [task_manager] Failed to dispatch task: {:error, :worker_unreachable}
+        [WARN]  15:32:01.403 [phoenix_channel] Node "worker-win-01" ping timed out
+        ```
+      render: shell
+    validations:
+      required: false

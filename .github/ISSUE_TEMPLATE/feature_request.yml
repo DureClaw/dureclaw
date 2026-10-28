@@ -1,0 +1,57 @@
+name: "💡 기능 제안 (Feature Request)"
+description: "DureClaw에 추가되길 바라는 새로운 기능이나 개선 아이디어를 제안합니다."
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        DureClaw 에코시스템 발전을 위한 아이디어를 환영합니다!
+        해결하고자 하는 문제 상황과 제안하는 사용 시나리오를 구체적으로 작성해 주시면 검토에 큰 도움이 됩니다.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 해결하고자 하는 문제 또는 배경
+      description: 현재 어떤 점이 불편하거나 부족한가요?
+      placeholder: "예: 현재는 Mac에서 여러 대의 Windows 워커에 동일한 작업을 분배할 때 라운드로빈 방식으로만 동작하여, GPU 작업 부하가 높은 노드에 작업이 과도하게 몰리는 현상이 있습니다."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 제안하는 기능 및 해결책
+      description: 구현되길 바라는 기능의 동작 방식을 설명해 주세요.
+      placeholder: "예: 노드의 현재 GPU VRAM 잔여량과 CPU 로드율 메트릭을 실시간 Heartbeat로 보고하고, 태스크 디스패처가 가장 여유로운 노드에 우선 할당하는 가중치 기반 스케줄러 옵션을 추가해 주세요."
+    validations:
+      required: true
+
+  - type: textarea
+    id: example_usage
+    attributes:
+      label: 제안하는 인터페이스 또는 사용 예시 (CLI / MCP / API)
+      description: 사용자가 이 기능을 어떻게 호출하게 될지 예시를 작성해 주세요.
+      placeholder: |
+        ```bash
+        # CLI 예시
+        dureclaw dispatch --strategy=least-loaded --target-tag=gpu-heavy "run_inference.py"
+        ```
+        또는 MCP 파라미터 예시:
+        ```json
+        {
+          "task": "render_3d",
+          "dispatch_policy": "prefer_idle_gpu"
+        }
+        ```
+      render: markdown
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 고려해 본 대안 (선택 사항)
+      placeholder: "예: 현재는 외부 스크립트에서 SSH로 각 노드의 `nvidia-smi`를 긁어와 수동으로 IP를 지정하고 있습니다."
+    validations:
+      required: false

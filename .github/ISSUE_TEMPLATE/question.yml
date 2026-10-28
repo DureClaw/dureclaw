@@ -1,0 +1,46 @@
+name: "💬 질문 및 사용 문의 (Question & Discussion)"
+description: "DureClaw 설치, 설정, MCP 도구 연동 또는 아키텍처에 관해 문의합니다."
+title: "[Question]: "
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        DureClaw 사용 중 궁금한 점이 있으신가요?
+        설치 방법, Claude Code / Cursor MCP 연동, Tailscale/Headscale 망 구성 등 자유롭게 질문해 주세요.
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: 질문 분류
+      options:
+        - 설치 및 초기 세팅 (Install & Setup)
+        - MCP 브릿지 연동 (Claude Code, Cursor, Windsurf)
+        - 원격 노드 제어 (DeskClaw, WebClaw, Shell)
+        - 네트워크 및 사설망 (Headscale, Tailscale, Port Forwarding)
+        - 보안 및 작업 격리 (Permissions, Sandbox, Tokens)
+        - 기타
+    validations:
+      required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: 질문 내용
+      description: 궁금한 내용을 자세히 작성해 주세요.
+      placeholder: |
+        예: M3 Mac에서 DureClaw 메인 서버를 띄우고, 공유기 내부망에 있는 Windows 데스크톱과 Raspberry Pi 4를 동시에 연동하려고 합니다.
+        공유기 포트포워딩 없이 Headscale을 통해 세 기기간 P2P 연결을 맺으려면 어떤 환경변수를 설정해야 하나요?
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: 현재 환경 정보 (선택 사항)
+      placeholder: |
+        - 메인 머신: macOS Sonoma (M3 Pro)
+        - 원격 노드: Windows 11 Home, Raspberry Pi OS 64-bit
+        - DureClaw 버전: 0.5.3
+    validations:
+      required: false
