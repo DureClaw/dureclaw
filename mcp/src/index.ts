@@ -3,7 +3,12 @@
  * oah-mcp: open-agent-harness MCP Server
  *
  * Connects to Phoenix Channel as a named agent and exposes MCP tools
- * so Claude Code / OpenCode can participate in the multi-agent harness.
+ * so Claude Code / OpenCode / Orca Mobile can participate in the multi-agent harness.
+ *
+ * Transports:
+ *   - Stdio (default): standard I/O for local CLI tools (Claude Code, OpenCode)
+ *   - SSE (Remote MCP): HTTP Server-Sent Events for remote orchestrators / Orca Mobile
+ *     Usage: `bun run src/index.ts --sse [port]` or `MCP_TRANSPORT=sse MCP_PORT=4001`
  *
  * Tools:
  *   receive_task   — pop next pending task.assign (waits up to 30s)
@@ -26,27 +31,32 @@
  *   AGENT_ROLE     orchestrator|builder|...  (default: builder)
  *   WORK_KEY       LN-YYYYMMDD-XXX  (auto-discovered if omitted)
  *   OAH_SECRET     server secret — WS token + HTTP Bearer (서버에 비밀값이 있으면 필수)
+ *   MCP_TRANSPORT  stdio | sse (default: stdio)
+ *   MCP_PORT       port for SSE server (default: 4001)
+ *   MCP_HOST       host for SSE server (default: 0.0.0.0)
  */
 
+import http from "node:http";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { hostname } from "os";
 
-// ─── Config ───────────────────────────────────────────────────────────────────
+// ─── Config ──────────────────────────────────────────────────────────────────
 
 // scripts/sync-version.ts 가 루트 VERSION 에 맞춰 갱신한다
-export const MCP_VERSION = "0.4.8";
+export const MCP_VERSION = "0.5.5";
 const LATEST_URL = "https://dureclaw.baryon.ai/latest.json";
 
 const PHOENIX_URL_RAW = process.env.PHOENIX_URL ?? "ws://localhost:4000";
 const AGENT_ROLE      = process.env.AGENT_ROLE  ?? "builder";
 const AGENT_MACHINE   = hostname();
 const AGENT_NAME      = process.env.AGENT_NAME  ?? `${AGENT_ROLE}@${AGENT_MACHINE}`;
-const OAH_SECRET      = process.env.OAH_SECRET  ?? "";
+export const OAH_SECRET = process.env.OAH_SECRET ?? "";
 
 const WS_BASE   = PHOENIX_URL_RAW.replace(/^http/, "ws").replace(/\/$/, "");
 const HTTP_BASE = PHOENIX_URL_RAW.replace(/^ws/, "http").replace(/\/$/, "");
@@ -60,9 +70,9 @@ function api(path: string, init: RequestInit = {}): Promise<Response> {
   return fetch(`${HTTP_BASE}${path}`, { ...init, headers });
 }
 
-let WORK_KEY = process.env.WORK_KEY ?? "";
+export let WORK_KEY = process.env.WORK_KEY ?? "";
 
-// ─── Phoenix state ────────────────────────────────────────────────────────────
+// ─── Phoenix state ───────────────────────────────────────────────────────────
 
 type PhxMsg = [string | null, string | null, string, string, Record<string, unknown>];
 
@@ -72,7 +82,7 @@ let refCounter = 0;
 let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let reconnectDelay = 1000;
-let channelJoined = false;
+export let channelJoined = false;
 
 // Queue for incoming task.assign events
 const taskQueue: Array<Record<string, unknown>> = [];
@@ -80,7 +90,7 @@ const taskWaiters: Array<(task: Record<string, unknown>) => void> = [];
 
 // 채널 presence — REST /api/presence 가 등록 안 된 Work Key 를 못 보는 서버에서도 노드를 찾는다
 type Metas = { metas?: Array<Record<string, unknown>> };
-const channelPresence = new Map<string, Record<string, unknown>>();
+export const channelPresence = new Map<string, Record<string, unknown>>();
 
 export function applyPresence(map: Map<string, Record<string, unknown>>, state?: Record<string, Metas>, leaves?: Record<string, Metas>) {
   for (const name of Object.keys(leaves ?? {})) map.delete(name);
@@ -90,7 +100,7 @@ export function applyPresence(map: Map<string, Record<string, unknown>>, state?:
   }
 }
 
-// ─── Notifications ────────────────────────────────────────────────────────────
+// ─── Notifications ───────────────────────────────────────────────────────────
 
 export type Notice = {
   ts: string;
@@ -103,7 +113,7 @@ export type Notice = {
 };
 
 const NOTICE_LIMIT = 200;
-const notices: Notice[] = [];
+export const notices: Notice[] = [];
 
 const clip = (v: unknown, n = 80) => {
   const s = typeof v === "string" ? v : v == null ? "" : JSON.stringify(v);
@@ -136,12 +146,24 @@ export function toNotice(event: string, p: Record<string, unknown>, self: string
   }
 }
 
-function notify(n: Notice) {
+export function notify(n: Notice) {
   notices.push(n);
   if (notices.length > NOTICE_LIMIT) notices.shift();
   log(`${n.title} ${n.body}`);
-  server.sendLoggingMessage({ level: n.level, logger: "dureclaw", data: { title: n.title, body: n.body, event: n.event, task_id: n.task_id, ts: n.ts } })
-    .catch(() => { /* 클라이언트 미연결 */ });
+
+  const msgPayload = {
+    level: n.level,
+    logger: "dureclaw",
+    data: { title: n.title, body: n.body, event: n.event, task_id: n.task_id, ts: n.ts },
+  };
+
+  if (stdioServer) {
+    stdioServer.sendLoggingMessage(msgPayload).catch(() => { /* stdio client disconnected */ });
+  }
+
+  for (const session of activeSessions.values()) {
+    session.server.sendLoggingMessage(msgPayload).catch(() => { /* sse client disconnected */ });
+  }
 }
 
 function nextRef() { return String(++refCounter); }
@@ -216,9 +238,14 @@ function handleMessage(msg: PhxMsg) {
   if (n) notify(n);
 }
 
-function connect() {
+export function connect() {
   log(`connecting → ${WS_URL}`);
-  ws = new WebSocket(WS_URL);
+  try {
+    ws = new WebSocket(WS_URL);
+  } catch (err) {
+    log(`ws connection init error: ${err}`);
+    return;
+  }
 
   ws.onopen = async () => {
     reconnectDelay = 1000;
@@ -257,6 +284,18 @@ function connect() {
   };
 }
 
+export function disconnect() {
+  if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
+  if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+  if (ws) {
+    ws.onclose = null;
+    ws.onerror = null;
+    ws.close();
+    ws = null;
+  }
+  channelJoined = false;
+}
+
 /** a > b (MAJOR.MINOR.PATCH 숫자 비교, 접미사 무시) */
 export function newerThan(a: string, b: string): boolean {
   const p = (v: string) => v.replace(/^v/, "").split(/[.-]/).slice(0, 3).map((x) => parseInt(x, 10) || 0);
@@ -269,275 +308,471 @@ function log(msg: string) {
   process.stderr.write(`[oah-mcp:${AGENT_NAME}] ${msg}\n`);
 }
 
-// ─── MCP Server ───────────────────────────────────────────────────────────────
+// ─── MCP Server Factory ───────────────────────────────────────────────────────
 
-const server = new Server(
-  { name: "oah", version: MCP_VERSION },
-  { capabilities: { tools: {}, logging: {} } }
-);
+export function createMcpServer(): Server {
+  const server = new Server(
+    { name: "oah", version: MCP_VERSION },
+    { capabilities: { tools: {}, logging: {} } }
+  );
 
-server.setRequestHandler(ListToolsRequestSchema, async () => ({
-  tools: [
-    {
-      name: "receive_task",
-      description: "다음 태스크를 수신한다. 최대 30초 대기. task.assign이 없으면 null 반환.",
-      inputSchema: { type: "object", properties: {}, required: [] },
-    },
-    {
-      name: "send_task",
-      description: "다른 에이전트에게 태스크를 전송한다 (task.assign 브로드캐스트).",
-      inputSchema: {
-        type: "object",
-        properties: {
-          to:           { type: "string", description: "대상 에이전트 이름 (예: agent1@machine)" },
-          instructions: { type: "string", description: "태스크 지시사항" },
-          role:         { type: "string", description: "대상 역할 (builder/reviewer/...)" },
-          task_id:      { type: "string", description: "태스크 ID (생략 시 자동 생성)" },
-        },
-        required: ["instructions"],
+  server.setRequestHandler(ListToolsRequestSchema, async () => ({
+    tools: [
+      {
+        name: "receive_task",
+        description: "다음 태스크를 수신한다. 최대 30초 대기. task.assign이 없으면 null 반환.",
+        inputSchema: { type: "object", properties: {}, required: [] },
       },
-    },
-    {
-      name: "complete_task",
-      description: "태스크 완료 결과를 Phoenix에 전송한다.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          task_id:   { type: "string", description: "완료할 task_id" },
-          status:    { type: "string", enum: ["done", "blocked"], description: "완료 상태" },
-          summary:   { type: "string", description: "결과 요약" },
-          artifacts: { type: "string", description: "생성 파일 목록 (쉼표 구분)" },
+      {
+        name: "send_task",
+        description: "다른 에이전트에게 태스크를 전송한다 (task.assign 브로드캐스트).",
+        inputSchema: {
+          type: "object",
+          properties: {
+            to:           { type: "string", description: "대상 에이전트 이름 (예: agent1@machine, deskclaw@pc)" },
+            instructions: { type: "string", description: "태스크 지시사항" },
+            role:         { type: "string", description: "대상 역할 (builder/reviewer/executor/...)" },
+            task_id:      { type: "string", description: "태스크 ID (생략 시 자동 생성)" },
+          },
+          required: ["instructions"],
         },
-        required: ["task_id", "status", "summary"],
       },
-    },
-    {
-      name: "get_presence",
-      description: "현재 Phoenix 채널에 연결된 에이전트 목록을 반환한다.",
-      inputSchema: { type: "object", properties: {}, required: [] },
-    },
-    {
-      name: "read_state",
-      description: "현재 Work Key의 상태를 읽는다.",
-      inputSchema: { type: "object", properties: {}, required: [] },
-    },
-    {
-      name: "write_state",
-      description: "Work Key 상태를 업데이트한다.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          updates: { type: "string", description: "업데이트할 JSON 문자열 (예: {\"status\":\"running\"})" },
+      {
+        name: "complete_task",
+        description: "태스크 완료 결과를 Phoenix에 전송한다.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            task_id:   { type: "string", description: "완료할 task_id" },
+            status:    { type: "string", enum: ["done", "blocked"], description: "완료 상태" },
+            summary:   { type: "string", description: "결과 요약" },
+            artifacts: { type: "string", description: "생성 파일 목록 (쉼표 구분)" },
+          },
+          required: ["task_id", "status", "summary"],
         },
-        required: ["updates"],
       },
-    },
-    {
-      name: "read_mailbox",
-      description: "에이전트 mailbox의 메시지를 읽고 비운다.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          agent: { type: "string", description: "에이전트 이름 (기본: 현재 에이전트)" },
+      {
+        name: "get_presence",
+        description: "현재 Phoenix 채널에 연결된 에이전트 목록을 반환한다.",
+        inputSchema: { type: "object", properties: {}, required: [] },
+      },
+      {
+        name: "read_state",
+        description: "현재 Work Key의 상태를 읽는다.",
+        inputSchema: { type: "object", properties: {}, required: [] },
+      },
+      {
+        name: "write_state",
+        description: "Work Key 상태를 업데이트한다.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            updates: { type: "string", description: "업데이트할 JSON 문자열 (예: {\"status\":\"running\"})" },
+          },
+          required: ["updates"],
         },
-        required: [],
       },
-    },
-    {
-      name: "post_message",
-      description: "다른 에이전트의 mailbox에 메시지를 전송한다.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          to:      { type: "string", description: "대상 에이전트 이름" },
-          type:    { type: "string", description: "이벤트 타입 (예: task.result, task.blocked)" },
-          payload: { type: "string", description: "전송할 JSON 페이로드 문자열" },
+      {
+        name: "read_mailbox",
+        description: "에이전트 mailbox의 메시지를 읽고 비운다.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            agent: { type: "string", description: "에이전트 이름 (기본: 현재 에이전트)" },
+          },
+          required: [],
         },
-        required: ["to", "type", "payload"],
       },
-    },
-    {
-      name: "get_notifications",
-      description: "최근 버스 알림(작업 완료·실패·막힘, 승인 요청, 메일박스, 노드 접속·이탈)을 반환한다.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          since: { type: "string", description: "이 시각(ISO8601) 이후 알림만" },
-          task_id: { type: "string", description: "이 task_id 의 알림만 (send_task 가 돌려준 값)" },
-          limit: { type: "number", description: "최대 개수 (기본 20)" },
+      {
+        name: "post_message",
+        description: "다른 에이전트의 mailbox에 메시지를 전송한다.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            to:      { type: "string", description: "대상 에이전트 이름" },
+            type:    { type: "string", description: "이벤트 타입 (예: task.result, task.blocked)" },
+            payload: { type: "string", description: "전송할 JSON 페이로드 문자열" },
+          },
+          required: ["to", "type", "payload"],
         },
-        required: [],
       },
-    },
-    {
-      name: "get_version",
-      description: "MCP·서버·최신 릴리스 버전을 반환하고 업데이트가 필요한지 알려준다.",
-      inputSchema: { type: "object", properties: {}, required: [] },
-    },
-  ],
-}));
+      {
+        name: "get_notifications",
+        description: "최근 버스 알림(작업 완료·실패·막힘, 승인 요청, 메일박스, 노드 접속·이탈)을 반환한다.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            since:   { type: "string", description: "이 시각(ISO8601) 이후 알림만" },
+            task_id: { type: "string", description: "이 task_id 의 알림만 (send_task 가 돌려준 값)" },
+            limit:   { type: "number", description: "최대 개수 (기본 20)" },
+          },
+          required: [],
+        },
+      },
+      {
+        name: "get_version",
+        description: "MCP·서버·최신 릴리스 버전을 반환하고 업데이트가 필요한지 알려준다.",
+        inputSchema: { type: "object", properties: {}, required: [] },
+      },
+    ],
+  }));
 
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const { name, arguments: args } = request.params;
-  const a = (args ?? {}) as Record<string, unknown>;
+  server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    const { name, arguments: args } = request.params;
+    const a = (args ?? {}) as Record<string, unknown>;
+    const text = (s: string) => ({ content: [{ type: "text" as const, text: s }] });
 
-  const text = (s: string) => ({ content: [{ type: "text" as const, text: s }] });
+    switch (name) {
+      case "receive_task": {
+        if (taskQueue.length > 0) {
+          return text(JSON.stringify(taskQueue.shift(), null, 2));
+        }
+        // Wait up to 30s for a task
+        const task = await new Promise<Record<string, unknown> | null>((resolve) => {
+          const timer = setTimeout(() => {
+            const idx = taskWaiters.indexOf(resolve as (t: Record<string, unknown>) => void);
+            if (idx !== -1) taskWaiters.splice(idx, 1);
+            resolve(null);
+          }, 30_000);
 
-  switch (name) {
-    // ── receive_task ──────────────────────────────────────────────────────────
-    case "receive_task": {
-      if (taskQueue.length > 0) {
-        return text(JSON.stringify(taskQueue.shift(), null, 2));
+          taskWaiters.push((t) => { clearTimeout(timer); resolve(t); });
+        });
+        return text(task ? JSON.stringify(task, null, 2) : "null (no task within 30s)");
       }
-      // Wait up to 30s for a task
-      const task = await new Promise<Record<string, unknown> | null>((resolve) => {
-        const timer = setTimeout(() => {
-          const idx = taskWaiters.indexOf(resolve as (t: Record<string, unknown>) => void);
-          if (idx !== -1) taskWaiters.splice(idx, 1);
-          resolve(null);
-        }, 30_000);
 
-        taskWaiters.push((t) => { clearTimeout(timer); resolve(t); });
-      });
-      return text(task ? JSON.stringify(task, null, 2) : "null (no task within 30s)");
-    }
+      case "send_task": {
+        const taskId = (a.task_id as string) ?? `mcp-${Date.now()}`;
+        const payload: Record<string, unknown> = {
+          task_id:      taskId,
+          from:         AGENT_NAME,
+          role:         a.role ?? "builder",
+          to:           a.to ?? null,
+          instructions: a.instructions,
+        };
+        sendEvent("task.assign", payload);
 
-    // ── send_task ─────────────────────────────────────────────────────────────
-    case "send_task": {
-      const taskId = (a.task_id as string) ?? `mcp-${Date.now()}`;
-      const payload: Record<string, unknown> = {
-        task_id:      taskId,
-        from:         AGENT_NAME,
-        role:         a.role ?? "builder",
-        to:           a.to ?? null,
-        instructions: a.instructions,
-      };
-      sendEvent("task.assign", payload);
+        // Also enqueue to mailbox if `to` specified
+        if (a.to) {
+          await api(`/api/mailbox/${encodeURIComponent(a.to as string)}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          }).catch(() => {});
+        }
 
-      // Also enqueue to mailbox if `to` specified
-      if (a.to) {
-        await api(`/api/mailbox/${encodeURIComponent(a.to as string)}`, {
+        return text(`태스크 전송 완료 (task_id: ${taskId}, to: ${a.to ?? "broadcast"})`);
+      }
+
+      case "complete_task": {
+        const payload: Record<string, unknown> = {
+          task_id:   a.task_id,
+          from:      AGENT_NAME,
+          status:    a.status,
+          summary:   a.summary,
+          artifacts: a.artifacts
+            ? (a.artifacts as string).split(",").map((s) => s.trim()).filter(Boolean)
+            : [],
+        };
+        sendEvent("task.result", payload);
+
+        await api(`/api/task/${a.task_id}/result`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         }).catch(() => {});
+
+        return text(`완료 전송 (task_id: ${a.task_id}, status: ${a.status})`);
       }
 
-      return text(`태스크 전송 완료 (task_id: ${taskId}, to: ${a.to ?? "broadcast"})`);
+      case "get_presence": {
+        const rest = await api("/api/presence").then((r) => r.json() as Promise<{ agents?: Array<Record<string, unknown>> }>)
+          .then((j) => j.agents ?? []).catch(() => []);
+        const byName = new Map<string, Record<string, unknown>>();
+        for (const a of rest) byName.set(String(a.name), a);
+        for (const [name, a] of channelPresence) if (!byName.has(name)) byName.set(name, { work_key: WORK_KEY, ...a });
+        const agents = [...byName.values()].filter((a) => a.name !== AGENT_NAME);
+        return text(JSON.stringify({ work_key: WORK_KEY, connected: channelJoined, agents }, null, 2));
+      }
+
+      case "read_state": {
+        if (!WORK_KEY) return text("WORK_KEY not set");
+        const res = await api(`/api/state/${WORK_KEY}`);
+        return text(JSON.stringify(await res.json(), null, 2));
+      }
+
+      case "write_state": {
+        if (!WORK_KEY) return text("WORK_KEY not set");
+        let updates: unknown;
+        try { updates = JSON.parse(a.updates as string); } catch { return text("updates must be valid JSON"); }
+        const res = await api(`/api/state/${WORK_KEY}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updates),
+        });
+        return text(JSON.stringify(await res.json(), null, 2));
+      }
+
+      case "read_mailbox": {
+        const agent = (a.agent as string) || AGENT_NAME;
+        const res = await api(`/api/mailbox/${encodeURIComponent(agent)}`);
+        return text(JSON.stringify(await res.json(), null, 2));
+      }
+
+      case "post_message": {
+        let payload: unknown;
+        try { payload = JSON.parse(a.payload as string); } catch { payload = a.payload; }
+        const body = { from: AGENT_NAME, to: a.to, event: a.type, payload, ts: new Date().toISOString() };
+        await api(`/api/mailbox/${encodeURIComponent(a.to as string)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        return text(`메시지 전송 완료 → ${a.to} (type: ${a.type})`);
+      }
+
+      case "get_notifications": {
+        const since = a.since ? Date.parse(a.since as string) : NaN;
+        const limit = Number(a.limit) > 0 ? Number(a.limit) : 20;
+        const list = notices
+          .filter((n) => Number.isNaN(since) || Date.parse(n.ts) > since)
+          .filter((n) => !a.task_id || n.task_id === a.task_id)
+          .slice(-limit)
+          .map(({ payload: _p, ...n }) => n);
+        return text(list.length ? JSON.stringify(list, null, 2) : "알림 없음");
+      }
+
+      case "get_version": {
+        const serverVersion = await api("/api/health").then((r) => r.json() as Promise<{ version?: string }>)
+          .then((j) => j.version ?? null).catch(() => null);
+        const latest = await fetch(LATEST_URL).then((r) => r.ok ? r.json() as Promise<{ version?: string }> : null)
+          .then((j) => j?.version ?? null).catch(() => null);
+        const outdated = (v: string | null) => !!(latest && v && newerThan(latest, v));
+        return text(JSON.stringify({
+          mcp: MCP_VERSION,
+          server: serverVersion,
+          latest,
+          mcp_update: outdated(MCP_VERSION) ? "bash <(curl -fsSL https://dureclaw.baryon.ai/mcp)" : null,
+          server_update: outdated(serverVersion) ? "https://github.com/DureClaw/homepage/releases/latest" : null,
+        }, null, 2));
+      }
+
+      default:
+        return text(`Unknown tool: ${name}`);
     }
+  });
 
-    // ── complete_task ─────────────────────────────────────────────────────────
-    case "complete_task": {
-      const payload: Record<string, unknown> = {
-        task_id:   a.task_id,
-        from:      AGENT_NAME,
-        status:    a.status,
-        summary:   a.summary,
-        artifacts: a.artifacts
-          ? (a.artifacts as string).split(",").map((s) => s.trim()).filter(Boolean)
-          : [],
-      };
-      sendEvent("task.result", payload);
+  return server;
+}
 
-      // Also persist via REST for polling
-      await api(`/api/task/${a.task_id}/result`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      }).catch(() => {});
+// ─── Sessions & Transports ───────────────────────────────────────────────────
 
-      return text(`완료 전송 (task_id: ${a.task_id}, status: ${a.status})`);
-    }
+export interface SseSession {
+  sessionId: string;
+  transport: SSEServerTransport;
+  server: Server;
+  createdAt: Date;
+}
 
-    // ── get_presence ──────────────────────────────────────────────────────────
-    case "get_presence": {
-      // REST(서버에 등록된 Work Key 전체) + 이 채널의 presence 를 합친다
-      const rest = await api("/api/presence").then((r) => r.json() as Promise<{ agents?: Array<Record<string, unknown>> }>)
-        .then((j) => j.agents ?? []).catch(() => []);
-      const byName = new Map<string, Record<string, unknown>>();
-      for (const a of rest) byName.set(String(a.name), a);
-      for (const [name, a] of channelPresence) if (!byName.has(name)) byName.set(name, { work_key: WORK_KEY, ...a });
-      const agents = [...byName.values()].filter((a) => a.name !== AGENT_NAME);
-      return text(JSON.stringify({ work_key: WORK_KEY, connected: channelJoined, agents }, null, 2));
-    }
+export const activeSessions = new Map<string, SseSession>();
+let stdioServer: Server | null = null;
 
-    // ── read_state ────────────────────────────────────────────────────────────
-    case "read_state": {
-      if (!WORK_KEY) return text("WORK_KEY not set");
-      const res = await api(`/api/state/${WORK_KEY}`);
-      return text(JSON.stringify(await res.json(), null, 2));
-    }
-
-    // ── write_state ───────────────────────────────────────────────────────────
-    case "write_state": {
-      if (!WORK_KEY) return text("WORK_KEY not set");
-      let updates: unknown;
-      try { updates = JSON.parse(a.updates as string); } catch { return text("updates must be valid JSON"); }
-      const res = await api(`/api/state/${WORK_KEY}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updates),
-      });
-      return text(JSON.stringify(await res.json(), null, 2));
-    }
-
-    // ── read_mailbox ──────────────────────────────────────────────────────────
-    case "read_mailbox": {
-      const agent = (a.agent as string) || AGENT_NAME;
-      const res = await api(`/api/mailbox/${encodeURIComponent(agent)}`);
-      return text(JSON.stringify(await res.json(), null, 2));
-    }
-
-    // ── post_message ──────────────────────────────────────────────────────────
-    case "post_message": {
-      let payload: unknown;
-      try { payload = JSON.parse(a.payload as string); } catch { payload = a.payload; }
-      const body = { from: AGENT_NAME, to: a.to, event: a.type, payload, ts: new Date().toISOString() };
-      await api(`/api/mailbox/${encodeURIComponent(a.to as string)}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      return text(`메시지 전송 완료 → ${a.to} (type: ${a.type})`);
-    }
-
-    // ── get_notifications ─────────────────────────────────────────────────────
-    case "get_notifications": {
-      const since = a.since ? Date.parse(a.since as string) : NaN;
-      const limit = Number(a.limit) > 0 ? Number(a.limit) : 20;
-      const list = notices
-        .filter((n) => Number.isNaN(since) || Date.parse(n.ts) > since)
-        .filter((n) => !a.task_id || n.task_id === a.task_id)
-        .slice(-limit)
-        .map(({ payload: _p, ...n }) => n);
-      return text(list.length ? JSON.stringify(list, null, 2) : "알림 없음");
-    }
-
-    // ── get_version ───────────────────────────────────────────────────────────
-    case "get_version": {
-      const serverVersion = await api("/api/health").then((r) => r.json() as Promise<{ version?: string }>)
-        .then((j) => j.version ?? null).catch(() => null);
-      const latest = await fetch(LATEST_URL).then((r) => r.ok ? r.json() as Promise<{ version?: string }> : null)
-        .then((j) => j?.version ?? null).catch(() => null);
-      const outdated = (v: string | null) => !!(latest && v && newerThan(latest, v));
-      return text(JSON.stringify({
-        mcp: MCP_VERSION,
-        server: serverVersion,
-        latest,
-        mcp_update: outdated(MCP_VERSION) ? "bash <(curl -fsSL https://dureclaw.baryon.ai/mcp)" : null,
-        server_update: outdated(serverVersion) ? "https://github.com/DureClaw/homepage/releases/latest" : null,
-      }, null, 2));
-    }
-
-    default:
-      return text(`Unknown tool: ${name}`);
+export function isAuthorized(req: http.IncomingMessage, url: URL, secret: string = OAH_SECRET): boolean {
+  if (!secret) return true;
+  const tokenParam = url.searchParams.get("token");
+  if (tokenParam === secret) return true;
+  const authHeader = req.headers["authorization"];
+  if (authHeader && authHeader.toLowerCase().startsWith("bearer ")) {
+    if (authHeader.slice(7).trim() === secret) return true;
   }
-});
+  const customHeader = req.headers["x-oah-secret"];
+  if (typeof customHeader === "string" && customHeader === secret) return true;
+  return false;
+}
 
-// ─── Start ────────────────────────────────────────────────────────────────────
+export interface SseServerInstance {
+  server: http.Server;
+  port: number;
+  host: string;
+  close: () => Promise<void>;
+}
+
+export function startSseServer(
+  port: number = Number(process.env.MCP_PORT || process.env.PORT) || 4001,
+  host: string = process.env.MCP_HOST || process.env.HOST || "0.0.0.0"
+): Promise<SseServerInstance> {
+  return new Promise((resolve, reject) => {
+    const httpServer = http.createServer(async (req, res) => {
+      // CORS headers
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-OAH-Secret");
+
+      if (req.method === "OPTIONS") {
+        res.writeHead(204).end();
+        return;
+      }
+
+      const hostHeader = req.headers.host || `localhost:${port}`;
+      const url = new URL(req.url ?? "/", `http://${hostHeader}`);
+
+      // Health / Status discovery
+      if (req.method === "GET" && (url.pathname === "/" || url.pathname === "/health")) {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({
+          status: "ok",
+          name: "oah-mcp",
+          version: MCP_VERSION,
+          transport: "sse",
+          port,
+          sessions: activeSessions.size,
+          work_key: WORK_KEY,
+          connected: channelJoined,
+          endpoints: {
+            sse: "/sse",
+            message: "/message",
+          },
+        }, null, 2));
+        return;
+      }
+
+      // GET /sse (Remote MCP SSE entrypoint)
+      if (req.method === "GET" && url.pathname === "/sse") {
+        if (!isAuthorized(req, url)) {
+          res.writeHead(401, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "Unauthorized: Invalid or missing OAH_SECRET" }));
+          return;
+        }
+
+        const transport = new SSEServerTransport("/message", res);
+        const sessionMcp = createMcpServer();
+        const sessionId = transport.sessionId;
+
+        const sessionRecord: SseSession = {
+          sessionId,
+          transport,
+          server: sessionMcp,
+          createdAt: new Date(),
+        };
+        activeSessions.set(sessionId, sessionRecord);
+        log(`SSE client connected [session: ${sessionId}] (active: ${activeSessions.size})`);
+
+        const cleanup = () => {
+          if (activeSessions.has(sessionId)) {
+            activeSessions.delete(sessionId);
+            log(`SSE client disconnected [session: ${sessionId}] (active: ${activeSessions.size})`);
+          }
+        };
+
+        transport.onclose = cleanup;
+        req.on("close", cleanup);
+
+        await sessionMcp.connect(transport);
+        return;
+      }
+
+      // POST /message (Remote MCP JSON-RPC incoming message endpoint)
+      if (req.method === "POST" && url.pathname === "/message") {
+        const sessionId = url.searchParams.get("sessionId");
+        if (!sessionId) {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "Missing sessionId query parameter" }));
+          return;
+        }
+
+        const session = activeSessions.get(sessionId);
+        if (!session) {
+          res.writeHead(404, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: `Session '${sessionId}' not found or closed` }));
+          return;
+        }
+
+        if (!isAuthorized(req, url)) {
+          res.writeHead(401, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "Unauthorized: Invalid or missing OAH_SECRET" }));
+          return;
+        }
+
+        await session.transport.handlePostMessage(req, res);
+        return;
+      }
+
+      res.writeHead(404, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: `Not found: ${req.method} ${url.pathname}` }));
+    });
+
+    httpServer.on("error", (err) => {
+      log(`HTTP server error: ${err.message}`);
+      reject(err);
+    });
+
+    httpServer.listen(port, host, () => {
+      const addr = httpServer.address();
+      const actualPort = typeof addr === "object" && addr ? addr.port : port;
+      log(`Remote MCP (SSE) server listening on http://${host}:${actualPort}/sse`);
+      resolve({
+        server: httpServer,
+        port: actualPort,
+        host,
+        close: () => new Promise<void>((res) => {
+          for (const s of activeSessions.values()) {
+            s.transport.close().catch(() => {});
+          }
+          activeSessions.clear();
+          httpServer.close(() => res());
+        }),
+      });
+    });
+  });
+}
+
+export async function startStdioServer(): Promise<Server> {
+  const mcp = createMcpServer();
+  stdioServer = mcp;
+  const transport = new StdioServerTransport();
+  await mcp.connect(transport);
+  log("MCP server connected via stdio transport");
+  return mcp;
+}
+
+// ─── CLI Argument Parser ──────────────────────────────────────────────────────
+
+export function parseArgs(args: string[]) {
+  let transport: "stdio" | "sse" =
+    process.env.MCP_TRANSPORT === "sse" ? "sse" : "stdio";
+  let port = Number(process.env.MCP_PORT || process.env.PORT) || 4001;
+  let host = process.env.MCP_HOST || process.env.HOST || "0.0.0.0";
+
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === "--sse") {
+      transport = "sse";
+      const next = args[i + 1];
+      if (next && !next.startsWith("-") && !isNaN(Number(next))) {
+        port = Number(next);
+        i++;
+      }
+    } else if (arg === "--port" || arg === "-p") {
+      const next = args[++i];
+      if (next && !isNaN(Number(next))) port = Number(next);
+    } else if (arg === "--host") {
+      const next = args[++i];
+      if (next) host = next;
+    } else if (arg === "--transport") {
+      const next = args[++i];
+      if (next === "sse" || next === "stdio") transport = next;
+    }
+  }
+  return { transport, port, host };
+}
+
+// ─── Start ───────────────────────────────────────────────────────────────────
 
 if (import.meta.main) {
   connect();
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
+  const { transport, port, host } = parseArgs(process.argv.slice(2));
+  if (transport === "sse") {
+    await startSseServer(port, host);
+  } else {
+    await startStdioServer();
+  }
 }
