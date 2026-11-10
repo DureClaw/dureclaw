@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * oah-mcp: open-agent-harness MCP Server
+ * DureClaw MCP (dureclaw-mcp): 브라우저 손(webclaw)·에이전트 버스 브리지
  *
  * Connects to Phoenix Channel as a named agent and exposes MCP tools
  * so Claude Code / OpenCode / Orca Mobile can participate in the multi-agent harness.
@@ -37,6 +37,9 @@
  */
 
 import http from "node:http";
+import { readFile } from "node:fs/promises";
+import { homedir } from "node:os";
+import { join, basename } from "node:path";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
@@ -49,7 +52,7 @@ import { hostname } from "os";
 // ─── Config ──────────────────────────────────────────────────────────────────
 
 // scripts/sync-version.ts 가 루트 VERSION 에 맞춰 갱신한다
-export const MCP_VERSION = "0.5.6";
+export const MCP_VERSION = "0.5.7";
 const LATEST_URL = "https://dureclaw.baryon.ai/latest.json";
 
 const PHOENIX_URL_RAW = process.env.PHOENIX_URL ?? "ws://localhost:4000";
@@ -99,6 +102,83 @@ export function applyPresence(map: Map<string, Record<string, unknown>>, state?:
     if (meta) map.set(name, { ...meta, name });
   }
 }
+
+// ─── Target resolution (webclaw alias) ───────────────────────────────────────
+
+export type AgentInfo = Record<string, unknown>;
+
+export function capsOf(a: AgentInfo): string[] {
+  const c = a.capabilities;
+  return Array.isArray(c) ? c.filter((x): x is string => typeof x === "string") : [];
+}
+
+export function isWebclaw(a: AgentInfo): boolean {
+  return String(a.name ?? "").startsWith("webclaw@") || capsOf(a).includes("webclaw");
+}
+
+/** REST presence + channel presence (some servers don't expose every Work Key via REST). */
+export async function listAgents(): Promise<AgentInfo[]> {
+  const rest = await api("/api/presence")
+    .then((r) => r.json() as Promise<{ agents?: AgentInfo[] }>)
+    .then((j) => j.agents ?? [])
+    .catch(() => [] as AgentInfo[]);
+  const byName = new Map<string, AgentInfo>();
+  for (const a of rest) byName.set(String(a.name), a);
+  for (const [name, a] of channelPresence) if (!byName.has(name)) byName.set(name, { work_key: WORK_KEY, ...a });
+  return [...byName.values()].filter((a) => a.name !== AGENT_NAME);
+}
+
+/**
+ * Resolve `to` to a connected agent name.
+ * - exact agent name → 그대로
+ * - `webclaw` / `browser` / capability alias → 가장 최근 접속한 webclaw 노드
+ * - 그 외 이름 → 그대로 (오프라인이어도 task.assign 은 보낸다)
+ */
+export async function resolveTarget(to?: string): Promise<{ to: string | null; error?: string; agents: AgentInfo[] }> {
+  const agents = await listAgents();
+  const wanted = (to ?? "").trim();
+  if (!wanted) return { to: null, agents };
+
+  if (agents.some((a) => a.name === wanted)) return { to: wanted, agents };
+
+  const alias = wanted.toLowerCase();
+  if (alias === "webclaw" || alias === "browser" || alias === "web") {
+    const nodes = agents
+      .filter(isWebclaw)
+      .sort((a, b) => String(b.online_since ?? b.last_seen ?? "").localeCompare(String(a.online_since ?? a.last_seen ?? "")));
+    if (nodes.length > 0) return { to: String(nodes[0].name), agents };
+    return {
+      to: null,
+      agents,
+      error: `연결된 webclaw 노드가 없습니다. Windows라면 DureClaw Server 설치 프로그램을 실행하고, 트레이 메뉴에서 '브라우저 손(webclaw) 연결…'을 누른 뒤 Chrome에 확장을 로드하세요. 설정이 비어 있으면 사이드 패널에 '설정 없음'이 표시됩니다.`,
+    };
+  }
+  return { to: wanted, agents };
+}
+
+/** task.result / task.blocked 를 기다린다. notices 배열은 notify() 가 채운다. */
+export function waitForTaskResult(taskId: string, timeoutMs: number, fromIndex: number): Promise<Notice | null> {
+  const started = Date.now();
+  return new Promise((resolve) => {
+    const tick = () => {
+      const found = notices
+        .slice(fromIndex)
+        .find((n) => (n.event === "task.result" || n.event === "task.blocked") && n.task_id === taskId);
+      if (found) return resolve(found);
+      if (Date.now() - started >= timeoutMs) return resolve(null);
+      setTimeout(tick, 150);
+    };
+    tick();
+  });
+}
+
+export function taskOutput(n: Notice | null): string {
+  if (!n) return "";
+  const p = n.payload ?? {};
+  const out = p.output ?? p.summary ?? p.reason ?? "";
+  return typeof out === "string" ? out : JSON.stringify(out);
+}
+
 
 // ─── Notifications ───────────────────────────────────────────────────────────
 
@@ -305,14 +385,60 @@ export function newerThan(a: string, b: string): boolean {
 }
 
 function log(msg: string) {
-  process.stderr.write(`[oah-mcp:${AGENT_NAME}] ${msg}\n`);
+  process.stderr.write(`[dureclaw-mcp:${AGENT_NAME}] ${msg}\n`);
 }
 
 // ─── MCP Server Factory ───────────────────────────────────────────────────────
 
+type DispatchResult = {
+  taskId?: string;
+  to?: string | null;
+  notice?: Notice | null;
+  error?: string;
+};
+
+async function dispatchAndWait(
+  toArg: string | undefined,
+  instructions: string,
+  role: string | undefined,
+  timeoutMs: number,
+): Promise<DispatchResult> {
+  const resolved = await resolveTarget(toArg);
+  if (resolved.error) return { error: resolved.error };
+
+  const taskId = `mcp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const payload: Record<string, unknown> = {
+    task_id: taskId,
+    from: AGENT_NAME,
+    role: role ?? "builder",
+    to: resolved.to,
+    instructions,
+  };
+  const start = notices.length;
+  sendEvent("task.assign", payload);
+  if (resolved.to) {
+    await api(`/api/mailbox/${encodeURIComponent(resolved.to)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }).catch(() => {});
+  }
+
+  const notice = await waitForTaskResult(taskId, timeoutMs, start);
+  if (!notice) {
+    return {
+      taskId,
+      to: resolved.to,
+      notice: null,
+      error: `시간 초과 (${Math.round(timeoutMs / 1000)}초). task_id=${taskId} · to=${resolved.to ?? "broadcast"} — webclaw 노드가 연결되어 있는지, Chrome 확장이 로드됐는지 확인하세요.`,
+    };
+  }
+  return { taskId, to: resolved.to, notice };
+}
+
 export function createMcpServer(): Server {
   const server = new Server(
-    { name: "oah", version: MCP_VERSION },
+    { name: "dureclaw", version: MCP_VERSION },
     { capabilities: { tools: {}, logging: {} } }
   );
 
@@ -325,16 +451,42 @@ export function createMcpServer(): Server {
       },
       {
         name: "send_task",
-        description: "다른 에이전트에게 태스크를 전송한다 (task.assign 브로드캐스트).",
+        description: "다른 에이전트에게 태스크를 전송한다. to에 'webclaw'를 넣으면 연결된 webclaw 브라우저 노드로 자동 라우팅된다. 예: to='webclaw', instructions='[OPEN] https://www.naver.com'",
         inputSchema: {
           type: "object",
           properties: {
-            to:           { type: "string", description: "대상 에이전트 이름 (예: agent1@machine, deskclaw@pc)" },
-            instructions: { type: "string", description: "태스크 지시사항" },
+            to:           { type: "string", description: "대상 에이전트 이름 또는 별칭 (예: webclaw, deskclaw@pc, agent1@machine)" },
+            instructions: { type: "string", description: "태스크 지시사항 ([OPEN] https://... 같은 webclaw 마커)" },
             role:         { type: "string", description: "대상 역할 (builder/reviewer/executor/...)" },
             task_id:      { type: "string", description: "태스크 ID (생략 시 자동 생성)" },
           },
           required: ["instructions"],
+        },
+      },
+      {
+        name: "browser_run",
+        description: "webclaw 브라우저에서 여러 줄 마커를 순서대로 실행하고, task.result가 올 때까지 기다려 결과 전체를 돌려준다. 예: instructions='[OPEN] https://www.naver.com\\n[SHOT] webclaw-shots/naver.jpg'",
+        inputSchema: {
+          type: "object",
+          properties: {
+            instructions: { type: "string", description: "webclaw 마커 여러 줄 ([OPEN], [DOM], [CLICK], [FILL], [SHOT] 등)" },
+            to:           { type: "string", description: "대상 webclaw 노드 (기본: webclaw 별칭 → 가장 최근 노드)" },
+            timeout_s:    { type: "number", description: "전체 대기 시간(초). 기본 60, 최대 300" },
+          },
+          required: ["instructions"],
+        },
+      },
+      {
+        name: "browser_screenshot",
+        description: "webclaw로 URL을 열고(선택) 스크린샷을 찍어 MCP image content로 바로 돌려준다. 예: url='https://www.naver.com' → 대화에 네이버 화면이 이미지로 표시된다.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            url:        { type: "string", description: "먼저 열 URL (생략하면 현재 탭)" },
+            to:         { type: "string", description: "대상 webclaw 노드 (기본: webclaw 별칭)" },
+            timeout_s:  { type: "number", description: "대기 시간(초). 기본 60, 최대 300" },
+          },
+          required: [],
         },
       },
       {
@@ -441,26 +593,104 @@ export function createMcpServer(): Server {
       }
 
       case "send_task": {
+        const resolved = await resolveTarget(a.to as string | undefined);
+        if (resolved.error) return text(resolved.error);
+
         const taskId = (a.task_id as string) ?? `mcp-${Date.now()}`;
         const payload: Record<string, unknown> = {
           task_id:      taskId,
           from:         AGENT_NAME,
           role:         a.role ?? "builder",
-          to:           a.to ?? null,
+          to:           resolved.to,
           instructions: a.instructions,
         };
         sendEvent("task.assign", payload);
 
         // Also enqueue to mailbox if `to` specified
-        if (a.to) {
-          await api(`/api/mailbox/${encodeURIComponent(a.to as string)}`, {
+        if (resolved.to) {
+          await api(`/api/mailbox/${encodeURIComponent(resolved.to)}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
           }).catch(() => {});
         }
 
-        return text(`태스크 전송 완료 (task_id: ${taskId}, to: ${a.to ?? "broadcast"})`);
+        const aliasNote = a.to && resolved.to && a.to !== resolved.to ? ` (별칭 '${a.to}' → ${resolved.to})` : "";
+        return text(`태스크 전송 완료 (task_id: ${taskId}, to: ${resolved.to ?? "broadcast"})${aliasNote}`);
+      }
+
+      case "browser_run": {
+        const raw = String(a.instructions ?? "");
+        const lines = raw.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+        if (!lines.length) return text("instructions가 필요합니다. 예: '[OPEN] https://www.naver.com\\n[SHOT] webclaw-shots/naver.jpg'");
+        const totalMs = Math.min(300, Math.max(5, Number(a.timeout_s) || 60)) * 1000;
+        const started = Date.now();
+        const results: Array<Record<string, unknown>> = [];
+        let allOk = true;
+
+        for (const line of lines) {
+          const remaining = totalMs - (Date.now() - started);
+          if (remaining < 1000) {
+            results.push({ line, error: "전체 시간 초과" });
+            allOk = false;
+            break;
+          }
+          const r = await dispatchAndWait((a.to as string) || "webclaw", line, undefined, remaining);
+          if (r.error) {
+            results.push({ line, task_id: r.taskId, to: r.to, error: r.error });
+            allOk = false;
+            break;
+          }
+          const n = r.notice!;
+          const status = String(n.payload.status ?? "done");
+          const output = taskOutput(n);
+          results.push({ line, task_id: r.taskId, to: r.to, event: n.event, status, output });
+          if (n.event === "task.blocked" || status === "failed") { allOk = false; break; }
+        }
+
+        return text(JSON.stringify({ ok: allOk, results }, null, 2));
+      }
+
+      case "browser_screenshot": {
+        const target = (a.to as string) || "webclaw";
+        const totalMs = Math.min(300, Math.max(5, Number(a.timeout_s) || 60)) * 1000;
+        const started = Date.now();
+        const url = String(a.url ?? "").trim();
+
+        if (url) {
+          const open = await dispatchAndWait(target, `[OPEN] ${url}`, undefined, totalMs);
+          if (open.error) return text(open.error);
+          const out = taskOutput(open.notice);
+          if (String(open.notice?.payload.status ?? "done") === "failed") {
+            return text(`페이지 열기 실패: ${out}`);
+          }
+        }
+
+        const rel = `webclaw-shots/mcp-${Date.now()}.jpg`;
+        const remaining = Math.max(5000, totalMs - (Date.now() - started));
+        const shot = await dispatchAndWait(target, `[SHOT] ${rel}`, undefined, remaining);
+        if (shot.error) return text(shot.error);
+
+        const out = taskOutput(shot.notice);
+        if (String(shot.notice?.payload.status ?? "done") === "failed") {
+          return text(`스크린샷 실패: ${out}`);
+        }
+
+        const m = out.match(/→\s*(.+?)(?:\s+\(\d+\s+bytes\)|$)/m);
+        let file = m?.[1]?.trim() || "";
+        if (!file) file = join(homedir(), "Downloads", rel);
+        try {
+          const buf = await readFile(file);
+          const mimeType = /\.png$/i.test(file) ? "image/png" : "image/jpeg";
+          return {
+            content: [
+              { type: "image" as const, data: buf.toString("base64"), mimeType },
+              { type: "text" as const, text: `webclaw 스크린샷 (${shot.to ?? target})\n${file}\n${out}` },
+            ],
+          } as unknown as ReturnType<typeof text>;
+        } catch {
+          return text(`스크린샷은 저장됐지만 파일을 읽지 못했습니다.\n${out}\n경로: ${file || rel}`);
+        }
       }
 
       case "complete_task": {
