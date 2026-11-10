@@ -49,7 +49,7 @@ import { hostname } from "os";
 // ─── Config ──────────────────────────────────────────────────────────────────
 
 // scripts/sync-version.ts 가 루트 VERSION 에 맞춰 갱신한다
-export const MCP_VERSION = "0.5.5";
+export const MCP_VERSION = "0.5.6";
 const LATEST_URL = "https://dureclaw.baryon.ai/latest.json";
 
 const PHOENIX_URL_RAW = process.env.PHOENIX_URL ?? "ws://localhost:4000";
