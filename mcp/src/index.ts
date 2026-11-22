@@ -52,13 +52,15 @@ import { hostname } from "os";
 // ─── Config ──────────────────────────────────────────────────────────────────
 
 // scripts/sync-version.ts 가 루트 VERSION 에 맞춰 갱신한다
-export const MCP_VERSION = "0.5.8";
+export const MCP_VERSION = "0.5.9";
 const LATEST_URL = "https://dureclaw.baryon.ai/latest.json";
 
 const PHOENIX_URL_RAW = process.env.PHOENIX_URL ?? "ws://localhost:4000";
 const AGENT_ROLE      = process.env.AGENT_ROLE  ?? "builder";
 const AGENT_MACHINE   = hostname();
 const AGENT_NAME      = process.env.AGENT_NAME  ?? `${AGENT_ROLE}@${AGENT_MACHINE}`;
+// 특정 webclaw 노드를 고정한다(예: DureClaw Browser). 비어 있으면 가장 최근 접속 노드.
+const PINNED_BROWSER  = process.env.DURECLAW_BROWSER_NODE ?? "";
 export const OAH_SECRET = process.env.OAH_SECRET ?? "";
 
 const WS_BASE   = PHOENIX_URL_RAW.replace(/^http/, "ws").replace(/\/$/, "");
@@ -143,6 +145,10 @@ export async function resolveTarget(to?: string): Promise<{ to: string | null; e
 
   const alias = wanted.toLowerCase();
   if (alias === "webclaw" || alias === "browser" || alias === "web") {
+    if (PINNED_BROWSER) {
+      const pinned = agents.find((a) => a.name === PINNED_BROWSER);
+      if (pinned) return { to: PINNED_BROWSER, agents };
+    }
     const nodes = agents
       .filter(isWebclaw)
       .sort((a, b) => String(b.online_since ?? b.last_seen ?? "").localeCompare(String(a.online_since ?? a.last_seen ?? "")));
@@ -403,6 +409,11 @@ async function dispatchAndWait(
   role: string | undefined,
   timeoutMs: number,
 ): Promise<DispatchResult> {
+  if (!channelJoined) {
+    return {
+      error: "MCP가 DureClaw 버스에 연결되지 않았습니다 (connected:false). PHOENIX_URL·OAH_SECRET·WORK_KEY를 확인하고 MCP 서버를 재시작하세요. REST get_presence가 되어도 WebSocket 채널이 붙지 않으면 task.assign은 전송되지 않습니다.",
+    };
+  }
   const resolved = await resolveTarget(toArg);
   if (resolved.error) return { error: resolved.error };
 
@@ -593,6 +604,9 @@ export function createMcpServer(): Server {
       }
 
       case "send_task": {
+        if (!channelJoined) {
+          return text("MCP가 DureClaw 버스에 연결되지 않았습니다 (connected:false). PHOENIX_URL·OAH_SECRET·WORK_KEY를 확인하고 MCP 서버를 재시작하세요. REST get_presence가 되어도 WebSocket 채널이 붙지 않으면 task.assign은 전송되지 않습니다.");
+        }
         const resolved = await resolveTarget(a.to as string | undefined);
         if (resolved.error) return text(resolved.error);
 
